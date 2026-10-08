@@ -29,7 +29,8 @@ export interface Armazenamento {
   /** banco geral de patrocinadores (um só para todos os eventos) */
   lerBanco(): Promise<{ banco: BancoPatrocinios; versao: string }>;
   /** grava se ninguém tiver gravado depois da `versao` lida; senão lança Conflito */
-  salvarBanco(banco: BancoPatrocinios, versao: string): Promise<string>;
+  /** `marcar`: muda os eventos afetados (ex.: atualização pendente) no mesmo commit; devolve true se mudou */
+  salvarBanco(banco: BancoPatrocinios, versao: string, marcar?: (e: Evento) => boolean): Promise<string>;
   /** quais eventos usam cada patrocinador */
   usoPatrocinadores(): Promise<UsoPatrocinadores>;
   /** uso de cada patrocinador e as páginas/cotas de todos os eventos (uma leitura só) */
@@ -205,7 +206,7 @@ export class ArmazenamentoGitHub implements Armazenamento {
     return { banco: JSON.parse(await this.gh.lerTexto(sha)) as BancoPatrocinios, versao: sha };
   }
 
-  async salvarBanco(banco: BancoPatrocinios, versao: string): Promise<string> {
+  async salvarBanco(banco: BancoPatrocinios, versao: string, marcar?: (e: Evento) => boolean): Promise<string> {
     banco.atualizadoEm = new Date().toISOString();
     const sha = await this.gh.criarBlobTexto(JSON.stringify(banco, null, 2) + '\n');
     await this.gh.alterar(this.branch, 'Atualiza o banco de patrocinadores', async (atuais) => {
@@ -216,6 +217,14 @@ export class ArmazenamentoGitHub implements Armazenamento {
       for (const [p, s] of logos) if (atuais.get(p) !== s) mudancas.set(p, s);
       for (const p of atuais.keys()) if (p.startsWith(LOGOS) && !logos.has(p)) mudancas.set(p, null);
       if (!atuais.has(LEIA_ME)) mudancas.set(LEIA_ME, await this.gh.criarBlobTexto(TEXTO_LEIA_ME));
+      if (marcar) {
+        // lê os eventos em paralelo e grava só os que mudaram, tudo no mesmo commit do banco
+        const arqs = [...atuais].filter(([p]) => p.startsWith(PASTA) && p.endsWith('/' + ARQ_EVENTO) && p.split('/').length === 3);
+        await Promise.all(arqs.map(async ([p, s]) => {
+          const e = JSON.parse(await this.gh.lerTexto(s)) as Evento;
+          if (marcar(e)) mudancas.set(p, await this.gh.criarBlobTexto(json(e)));
+        }));
+      }
       return { mudancas, resultado: null };
     });
     return sha;
@@ -248,7 +257,7 @@ export class ArmazenamentoGitHub implements Armazenamento {
             for (const it of b.itens) {
               let reg = porId.get(it.patrocinador);
               if (!reg) porId.set(it.patrocinador, (reg = { slug: e.slug, nome: e.nome, publicado: e.versaoAtiva != null, pendente: !!e.pendencia?.motivos.length, aplicacoes: [], cotas }));
-              reg.aplicacoes.push({ pagina, nomePagina: nomePagina(pagina), bloco: b.id, cota: b.cota, cotaNome: cota?.nome || b.cota, tamanho: it.tamanho || '', tamanhoCota: cota?.tamanho || 'P' });
+              reg.aplicacoes.push({ pagina, nomePagina: nomePagina(pagina), bloco: b.id, cota: b.cota, cotaNome: cota ? cota.nome || 'Sem nome' : b.cota, tamanho: it.tamanho || '', tamanhoCota: cota?.tamanho || 'P' });
             }
           }
         }

@@ -19,9 +19,12 @@ export interface Patrocinador {
 /** cota do banco geral (Master, Gold…): tamanho padrão e se fica ao lado da cota anterior */
 export interface Cota {
   id: string;
+  /** título dos logos da cota ('' = sem título) */
   nome: string;
   tamanho: Tamanho;
   aoLado?: boolean;
+  /** nome do bloco (faixa com várias cotas lado a lado), guardado na primeira cota da faixa; opcional */
+  tituloBloco?: string;
 }
 
 export const COTAS_PADRAO: Cota[] = [
@@ -127,17 +130,22 @@ export function montarPatrocinios(comp: ComposicaoPatrocinio | undefined, e: Pic
           )
           .join('') +
         '</div>';
-      return { html, aoLado: b.aoLado ?? !!cota?.aoLado };
+      return { html, aoLado: b.aoLado ?? !!cota?.aoLado, tituloBloco: cota?.tituloBloco?.trim() || '' };
     })
-    .filter((x): x is { html: string; aoLado: boolean } => !!x);
+    .filter((x): x is { html: string; aoLado: boolean; tituloBloco: string } => !!x);
   if (!blocos.length) return '';
 
-  // blocos "ao lado" juntam-se ao anterior na mesma faixa
-  const faixas: string[][] = [];
+  // blocos "ao lado" juntam-se ao anterior na mesma faixa; a faixa leva o nome do bloco da primeira cota
+  const faixas: { titulo: string; html: string[] }[] = [];
   for (const b of blocos) {
-    if (b.aoLado && faixas.length) faixas[faixas.length - 1].push(b.html);
-    else faixas.push([b.html]);
+    if (b.aoLado && faixas.length) faixas[faixas.length - 1].html.push(b.html);
+    else faixas.push({ titulo: b.tituloBloco, html: [b.html] });
   }
+  const faixa = (f: (typeof faixas)[number]) => {
+    const div = `<div class="pub-patro__faixa">${f.html.join('')}</div>`;
+    // nome do bloco só vale quando há mais de uma cota na faixa
+    return f.titulo && f.html.length > 1 ? `<div class="pub-patro__grupo"><p class="pub-patro__titulo pub-patro__titulo--bloco">${esc(f.titulo)}</p>${div}</div>` : div;
+  };
 
   const fundo = cor(e.estilo?.corFundo, '#f1f1f1');
   const titulo = cor(e.estilo?.corTitulo, '#222222');
@@ -148,6 +156,7 @@ export function montarPatrocinios(comp: ComposicaoPatrocinio | undefined, e: Pic
     '.pub-patro__faixa{display:flex;flex-wrap:wrap;gap:24px 48px;justify-content:center;align-items:flex-start}' +
     '.pub-patro__bloco{display:flex;flex-direction:column;gap:16px;align-items:center}' +
     `.pub-patro__titulo{margin:0;font-size:13px;color:${titulo};text-align:center}` +
+    '.pub-patro__grupo{display:flex;flex-direction:column;gap:16px;align-items:center}.pub-patro__titulo--bloco{font-size:15px;font-weight:600}' +
     '.pub-patro__linha{display:flex;flex-wrap:wrap;gap:16px;justify-content:center}' +
     '.pub-patro__logo{display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid #d9d9d9;border-radius:14px;padding:12px}' +
     '.pub-patro__logo img{max-width:80%;max-height:70%;width:auto;height:auto;object-fit:contain;display:block}' +
@@ -158,7 +167,7 @@ export function montarPatrocinios(comp: ComposicaoPatrocinio | undefined, e: Pic
     '}';
   return (
     `<section class="pub-patro" id="patrocinadores" aria-label="Patrocinadores" data-pub-patrocinios><style>${css}</style><div class="pub-patro__in">` +
-    faixas.map((f) => `<div class="pub-patro__faixa">${f.join('')}</div>`).join('') +
+    faixas.map(faixa).join('') +
     `</div>${aleatorio ? SCRIPT_ALEATORIO : ''}</section>`
   );
 }

@@ -110,7 +110,7 @@ function Bloco({ pagina, b, i, total, alca, moverBloco }: { pagina: string; b: B
       <div className="row" style={{ gap: 10 }}>
         <Alca i={i} total={total} alca={alca} mover={moverBloco} rotulo={cota?.nome || 'cota'} />
         <select className="inp" style={{ width: 'auto' }} aria-label="Cota" value={b.cota} onChange={(e) => { const v = e.target.value; mudar((x) => { x.cota = v; }); }}>
-          {cotas.map((c) => <option key={c.id} value={c.id}>{c.nome} ({c.tamanho})</option>)}
+          {cotas.map((c) => <option key={c.id} value={c.id}>{c.nome || 'Sem nome'} ({c.tamanho})</option>)}
         </select>
         <input className="inp" style={{ maxWidth: 220 }} aria-label="Título" disabled={semTitulo} placeholder={cota?.nome || 'Título'} value={b.titulo ?? ''} onChange={(e) => { const v = e.target.value; mudar((x) => { x.titulo = v || undefined; }); }} />
         <label className="row small" style={{ gap: 6 }}><input type="checkbox" checked={semTitulo} onChange={(e) => { const v = e.target.checked; mudar((x) => { x.titulo = v ? '' : undefined; }); }} />Sem título</label>
@@ -223,7 +223,7 @@ export function PassoPatrocinios() {
               <div className="row">
                 <select className="inp" style={{ width: 'auto' }} value="" aria-label="Adicionar cota" onChange={(e) => e.target.value && adicionarCota(e.target.value)}>
                   <option value="">+ Adicionar cota…</option>
-                  {cotas.map((c) => <option key={c.id} value={c.id}>{c.nome} ({c.tamanho})</option>)}
+                  {cotas.map((c) => <option key={c.id} value={c.id}>{c.nome || 'Sem nome'} ({c.tamanho})</option>)}
                 </select>
                 <Link className="small" href="/patrocinios?aba=cotas" target="_blank">Criar ou mudar cotas ↗</Link>
               </div>

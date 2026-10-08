@@ -199,3 +199,4 @@ Os tapumes de cards fixos dos casos H1–H4 são fixtures sintéticos em `packag
 | M4 | ordem escolhida e ordem aleatória | escolhida respeita a ordem; aleatória marca a linha e põe o script |
 | M5 | só patrocinador desativado | seção não aparece; aviso |
 | M6 | tapume, duas cidades e uma etapa | cada página com a sua; etapa com a da cidade; antes do rodapé do HTML e do rodapé padrão |
+| M7 | bloco com várias cotas lado a lado e nome do bloco; cota sem nome | nome do bloco acima da faixa; cota sem nome sem título; bloco de uma cota ignora o nome do bloco |

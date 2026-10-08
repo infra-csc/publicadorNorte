@@ -103,4 +103,23 @@ describe('M. Patrocinadores', () => {
     // ordem: conteúdo → patrocinadores → rodapé do HTML → rodapé padrão
     expect(pRJ.html).toMatch(/RJ<\/main><section class="pub-patro"[^]*<\/section><footer class="site">rodapé<\/footer><footer class="pub-rodape"/);
   });
+
+  it('M7: bloco com várias cotas tem nome opcional (acima da faixa); cota sem nome não tem título; bloco de uma cota ignora o nome do bloco', () => {
+    const cotas = [
+      { id: 'master', nome: 'Master', tamanho: 'GG' as const, tituloBloco: 'Ignorado' },
+      { id: 'org', nome: '', tamanho: 'P' as const, tituloBloco: 'Organização' },
+      { id: 'real', nome: 'Realização', tamanho: 'P' as const, aoLado: true },
+    ];
+    const h = montarPatrocinios({
+      blocos: [
+        { id: 'm', cota: 'master', ordem: 'alfabetica', itens: [{ patrocinador: 'honda' }] },
+        { id: 'o', cota: 'org', ordem: 'alfabetica', itens: [{ patrocinador: 'ingresso' }] },
+        { id: 'r', cota: 'real', ordem: 'alfabetica', itens: [{ patrocinador: 'norte' }] },
+      ],
+    }, { ...BANCO, cotas });
+    expect(h).not.toContain('Ignorado');
+    expect(h).toContain('<div class="pub-patro__grupo"><p class="pub-patro__titulo pub-patro__titulo--bloco">Organização</p><div class="pub-patro__faixa"><div class="pub-patro__bloco"><div class="pub-patro__linha pub-patro__linha--p">');
+    expect(h).toContain('<p class="pub-patro__titulo">Realização</p>');
+    expect((h.match(/class="pub-patro__faixa"/g) || []).length).toBe(2);
+  });
 });

@@ -301,3 +301,8 @@ tr:last-child td { border-bottom: 0; }
 .janela-fundo { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 16px; background: rgba(0,0,0,.5); }
 .janela { width: min(1100px, 100%); max-height: calc(100vh - 32px); overflow: auto; display: flex; flex-direction: column; gap: 12px; padding: 18px; border-radius: 14px; background: var(--paper); border: 1px solid var(--line); }
 .cota-medida { font-size: 12px; color: var(--mute); }
+
+.cota-bloco { align-items: start; }
+.cota-linha { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 8px; }
+.cota-item { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; border: 1px dashed var(--line); border-radius: 10px; }
+.cota-item .inp { flex: 1 1 140px; min-width: 120px; padding: 7px 10px; }

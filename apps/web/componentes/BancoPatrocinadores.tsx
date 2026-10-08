@@ -104,7 +104,7 @@ function Card({ p, usos, aberto, abrir, salvar }: { p: PatrocinadorBanco; usos: 
   );
 }
 
-const opcoesCota = (cotas: Cota[]): Opcao[] => cotas.map((c) => ({ valor: c.id, rotulo: c.nome, detalhe: c.tamanho }));
+const opcoesCota = (cotas: Cota[]): Opcao[] => cotas.map((c) => ({ valor: c.id, rotulo: c.nome || 'Sem nome', detalhe: c.tamanho }));
 
 /** pôr o logo em páginas de um evento (tapume e cidades) numa cota */
 function Adicionar({ p, eventos, usos, adicionar, ocupado }: { p: PatrocinadorBanco; eventos: EventoPatrocinavel[]; usos: UsoPatrocinadores[string]; adicionar: (slug: string, paginas: string[], cota: string) => Promise<boolean>; ocupado: boolean }) {
@@ -259,61 +259,130 @@ function Visualizar({ slug, nome, pagina: inicial, banco, fechar }: { slug: stri
   );
 }
 
+/** cotas em faixas: cada faixa é um bloco (cotas "ao lado" ficam no bloco da anterior) */
+const faixasDe = (cotas: Cota[]) => {
+  const fs: { inicio: number; cotas: Cota[] }[] = [];
+  cotas.forEach((c, i) => { if (c.aoLado && fs.length) fs[fs.length - 1].cotas.push(c); else fs.push({ inicio: i, cotas: [c] }); });
+  return fs;
+};
+const novoIdCota = (cotas: Cota[], nome: string) => {
+  const base = limpar(nome) || 'cota';
+  let id = base;
+  for (let i = 2; cotas.some((x) => x.id === id); i++) id = `${base}-${i}`;
+  return id;
+};
+/** a primeira cota de cada faixa não fica "ao lado"; o nome do bloco mora nela */
+const arrumar = (cotas: Cota[]) => {
+  faixasDe(cotas).forEach((f) => {
+    f.cotas[0].aoLado = false;
+    f.cotas.slice(1).forEach((c) => { delete c.tituloBloco; });
+  });
+};
+
 /** cotas gerais: valem para todos os eventos */
 function Cotas({ banco, uso, salvar }: { banco: BancoPatrocinios; uso: UsoPatrocinadores; salvar: Salvar }) {
-  const cotas = banco.cotas;
+  const faixas = faixasDe(banco.cotas);
   const [nova, setNova] = useState('');
   const [tamanhoNova, setTamanhoNova] = useState<Tamanho>('P');
-  const moverCota = (de: number, para: number) => salvar((b) => { b.cotas = mover(b.cotas, de, para); });
-  const { alca, alvo } = useReordenar(moverCota);
-  const mudar = (id: string, fn: (c: Cota) => void) => salvar((b) => { const c = b.cotas.find((x) => x.id === id); if (c) fn(c); });
+  const mudarCotas = (fn: (cotas: Cota[]) => Cota[] | void) => salvar((b) => { b.cotas = fn(b.cotas) || b.cotas; arrumar(b.cotas); }).catch(() => {});
+  const moverFaixa = (de: number, para: number) => mudarCotas((cotas) => mover(faixasDe(cotas), de, para).flatMap((f) => f.cotas));
+  const { alca, alvo } = useReordenar(moverFaixa);
+  const mudar = (id: string, fn: (c: Cota) => void) => mudarCotas((cotas) => { const c = cotas.find((x) => x.id === id); if (c) fn(c); });
   // eventos que usam cada cota
   const usoCota = new Map<string, Set<string>>();
   for (const us of Object.values(uso)) for (const u of us) for (const a of u.aplicacoes) usoCota.set(a.cota, (usoCota.get(a.cota) || new Set()).add(u.nome));
   const tamanhos: Opcao[] = TAMANHOS.map((t) => ({ valor: t, rotulo: `${t} · ${NOME_TAMANHO[t]}`, detalhe: MEDIDA[t] }));
 
-  function criar() {
+  function juntarComDeCima(fi: number) {
+    const id = faixas[fi].cotas[0].id;
+    mudarCotas((cotas) => { const c = cotas.find((x) => x.id === id)!; c.aoLado = true; delete c.tituloBloco; });
+  }
+  /** a cota sai do bloco e vira um bloco logo abaixo */
+  function separar(id: string) {
+    mudarCotas((cotas) => {
+      const f = faixasDe(cotas).find((x) => x.cotas.some((c) => c.id === id))!;
+      const fimFaixa = f.inicio + f.cotas.length;
+      const resto = cotas.filter((c) => c.id !== id);
+      const c = { ...cotas.find((x) => x.id === id)!, aoLado: false };
+      resto.splice(fimFaixa - 1, 0, c);
+      return resto;
+    });
+  }
+  function cotaNoBloco(fi: number) {
+    const f = faixas[fi];
+    const ultima = f.cotas[f.cotas.length - 1];
+    mudarCotas((cotas) => {
+      const c: Cota = { id: novoIdCota(cotas, ''), nome: '', tamanho: ultima.tamanho, aoLado: true };
+      cotas.splice(cotas.findIndex((x) => x.id === ultima.id) + 1, 0, c);
+    });
+  }
+  function apagar(c: Cota) {
+    const usam = usoCota.get(c.id);
+    const nome = c.nome || 'sem nome';
+    if (!confirm(usam ? `A cota ${nome} está em uso em ${[...usam].join(', ')}. Apagar mesmo assim? Esses logos deixam de aparecer.` : `Apagar a cota ${nome}?`)) return;
+    mudarCotas((cotas) => {
+      const i = cotas.findIndex((x) => x.id === c.id);
+      const prox = cotas[i + 1];
+      // o bloco continua: a próxima cota herda o lugar e o nome do bloco
+      if (!c.aoLado && prox?.aoLado) { prox.aoLado = false; prox.tituloBloco = c.tituloBloco; }
+      return cotas.filter((x) => x.id !== c.id);
+    });
+  }
+  function criarBloco() {
     const nome = nova.trim();
-    if (!nome) return;
-    salvar((b) => {
-      const base = limpar(nome) || 'cota';
-      let id = base;
-      for (let i = 2; b.cotas.some((x) => x.id === id); i++) id = `${base}-${i}`;
-      // entra antes da Ticketeria (perto das de tamanho P), ou no fim
-      const ondeT = b.cotas.findIndex((x) => x.id === 'ticketeria');
-      const c: Cota = { id, nome, tamanho: tamanhoNova };
-      if (ondeT >= 0) b.cotas.splice(ondeT, 0, c); else b.cotas.push(c);
-    }).then(() => setNova(''), () => {});
+    mudarCotas((cotas) => { cotas.push({ id: novoIdCota(cotas, nome), nome, tamanho: tamanhoNova }); });
+    setNova('');
   }
 
   return (
     <section className="card stack">
       <div>
         <h2 style={{ fontSize: 18 }}>Cotas</h2>
-        <p className="small muted">Valem para todos os eventos. A ordem aqui é a ordem na página (arraste para mudar). O tamanho define o card de cada logo da cota (largura × altura no desktop; no celular fica menor).</p>
+        <p className="small muted">Valem para todos os eventos. Cada linha é um bloco da seção de patrocinadores, na ordem da página (arraste para mudar). Cotas no mesmo bloco ficam lado a lado, como Ticketeria e Realização. Os nomes são opcionais. O tamanho define o card de cada logo (largura × altura no desktop; no celular fica menor).</p>
       </div>
       <div className="lista-secoes">
-        {cotas.map((c, i) => {
-          const usam = usoCota.get(c.id);
+        {faixas.map((f, fi) => {
+          const varias = f.cotas.length > 1;
           return (
-            <div key={c.id} className="secao-item" {...alvo(i)}>
-              <Alca i={i} total={cotas.length} alca={alca} mover={moverCota} rotulo={c.nome} />
-              <div className="row" style={{ gap: 10 }}>
-                <input className="inp" style={{ maxWidth: 220 }} defaultValue={c.nome} aria-label="Nome da cota" onBlur={(e) => { const v = e.target.value.trim(); if (!v) e.target.value = c.nome; else if (v !== c.nome) mudar(c.id, (x) => { x.nome = v; }); }} />
-                <Seletor rotulo={`Tamanho da cota ${c.nome}`} largura={230} valor={c.tamanho} opcoes={tamanhos} mudar={(v) => mudar(c.id, (x) => { x.tamanho = v as Tamanho; })} />
-                <label className="row small" style={{ gap: 6 }}><input type="checkbox" checked={!!c.aoLado} disabled={i === 0} onChange={(e) => { const v = e.target.checked; mudar(c.id, (x) => { x.aoLado = v; }); }} />Ao lado da cota anterior</label>
-                <span className="small muted">{usam ? `Em ${usam.size} evento(s)` : 'Sem uso'}</span>
-                <button className="iconbtn" type="button" style={{ marginLeft: 'auto' }} aria-label={`Apagar a cota ${c.nome}`}
-                  onClick={() => { if (confirm(usam ? `A cota ${c.nome} está em uso em ${[...usam].join(', ')}. Apagar mesmo assim? Esses logos deixam de aparecer.` : `Apagar a cota ${c.nome}?`)) salvar((b) => { b.cotas = b.cotas.filter((x) => x.id !== c.id); }); }}>✕</button>
+            <div key={f.cotas[0].id} className="secao-item cota-bloco" {...alvo(fi)}>
+              <Alca i={fi} total={faixas.length} alca={alca} mover={moverFaixa} rotulo={f.cotas.map((c) => c.nome || 'sem nome').join(' + ')} />
+              <div className="stack" style={{ gap: 10 }}>
+                <div className="row" style={{ gap: 8 }}>
+                  {varias
+                    ? <input className="inp" style={{ maxWidth: 260 }} placeholder="Nome do bloco (opcional)" aria-label="Nome do bloco" defaultValue={f.cotas[0].tituloBloco || ''}
+                        onBlur={(e) => { const v = e.target.value.trim(); if (v !== (f.cotas[0].tituloBloco || '')) mudar(f.cotas[0].id, (x) => { x.tituloBloco = v || undefined; }); }} />
+                    : <span className="small muted">Bloco {fi + 1}</span>}
+                  <span className="row" style={{ gap: 6, marginLeft: 'auto' }}>
+                    <button className="btn sm ghost" type="button" onClick={() => cotaNoBloco(fi)} title="Mais uma cota lado a lado neste bloco">+ Cota neste bloco</button>
+                    {fi > 0 && <button className="btn sm ghost" type="button" onClick={() => juntarComDeCima(fi)} title="Põe estas cotas lado a lado com o bloco de cima">Juntar com o de cima</button>}
+                  </span>
+                </div>
+                <div className="cota-linha">
+                  {f.cotas.map((c, ci) => {
+                    const usam = usoCota.get(c.id);
+                    return (
+                      <div key={c.id} className="cota-item">
+                        <input className="inp" placeholder={varias ? 'Nome da cota (opcional)' : 'Nome (opcional)'} aria-label="Nome da cota" defaultValue={c.nome}
+                          onBlur={(e) => { const v = e.target.value.trim(); if (v !== c.nome) mudar(c.id, (x) => { x.nome = v; }); }} onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} />
+                        <Seletor rotulo={`Tamanho da cota ${c.nome || 'sem nome'}`} largura={220} valor={c.tamanho} opcoes={tamanhos} mudar={(v) => mudar(c.id, (x) => { x.tamanho = v as Tamanho; })} />
+                        <span className="small muted">{usam ? `Em ${usam.size} evento(s)` : 'Sem uso'}</span>
+                        <span className="row" style={{ gap: 4, marginLeft: 'auto' }}>
+                          {ci > 0 && <button className="btn sm ghost" type="button" onClick={() => separar(c.id)} title="Tira esta cota do bloco e põe num bloco logo abaixo">Separar</button>}
+                          <button className="iconbtn" type="button" aria-label={`Apagar a cota ${c.nome || 'sem nome'}`} onClick={() => apagar(c)}>✕</button>
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           );
         })}
       </div>
       <div className="row">
-        <input className="inp" style={{ maxWidth: 260 }} placeholder="Nova cota (ex.: Apoio de mídia)" aria-label="Nome da nova cota" value={nova} onChange={(e) => setNova(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && criar()} />
-        <Seletor rotulo="Tamanho da nova cota" largura={230} valor={tamanhoNova} opcoes={tamanhos} mudar={(v) => setTamanhoNova(v as Tamanho)} />
-        <button className="btn sm pri" type="button" disabled={!nova.trim()} onClick={criar}>+ Criar cota</button>
+        <input className="inp" style={{ maxWidth: 260 }} placeholder="Nome (opcional)" aria-label="Nome da nova cota" value={nova} onChange={(e) => setNova(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && criarBloco()} />
+        <Seletor rotulo="Tamanho da nova cota" largura={220} valor={tamanhoNova} opcoes={tamanhos} mudar={(v) => setTamanhoNova(v as Tamanho)} />
+        <button className="btn sm pri" type="button" onClick={criarBloco}>+ Novo bloco</button>
       </div>
     </section>
   );
@@ -334,29 +403,79 @@ export function BancoPatrocinadores() {
   const profundidade = useRef(0);
   const [aberto, setAberto] = useState<string | null>(null);
 
-  const ler = useCallback(() => api<Dados>('/api/patrocinadores').then((d) => { ref.current = d; setDados(d); return d; }), []);
+  // o que o servidor já confirmou; a tela mostra isso + as mudanças na fila (aparecem na hora)
+  const servidor = useRef<{ banco: BancoPatrocinios; versao: string } | null>(null);
+  const fila = useRef<{ fn: (b: BancoPatrocinios) => void; ok: () => void; falha: (e: unknown) => void }[]>([]);
+  const rodando = useRef(false);
+  const geracao = useRef(0);
+
+  /** lê o cadastro e o uso; se houver mudança local no meio, só atualiza o uso */
+  const ler = useCallback(async () => {
+    const g = geracao.current;
+    const d = await api<Dados>('/api/patrocinadores');
+    // logo depois de gravar, o GitHub pode devolver a versão anterior: só troca o cadastro se for a que conhecemos (ou a primeira leitura)
+    const mesma = !servidor.current || servidor.current.versao === d.versao;
+    if (g === geracao.current && !fila.current.length && mesma) {
+      servidor.current = { banco: d.banco, versao: d.versao };
+      ref.current = d;
+    } else if (ref.current) {
+      ref.current = { ...ref.current, uso: d.uso, eventos: d.eventos };
+    }
+    setDados(ref.current);
+    return d;
+  }, []);
   useEffect(() => { ler().catch((e) => setErro(e.message)); }, [ler]);
 
-  /** muda e grava o cadastro (o servidor marca os eventos publicados afetados como pendentes) */
-  const salvar = useCallback<Salvar>(async (fn) => {
-    setErro('');
-    for (let tentativa = 0; ; tentativa++) {
-      const atual = ref.current!;
-      const novoBanco = structuredClone(atual.banco);
-      fn(novoBanco);
-      try {
-        const r = await api<{ versao: string }>('/api/patrocinadores', json('PUT', { banco: novoBanco, versao: atual.versao }));
-        ref.current = { ...atual, banco: novoBanco, versao: r.versao };
-        setDados(ref.current);
-        ler().catch(() => {}); // atualiza o uso e as pendências
-        return;
-      } catch (e) {
-        if (e instanceof ErroApi && e.status === 409 && tentativa < 2) { await ler(); continue; }
-        setErro((e as Error).message);
-        throw e;
+  const mostrar = useCallback(() => {
+    if (!servidor.current || !ref.current) return;
+    const b = structuredClone(servidor.current.banco);
+    for (const j of fila.current) j.fn(b);
+    ref.current = { ...ref.current, banco: b };
+    setDados(ref.current);
+  }, []);
+
+  /** grava a fila em lotes, uma gravação por vez */
+  const processar = useCallback(async () => {
+    if (rodando.current) return;
+    rodando.current = true;
+    let conflitos = 0;
+    try {
+      while (fila.current.length && servidor.current) {
+        const lote = fila.current.slice();
+        const novo = structuredClone(servidor.current.banco);
+        lote.forEach((j) => j.fn(novo));
+        try {
+          const r = await api<{ versao: string }>('/api/patrocinadores', json('PUT', { banco: novo, versao: servidor.current.versao }));
+          servidor.current = { banco: novo, versao: r.versao };
+          fila.current = fila.current.slice(lote.length);
+          lote.forEach((j) => j.ok());
+        } catch (e) {
+          if (e instanceof ErroApi && e.status === 409 && conflitos++ < 2) {
+            // outra pessoa gravou: pega a versão nova e reaplica a fila em cima
+            const d = await api<Dados>('/api/patrocinadores');
+            servidor.current = { banco: d.banco, versao: d.versao };
+            continue;
+          }
+          fila.current = fila.current.slice(lote.length);
+          lote.forEach((j) => j.falha(e));
+          setErro((e as Error).message);
+          mostrar();
+        }
       }
+    } finally {
+      rodando.current = false;
     }
-  }, [ler]);
+    ler().catch(() => {}); // atualiza o uso e as pendências, sem travar a tela
+  }, [ler, mostrar]);
+
+  /** muda o cadastro: aparece na hora e grava em segundo plano (o servidor marca os eventos afetados como pendentes) */
+  const salvar = useCallback<Salvar>((fn) => new Promise<void>((ok, falha) => {
+    setErro('');
+    geracao.current++;
+    fila.current.push({ fn, ok, falha });
+    mostrar();
+    processar();
+  }), [mostrar, processar]);
 
   /** imagens soltas ou escolhidas viram rascunhos (um por imagem) */
   function receber(arquivos: FileList | File[] | null | undefined) {

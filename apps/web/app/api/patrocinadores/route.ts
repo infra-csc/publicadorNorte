@@ -1,5 +1,6 @@
-import type { BancoPatrocinios } from '@/lib/comum/tipos';
-import { marcarPendencia } from '@/lib/servidor/pendencia';
+import type { Cota } from '@norte/motor';
+import type { BancoPatrocinios, Evento } from '@/lib/comum/tipos';
+import { anotarPendencia } from '@/lib/servidor/pendencia';
 import { servicos } from '@/lib/servidor/config';
 import { erro, responder } from '@/lib/servidor/rotas';
 
@@ -21,29 +22,40 @@ export async function PUT(req: Request) {
     if (banco.patrocinadores.some((p) => !nomeOk(p.nome) || !/^[0-9a-f]{40}$/.test(p.sha) || !/^[\w.-]+\.(png|jpe?g|webp|svg|gif|avif)$/i.test(p.logo))) {
       return erro(400, 'Cada patrocinador precisa de nome e de um logo em imagem.');
     }
-    if (banco.cotas.some((c) => !nomeOk(c.nome) || !/^[\w-]+$/.test(c.id) || !['GG', 'G', 'M', 'P'].includes(c.tamanho))) return erro(400, 'Cada cota precisa de nome e tamanho (GG, G, M ou P).');
+    const nomeCotaOk = (n: unknown) => n === undefined || (typeof n === 'string' && n.length <= 120);
+    if (banco.cotas.some((c) => !nomeCotaOk(c.nome) || !nomeCotaOk(c.tituloBloco) || !/^[\w-]+$/.test(c.id) || !['GG', 'G', 'M', 'P'].includes(c.tamanho))) return erro(400, 'Cada cota precisa de um tamanho (GG, G, M ou P).');
+    banco.cotas.forEach((c) => { c.nome ??= ''; });
     const { armazenamento } = servicos();
     const velho = (await armazenamento.lerBanco()).banco;
     const antes = new Map(velho.patrocinadores.map((p) => [p.id, p]));
-    const nova = await armazenamento.salvarBanco(banco, versao);
     // o que muda no site: nome (texto alternativo), link, logo e ativo
     const mudou = banco.patrocinadores.filter((p) => {
       const a = antes.get(p.id);
       return a && (a.nome !== p.nome || a.url !== p.url || a.sha !== p.sha || a.ativo !== p.ativo);
     });
-    // cotas: nome (título), tamanho, "ao lado" e a ordem mudam a seção
-    const chave = (c: { id: string; nome: string; tamanho: string; aoLado?: boolean }, i: number) => `${i}|${c.nome}|${c.tamanho}|${!!c.aoLado}`;
+    // cotas: nome, nome do bloco, tamanho, "ao lado" e a ordem mudam a seção
+    const chave = (c: Cota, i: number) => `${i}|${c.nome}|${c.tituloBloco || ''}|${c.tamanho}|${!!c.aoLado}`;
     const posVelha = new Map((velho.cotas || []).map((c, i) => [c.id, chave(c, i)]));
     const cotasMudadas = new Set((velho.cotas || []).filter((c) => !banco.cotas.some((n) => n.id === c.id)).map((c) => c.id));
     banco.cotas.forEach((c, i) => { if (posVelha.has(c.id) && posVelha.get(c.id) !== chave(c, i)) cotasMudadas.add(c.id); });
-    if (mudou.length || cotasMudadas.size) {
-      const uso = await armazenamento.usoPatrocinadores();
-      const porEvento = new Map<string, string[]>();
-      const anotar = (slug: string, m: string) => { const l = porEvento.get(slug) || []; if (!l.includes(m)) porEvento.set(slug, [...l, m]); };
-      for (const p of mudou) for (const u of uso[p.id] || []) if (u.publicado) anotar(u.slug, `${p.nome} mudou no cadastro`);
-      for (const us of Object.values(uso)) for (const u of us) if (u.publicado && u.aplicacoes.some((a) => cotasMudadas.has(a.cota))) anotar(u.slug, 'as cotas mudaram');
-      for (const [slug, motivos] of porEvento) await marcarPendencia(armazenamento, slug, `Patrocínios: ${motivos.join('; ')}`);
-    }
+    const nomes = new Map(mudou.map((p) => [p.id, p.nome]));
+    // eventos publicados que usam o que mudou ficam com "atualização pendente" (no mesmo commit, sem publicar)
+    const marcar = (e: Evento) => {
+      if (e.versaoAtiva == null) return false;
+      const motivos = new Set<string>();
+      for (const [pg, comp] of Object.entries(e.patrocinios?.porPagina || {})) {
+        if (pg !== 'tapume' && !e.cidades.some((c) => c._id === pg)) continue;
+        for (const b of comp.blocos) {
+          if (b.itens.length && cotasMudadas.has(b.cota)) motivos.add('as cotas mudaram');
+          for (const it of b.itens) if (nomes.has(it.patrocinador)) motivos.add(`${nomes.get(it.patrocinador)} mudou no cadastro`);
+        }
+      }
+      if (!motivos.size) return false;
+      const antes = JSON.stringify(e.pendencia);
+      anotarPendencia(e, `Patrocínios: ${[...motivos].join('; ')}`);
+      return JSON.stringify(e.pendencia) !== antes;
+    };
+    const nova = await armazenamento.salvarBanco(banco, versao, mudou.length || cotasMudadas.size ? marcar : undefined);
     return Response.json({ versao: nova });
   });
 }
