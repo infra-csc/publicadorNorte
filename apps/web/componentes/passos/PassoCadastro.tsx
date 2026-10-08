@@ -4,6 +4,7 @@ import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { gerarEvento } from '@/lib/comum/montagem';
 import type { Evento } from '@/lib/comum/tipos';
 import { Cabecalho, NavPassos, useEditor } from '../Editor';
+import { baixarPlanilha, lerPlanilha, type Proposta } from '../planilha';
 import { Previa } from '../Previa';
 
 const novoId = () => crypto.randomUUID().slice(0, 8);
@@ -228,6 +229,67 @@ function Tabela({ tipo, foco, setFoco }: { tipo: TipoItem; foco: string | null; 
   );
 }
 
+/** baixar o cadastro em planilha e enviar de volta (mostra o que muda antes de aplicar) */
+function Planilha() {
+  const { evento, cad, alterar } = useEditor();
+  const [proposta, setProposta] = useState<Proposta | null>(null);
+  const [msg, setMsg] = useState('');
+
+  async function baixar() {
+    setMsg('');
+    try { await baixarPlanilha(evento, cad); } catch (e) { setMsg((e as Error).message); }
+  }
+  async function enviar(f: File | undefined) {
+    if (!f) return;
+    setMsg('Lendo a planilha…');
+    setProposta(null);
+    try { setProposta(await lerPlanilha(f, evento, cad)); setMsg(''); } catch (e) { setMsg((e as Error).message); }
+  }
+  function aplicar() {
+    if (!proposta) return;
+    const p = proposta;
+    alterar((e) => {
+      e.gerais = { ...e.gerais, ...p.gerais };
+      e.cidades = p.cidades;
+      if (p.etapas) e.etapas = p.etapas;
+    });
+    setProposta(null);
+    setMsg('Planilha aplicada.');
+  }
+  const removidas = proposta?.resumo.flatMap((r) => r.removidas) || [];
+
+  return (
+    <div className="stack" style={{ gap: 10 }}>
+      <div className="row" style={{ gap: 8 }}>
+        <button className="btn sm ghost" type="button" onClick={baixar} title="Baixa o cadastro em Excel (.xlsx)">↓ Baixar planilha</button>
+        <label className="btn sm ghost" title="Envie a planilha preenchida (.xlsx ou .csv)">↑ Enviar planilha
+          <input type="file" accept=".xlsx,.csv" hidden onChange={(e) => { enviar(e.target.files?.[0]); e.target.value = ''; }} />
+        </label>
+        {msg && <span className="small" style={{ color: msg.endsWith('…') || msg === 'Planilha aplicada.' ? 'var(--mute)' : 'var(--bad)' }}>{msg}</span>}
+      </div>
+      {proposta && (
+        <div className="colpanel">
+          <b>Conferir antes de aplicar</b>
+          <ul style={{ margin: 0, paddingLeft: 18 }} className="small">
+            {Object.keys(proposta.gerais).length > 0 && <li>Gerais: {Object.keys(proposta.gerais).length} campo(s)</li>}
+            {proposta.resumo.map((r) => (
+              <li key={r.aba}>{r.aba}: {r.atualizadas} atualizada(s), {r.novas} nova(s){r.removidas.length ? `, ${r.removidas.length} removida(s)` : ''}</li>
+            ))}
+          </ul>
+          {removidas.length > 0 && (
+            <div className="w-item warn"><span className="ic">!</span><div><b>Saem do cadastro (não estão na planilha)</b>{removidas.join(', ')}</div></div>
+          )}
+          {proposta.avisos.map((a) => <p key={a} className="small muted" style={{ margin: 0 }}>{a}</p>)}
+          <div className="row">
+            <button className="btn sm pri" type="button" onClick={aplicar}>Aplicar a planilha</button>
+            <button className="btn sm ghost" type="button" onClick={() => setProposta(null)}>Cancelar</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function PassoCadastro() {
   const { evento, modelos, arquivos, cad, alterar, banco } = useEditor();
   const [foco, setFoco] = useState<string | null>(null);
@@ -249,6 +311,7 @@ export function PassoCadastro() {
       <Cabecalho passo="cadastro" titulo="Cadastro">{unica ? 'Preencha os valores da página. A prévia mostra o resultado.' : 'Preencha os valores. Cada linha vira uma página. Dá para colar linhas de uma planilha. A prévia mostra a linha em que você está.'}</Cabecalho>
       <div className="split">
         <div className="stack" style={{ minWidth: 0 }}>
+          <Planilha />
           {gerais.length > 0 && (
             <section className="card stack">
               <h2 style={{ fontSize: 20 }}>{unica ? 'Gerais' : 'Igual em todas as páginas'}</h2>
