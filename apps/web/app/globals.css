@@ -271,3 +271,8 @@ tr:last-child td { border-bottom: 0; }
 .patro-solta-aviso { position: sticky; top: 64px; z-index: 4; align-self: center; padding: 10px 18px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-weight: 600; pointer-events: none; }
 .banco-card.novo { cursor: pointer; gap: 8px; text-align: center; }
 .banco-card.rascunho { border-style: dashed; }
+.onde-add { display: flex; flex-direction: column; gap: 10px; padding-top: 12px; border-top: 1px solid var(--line); }
+.pg-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 999px; font-size: 13px; cursor: pointer; user-select: none; }
+.pg-chip input { margin: 0; }
+.pg-chip.on { border-color: var(--accent); background: var(--accent-soft); }
+.pg-chip.tem { opacity: 0.6; cursor: default; }

@@ -2,7 +2,7 @@
 // desta mesma interface (ex.: D1 + R2), sem mexer nas telas nem nas rotas.
 import type { TipoPagina } from '@norte/motor';
 import { COTAS_PADRAO, type Cota } from '@norte/motor';
-import type { ArquivoMidia, BancoPatrocinios, Evento, EventoCompleto, ResumoEvento, UsoPatrocinadores } from '../comum/tipos';
+import type { ArquivoMidia, BancoPatrocinios, Evento, EventoCompleto, EventoPatrocinavel, ResumoEvento, UsoPatrocinadores } from '../comum/tipos';
 import { ErroGitHub, type GitHub, type Mudancas } from './github';
 
 export class Conflito extends Error {}
@@ -31,6 +31,8 @@ export interface Armazenamento {
   salvarBanco(banco: BancoPatrocinios, versao: string): Promise<string>;
   /** quais eventos usam cada patrocinador */
   usoPatrocinadores(): Promise<UsoPatrocinadores>;
+  /** uso de cada patrocinador e as páginas/cotas de todos os eventos (uma leitura só) */
+  panoramaPatrocinios(): Promise<{ uso: UsoPatrocinadores; eventos: EventoPatrocinavel[] }>;
 }
 
 const BANCO = 'patrocinadores/banco.json';
@@ -219,8 +221,13 @@ export class ArmazenamentoGitHub implements Armazenamento {
   }
 
   async usoPatrocinadores(): Promise<UsoPatrocinadores> {
+    return (await this.panoramaPatrocinios()).uso;
+  }
+
+  async panoramaPatrocinios(): Promise<{ uso: UsoPatrocinadores; eventos: EventoPatrocinavel[] }> {
     const todos = await this.arquivosDoBranch();
     const uso: UsoPatrocinadores = {};
+    const eventos: EventoPatrocinavel[] = [];
     await Promise.all(
       [...todos].filter(([p]) => p.startsWith(PASTA) && p.endsWith('/' + ARQ_EVENTO) && p.split('/').length === 3).map(async ([, a]) => {
         const e = JSON.parse(await this.gh.lerTexto(a.sha)) as Evento;
@@ -231,6 +238,7 @@ export class ArmazenamentoGitHub implements Armazenamento {
           const c = e.cidades[i];
           return (c && (c.cidade || c.praca || c.nome || c.local)) || 'Cidade ' + (i + 1);
         };
+        if (e.formato !== 'unica') eventos.push({ slug: e.slug, nome: e.nome, publicado: e.versaoAtiva != null, pendente: !!e.pendencia?.motivos.length, cotas, paginas: ['tapume', ...e.cidades.map((c) => c._id)].map((id) => ({ id, nome: nomePagina(id) })) });
         const porId = new Map<string, UsoPatrocinadores[string][number]>();
         for (const [pagina, comp] of Object.entries(e.patrocinios?.porPagina || {})) {
           if (pagina !== 'tapume' && !e.cidades.some((c) => c._id === pagina)) continue;
@@ -246,7 +254,8 @@ export class ArmazenamentoGitHub implements Armazenamento {
         for (const [id, reg] of porId) (uso[id] ??= []).push(reg);
       }),
     );
-    return uso;
+    eventos.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    return { uso, eventos };
   }
 }
 

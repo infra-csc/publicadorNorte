@@ -5,11 +5,11 @@
 import { TAMANHOS, type Tamanho } from '@norte/motor';
 import Link from 'next/link';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
-import type { AplicacaoPatrocinador, BancoPatrocinios, PatrocinadorBanco, UsoPatrocinadores } from '@/lib/comum/tipos';
+import type { AplicacaoPatrocinador, BancoPatrocinios, EventoPatrocinavel, PatrocinadorBanco, UsoPatrocinadores } from '@/lib/comum/tipos';
 import { api, ErroApi, json } from './api';
 import { ehImagemLogo, novoPatrocinador, porNome, subirLogo, urlLogo } from './patrocinadores';
 
-type Dados = { banco: BancoPatrocinios; versao: string; uso: UsoPatrocinadores };
+type Dados = { banco: BancoPatrocinios; versao: string; uso: UsoPatrocinadores; eventos: EventoPatrocinavel[] };
 type Salvar = (fn: (b: BancoPatrocinios) => void) => Promise<void>;
 
 const semAcento = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -98,10 +98,80 @@ function Card({ p, usos, aberto, abrir, salvar }: { p: PatrocinadorBanco; usos: 
 }
 
 /** onde o logo aparece, com troca de cota/tamanho e retirada (não publica) */
-function OndeAparece({ p, usos, recarregar }: { p: PatrocinadorBanco; usos: UsoPatrocinadores[string]; recarregar: () => Promise<unknown> }) {
+/** pôr o logo em páginas de um evento (tapume e cidades) numa cota */
+function Adicionar({ p, eventos, usos, adicionar, ocupado }: { p: PatrocinadorBanco; eventos: EventoPatrocinavel[]; usos: UsoPatrocinadores[string]; adicionar: (slug: string, paginas: string[], cota: string) => Promise<boolean>; ocupado: boolean }) {
+  const [slug, setSlug] = useState('');
+  const [marcadas, setMarcadas] = useState<Set<string>>(new Set());
+  const [cota, setCota] = useState('');
+  const ev = eventos.find((e) => e.slug === slug);
+  const jaTem = new Set(usos.find((u) => u.slug === slug)?.aplicacoes.map((a) => a.pagina));
+  const livres = ev?.paginas.filter((pg) => !jaTem.has(pg.id)) || [];
+  const cotaFinal = cota || ev?.cotas[0]?.id || '';
+  const trocarEvento = (s: string) => { setSlug(s); setMarcadas(new Set()); setCota(''); };
+  const alternar = (id: string) => setMarcadas((m) => { const n = new Set(m); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  if (!eventos.length) return <p className="small muted">Nenhum evento com páginas de praça ainda.</p>;
+  return (
+    <div className="onde-add">
+      <b className="small">Adicionar {p.nome} em um evento</b>
+      <div className="row" style={{ gap: 8 }}>
+        <select className="inp" style={{ width: 'auto' }} aria-label="Evento" value={slug} onChange={(e) => trocarEvento(e.target.value)} disabled={ocupado}>
+          <option value="">Escolha o evento…</option>
+          {eventos.map((e) => <option key={e.slug} value={e.slug}>{e.nome}</option>)}
+        </select>
+        {ev && (
+          <select className="inp" style={{ width: 'auto' }} aria-label="Cota" value={cotaFinal} onChange={(e) => setCota(e.target.value)} disabled={ocupado}>
+            {ev.cotas.map((c) => <option key={c.id} value={c.id}>{c.nome} ({c.tamanho})</option>)}
+          </select>
+        )}
+      </div>
+      {ev && (
+        <>
+          <div className="row" style={{ gap: 6 }}>
+            {livres.length > 1 && (
+              <button type="button" className="btn sm ghost" onClick={() => setMarcadas(marcadas.size === livres.length ? new Set() : new Set(livres.map((x) => x.id)))}>
+                {marcadas.size === livres.length ? 'Desmarcar todas' : 'Marcar todas'}
+              </button>
+            )}
+            {ev.paginas.map((pg) => (
+              <label key={pg.id} className={'pg-chip' + (marcadas.has(pg.id) ? ' on' : '') + (jaTem.has(pg.id) ? ' tem' : '')} title={jaTem.has(pg.id) ? 'Já está nesta página' : undefined}>
+                <input type="checkbox" checked={jaTem.has(pg.id) || marcadas.has(pg.id)} disabled={jaTem.has(pg.id) || ocupado} onChange={() => alternar(pg.id)} />
+                {pg.nome}{jaTem.has(pg.id) ? ' (já está)' : ''}
+              </label>
+            ))}
+          </div>
+          <div className="row" style={{ gap: 8 }}>
+            <button className="btn sm pri" type="button" disabled={!marcadas.size || !cotaFinal || ocupado}
+              onClick={async () => { if (await adicionar(ev.slug, [...marcadas], cotaFinal)) setMarcadas(new Set()); }}>
+              {ocupado ? 'Adicionando…' : `Adicionar em ${marcadas.size || ''} página(s)`.replace('em  ', 'em ')}
+            </button>
+            {!livres.length && <span className="small muted">Já está em todas as páginas deste evento.</span>}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function OndeAparece({ p, usos, eventos, recarregar }: { p: PatrocinadorBanco; usos: UsoPatrocinadores[string]; eventos: EventoPatrocinavel[]; recarregar: () => Promise<unknown> }) {
   const [ocupado, setOcupado] = useState('');
   const [erro, setErro] = useState('');
   const [feito, setFeito] = useState(false);
+
+  async function adicionar(slug: string, paginas: string[], cota: string) {
+    setOcupado('+' + slug);
+    setErro('');
+    try {
+      await api(`/api/eventos/${slug}/patrocinios`, json('PATCH', { acao: 'adicionar', patrocinador: p.id, nome: p.nome, paginas, cota }));
+      await recarregar();
+      setFeito(true);
+      return true;
+    } catch (e) {
+      setErro((e as Error).message);
+      return false;
+    } finally {
+      setOcupado('');
+    }
+  }
 
   async function editar(slug: string, a: AplicacaoPatrocinador, pedido: { acao: 'cota' | 'tamanho' | 'remover'; cota?: string; tamanho?: Tamanho | '' }) {
     setOcupado(slug + a.pagina);
@@ -125,7 +195,7 @@ function OndeAparece({ p, usos, recarregar }: { p: PatrocinadorBanco; usos: UsoP
       </div>
       {erro && <div className="w-item bad"><span className="ic">✕</span><div>{erro}</div></div>}
       {feito && <div className="w-item info"><span className="ic">✓</span><div>Salvo. Os eventos já publicados mudam no ar só quando forem publicados de novo.</div></div>}
-      {!usos.length && <p className="small muted">Este logo ainda não está em nenhum evento. Para usar, abra o evento e vá em Patrocínios.</p>}
+      {!usos.length && <p className="small muted">Este logo ainda não está em nenhum evento.</p>}
       {usos.map((u) => (
         <div key={u.slug} className="onde-ev">
           <div className="row" style={{ gap: 8 }}>
@@ -153,6 +223,7 @@ function OndeAparece({ p, usos, recarregar }: { p: PatrocinadorBanco; usos: UsoP
           })}
         </div>
       ))}
+      <Adicionar p={p} eventos={eventos} usos={usos} adicionar={adicionar} ocupado={ocupado.startsWith('+')} />
     </div>
   );
 }
@@ -274,7 +345,7 @@ export function BancoPatrocinadores() {
         {lista.map((p) => (
           <Fragment key={p.id}>
             <Card p={p} usos={uso[p.id] || []} aberto={aberto === p.id} abrir={() => setAberto(aberto === p.id ? null : p.id)} salvar={salvar} />
-            {aberto === p.id && <OndeAparece p={p} usos={uso[p.id] || []} recarregar={ler} />}
+            {aberto === p.id && <OndeAparece p={p} usos={uso[p.id] || []} eventos={dados.eventos || []} recarregar={ler} />}
           </Fragment>
         ))}
         {!lista.length && busca && <p className="muted small">Nenhum patrocinador com esse nome.</p>}

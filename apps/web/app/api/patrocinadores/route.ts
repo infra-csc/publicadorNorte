@@ -7,8 +7,8 @@ import { erro, responder } from '@/lib/servidor/rotas';
 export async function GET(req: Request) {
   return responder(req, async () => {
     const { armazenamento } = servicos();
-    const [{ banco, versao }, uso] = await Promise.all([armazenamento.lerBanco(), armazenamento.usoPatrocinadores()]);
-    return Response.json({ banco, versao, uso });
+    const [{ banco, versao }, { uso, eventos }] = await Promise.all([armazenamento.lerBanco(), armazenamento.panoramaPatrocinios()]);
+    return Response.json({ banco, versao, uso, eventos });
   });
 }
 

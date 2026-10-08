@@ -75,6 +75,8 @@ export interface AplicacaoPatrocinador {
   tamanho: string;
   tamanhoCota: string;
 }
+/** evento visto pela aba Patrocínios: páginas e cotas para adicionar logos */
+export interface EventoPatrocinavel { slug: string; nome: string; publicado: boolean; pendente: boolean; cotas: Cota[]; paginas: { id: string; nome: string }[] }
 export type UsoPatrocinadores = Record<string, { slug: string; nome: string; publicado: boolean; pendente: boolean; aplicacoes: AplicacaoPatrocinador[]; cotas: Cota[] }[]>;
 
 export interface ResumoEvento {
