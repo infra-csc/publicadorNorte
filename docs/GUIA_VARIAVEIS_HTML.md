@@ -164,6 +164,31 @@ Sem valor, some o "+" e o "R$" junto.
 <a class="cta" href="@link_inscricao_1">Garantir minha vaga</a>
 ```
 
+### Partes que podem sumir (`@se`) e o CSS
+Quando um `@se` tira um elemento da página (ex.: o card do O2 Prime, numa cidade sem `preco_prime`), o publicador apaga o elemento do HTML. O CSS que arruma o que sobrou precisa enxergar isso **pelo tipo do elemento**, não pela posição:
+
+- Use `:only-of-type`, **nunca** `:only-child`. Quase sempre existe outro filho no mesmo pai (uma `<legend>`, um título, um `<span>` escondido para leitor de tela), e aí o `:only-child` nunca vale.
+- Pelo mesmo motivo, use `:first-of-type`, `:last-of-type` e `:nth-of-type()` em vez de `:first-child`, `:last-child` e `:nth-child()` em itens opcionais.
+- Os itens opcionais devem ser do mesmo tipo de tag entre si (todos `<label>`, todos `<article>`…) e de um tipo diferente dos outros filhos do pai.
+
+```html
+<fieldset class="cp-opts">
+  <legend class="so-leitor">Escolha sua versão</legend>
+  <label class="cp-opt">… Combo …</label>
+  <!-- @se preco_prime -->
+  <label class="cp-opt cp-opt--o2">… Combo + O2 Prime …</label>
+  <!-- @fim -->
+</fieldset>
+```
+```css
+.cp-opts { display: grid; grid-template-columns: 1fr 1fr; }
+/* sobrou um card só: ocupa a linha inteira, centralizado */
+.cp-opts > .cp-opt:only-of-type { grid-column: 1 / -1; max-width: 560px; justify-self: center; width: 100%; }
+```
+Com `:only-child`, a `<legend>` conta como filho e o card fica preso em meia coluna.
+
+Alternativa sem seletor: grade que se ajusta sozinha à quantidade de itens, por exemplo `grid-template-columns: repeat(auto-fit, minmax(280px, 1fr))`.
+
 ---
 
 ## 5. Variáveis próprias do evento
@@ -374,6 +399,7 @@ No passo **Seções**, quem publica pode esconder partes da página (no evento t
 - [ ] Datas com o padrão de um dia ou período
 - [ ] Tapume com **um card só** entre `@repetir cidades` e `@fim`, com versão aberta e em breve
 - [ ] Todo `@se`, `@repetir` e `@agrupar` tem o seu `@fim`
+- [ ] CSS de partes opcionais usa `:only-of-type` / `:nth-of-type` (nunca `:only-child` / `:nth-child`); a página fica bonita com e sem cada parte opcional (seção 4)
 - [ ] Imagens e vídeos em `_media/<pagina>/<secao>/`, sem base64 e sem pastas soltas (`video/`, `assets/`)
 - [ ] Lugares que podem ter foto ou vídeo com `@media_<secao>_<nome>` numa tag `<img>`; desktop e mobile em duas tags com `_desktop` / `_mobile` no fim da variável; um arquivo padrão com o mesmo nome
 - [ ] Bloco de documentação no fim do HTML
