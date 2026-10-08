@@ -23,7 +23,7 @@ export type { ResultadoConversao, CardPreenchido } from './conversor';
 // converterCardsFixos usa um parser de HTML (linkedom): importe de '@norte/motor/conversor'
 export { secoesDe, removerSecoes, reordenarSecoes, ordemFinal, ocultasDaPagina, temRodapeHtml, RODAPE_HTML, type Secao, type EscolhaSecoes } from './secoes';
 export {
-  montarRodape, colocarRodape, rodapeDaPagina, linkFonte, urlSegura, REDES, RODAPE_PADRAO, FONTES_SUGERIDAS,
+  montarRodape, colocarRodape, rodapeDaPagina, linkFonte, urlSegura, caminhoSeguro, REDES, RODAPE_PADRAO, FONTES_SUGERIDAS,
   type ConfigRodape, type EscolhaRodape, type RedeSocial,
 } from './rodape';
 export { verificarHtml, SINONIMOS, type Problema, type CodigoProblema } from './verificador';

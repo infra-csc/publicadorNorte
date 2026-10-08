@@ -67,6 +67,26 @@ describe('L. Rodapé', () => {
     expect(r.paginas[1].html).toContain('data-pub-rodape');
   });
 
+  it('L7: formato em duas colunas: logo e descrição (com negrito) à esquerda; título, links e redes com texto à direita; empilha no celular', () => {
+    const h = montarRodape({
+      ...CONFIG,
+      logo: '_media/rodape/logo.png',
+      descricao: 'No **Circuito das Estações**, cada etapa conta.',
+      tituloLinks: 'Dúvidas',
+      redes: [{ rede: 'instagram', url: 'https://instagram.com/norte', texto: 'Siga no Instagram' }],
+    });
+    expect(h).toMatch(/<div class="pub-rodape__esq"><img class="pub-rodape__logo" src="_media\/rodape\/logo.png" alt=""><p class="pub-rodape__desc">No <strong>Circuito das Estações<\/strong>, cada etapa conta.<\/p><\/div><div class="pub-rodape__dir"><p class="pub-rodape__titulo">Dúvidas<\/p><nav/);
+    expect(h).toContain('<svg');
+    expect(h).toContain('<span>Siga no Instagram</span></a>');
+    expect(h).toContain('grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)');
+    expect(h).toContain('@media (max-width:760px)');
+    // só uma coluna quando não há links nem redes
+    expect(montarRodape({ ...CONFIG, links: [], redes: [] })).not.toContain('<div class="pub-rodape__dir">');
+    // logo com caminho estranho é descartado
+    expect(montarRodape({ ...CONFIG, logo: 'javascript:alert(1)' })).not.toContain('<img class="pub-rodape__logo"');
+    expect(montarRodape({ ...CONFIG, logo: '../../segredo.png' })).not.toContain('<img class="pub-rodape__logo"');
+  });
+
   it('L6: cor ou fonte inválida volta ao padrão (não quebra o estilo)', () => {
     const h = montarRodape({ ...CONFIG, corFundo: 'red;}body{display:none', fonte: "x'</style>" });
     expect(h).toContain(`background:${RODAPE_PADRAO.corFundo}`);

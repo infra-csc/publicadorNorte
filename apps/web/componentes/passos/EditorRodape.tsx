@@ -3,10 +3,59 @@
 import { FONTES_SUGERIDAS, REDES, RODAPE_PADRAO, type ConfigRodape, type EscolhaRodape, type RedeSocial } from '@norte/motor';
 import { useState } from 'react';
 import type { Evento } from '@/lib/comum/tipos';
+import { urlArquivo } from '../api';
 import { useEditor } from '../Editor';
+import { enviarMidia, juntar, nomeLivre } from '../enviarMidia';
 
 const garantir = (e: Evento): EscolhaRodape => (e.rodape ??= { ativo: false, geral: structuredClone(RODAPE_PADRAO), porLinha: {} });
 const OUTRA = '__outra__';
+
+const ehImagem = (c: string) => /\.(png|jpe?g|webp|svg|gif|avif)$/i.test(c);
+
+/** logo do rodapé: uma imagem da mídia do evento, ou enviada aqui (vai para _media/rodape/) */
+function Logo({ c, mudar }: { c: ConfigRodape; mudar: (fn: (c: ConfigRodape) => void) => void }) {
+  const { evento, arquivos, setArquivos } = useEditor();
+  const [msg, setMsg] = useState('');
+  // logos e marcas primeiro
+  const imagens = arquivos
+    .filter((a) => ehImagem(a.caminho))
+    .sort((a, b) => Number(/logo|marca|rodape/i.test(b.caminho)) - Number(/logo|marca|rodape/i.test(a.caminho)) || (a.caminho < b.caminho ? -1 : 1));
+  async function enviar(f: File | undefined) {
+    if (!f) return;
+    if (!ehImagem(f.name)) return setMsg('O logo precisa ser uma imagem (png, svg, webp ou jpg).');
+    try {
+      const caminho = nomeLivre('_media/rodape/', f.name.replace(/\.[^.]+$/, ''), f.name, new Set(arquivos.map((a) => a.caminho)));
+      const r = await enviarMidia(evento.slug, [{ file: f, caminho }], arquivos, setMsg);
+      if (r.novos.length) setArquivos(juntar(arquivos, r.novos));
+      const final = r.porPedido.get(caminho)?.caminho || caminho;
+      mudar((x) => { x.logo = final; });
+      setMsg('');
+    } catch (e) {
+      setMsg((e as Error).message);
+    }
+  }
+  return (
+    <div className="stack" style={{ gap: 8 }}>
+      <b className="small">Logo <span className="muted" style={{ fontWeight: 400 }}>(no alto da coluna da esquerda)</span></b>
+      <div className="thumbs">
+        <button type="button" className="thumb thumb-novo" aria-checked={!c.logo} role="radio" onClick={() => mudar((x) => { x.logo = ''; })}>
+          <span className="mais">∅</span><span>Sem logo</span>
+        </button>
+        {imagens.map((a) => (
+          <button key={a.caminho} type="button" role="radio" className="thumb" aria-checked={c.logo === a.caminho} title={a.caminho} onClick={() => mudar((x) => { x.logo = a.caminho; })}>
+            <img src={urlArquivo(a.sha, a.caminho)} alt="" loading="lazy" style={{ objectFit: 'contain', background: c.corFundo }} />
+            <span>{a.caminho.split('/').pop()}</span>
+          </button>
+        ))}
+        <label className="thumb thumb-novo" title="Enviar uma imagem do computador">
+          <span className="mais">+</span><span>Enviar logo</span>
+          <input type="file" accept="image/*" className="sr" onChange={(e) => { enviar(e.target.files?.[0]); e.target.value = ''; }} />
+        </label>
+      </div>
+      {msg && <p className="small muted">{msg}</p>}
+    </div>
+  );
+}
 
 function Campos({ c, mudar }: { c: ConfigRodape; mudar: (fn: (c: ConfigRodape) => void) => void }) {
   const sugerida = c.fonte === '' || FONTES_SUGERIDAS.includes(c.fonte);
@@ -40,11 +89,15 @@ function Campos({ c, mudar }: { c: ConfigRodape; mudar: (fn: (c: ConfigRodape) =
           </label>
         ))}
       </div>
-      <label className="f">Descrição <small>Ex.: realização, contato, direitos. Pode ter mais de uma linha.</small>
-        <textarea className="inp" rows={3} value={c.descricao} onChange={(e) => { const v = e.target.value; mudar((x) => { x.descricao = v; }); }} />
+      <Logo c={c} mudar={mudar} />
+      <label className="f">Descrição <small>Fica embaixo do logo. Pode ter mais de uma linha. Para negrito, escreva entre dois asteriscos: **Circuito das Estações**</small>
+        <textarea className="inp" rows={4} value={c.descricao} onChange={(e) => { const v = e.target.value; mudar((x) => { x.descricao = v; }); }} />
       </label>
 
       <div className="stack" style={{ gap: 8 }}>
+        <label className="f">Título dos links <small>Fica em cima dos links, na coluna da direita</small>
+          <input className="inp" placeholder="ex.: Dúvidas" value={c.tituloLinks || ''} onChange={(e) => { const v = e.target.value; mudar((x) => { x.tituloLinks = v; }); }} />
+        </label>
         <b className="small">Links</b>
         {c.links.map((l, i) => (
           <div key={i} className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
@@ -64,6 +117,7 @@ function Campos({ c, mudar }: { c: ConfigRodape; mudar: (fn: (c: ConfigRodape) =
             <select className="inp" style={{ width: 'auto' }} value={r.rede} onChange={(e) => { const v = e.target.value as RedeSocial; mudar((x) => { x.redes[i].rede = v; }); }}>
               {(Object.keys(REDES) as RedeSocial[]).map((k) => <option key={k} value={k}>{REDES[k].nome}</option>)}
             </select>
+            <input className="inp" placeholder="Texto ao lado (opcional), ex.: Siga no Instagram" value={r.texto || ''} onChange={(e) => { const v = e.target.value; mudar((x) => { x.redes[i].texto = v; }); }} />
             <input className="inp mono" placeholder={r.rede === 'email' ? 'mailto:contato@…' : r.rede === 'telefone' ? 'tel:+55…' : 'https://…'} value={r.url} onChange={(e) => { const v = e.target.value; mudar((x) => { x.redes[i].url = v; }); }} />
             <button className="iconbtn" type="button" aria-label="Tirar rede" onClick={() => mudar((x) => { x.redes.splice(i, 1); })}>✕</button>
           </div>

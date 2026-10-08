@@ -187,3 +187,4 @@ Os tapumes de cards fixos dos casos H1–H4 são fixtures sintéticos em `packag
 | L4 | escondido em SP, rodapé próprio no RJ | SP sem rodapé; RJ com o próprio; tapume com o geral |
 | L5 | desligado no evento, ligado numa cidade | só aquela cidade tem |
 | L6 | cor ou fonte inválida (tentando quebrar o CSS) | volta ao padrão |
+| L7 | logo, descrição com `**negrito**`, título "Dúvidas", links e rede com texto | duas colunas (logo e descrição / título, links e redes), negrito, texto ao lado do ícone, empilha no celular; logo com caminho estranho é descartado |
