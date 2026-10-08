@@ -22,7 +22,8 @@ export interface Armazenamento {
   enviarArquivo(bytes: Uint8Array): Promise<string>;
   lerArquivo(sha: string): Promise<Uint8Array>;
   adicionarMidia(slug: string, arquivos: ArquivoMidia[]): Promise<void>;
-  removerMidia(slug: string): Promise<void>;
+  /** remove os arquivos indicados, ou toda a mídia do evento se nenhum for indicado */
+  removerMidia(slug: string, caminhos?: string[]): Promise<void>;
 }
 
 const PASTA = 'eventos/';
@@ -174,10 +175,13 @@ export class ArmazenamentoGitHub implements Armazenamento {
     });
   }
 
-  async removerMidia(slug: string): Promise<void> {
-    await this.gh.alterar(this.branch, `Remove a mídia de ${slug}`, async (atuais) => {
+  async removerMidia(slug: string, caminhos?: string[]): Promise<void> {
+    const msg = caminhos ? `Exclui ${caminhos.length} arquivo(s) de mídia de ${slug}` : `Remove a mídia de ${slug}`;
+    await this.gh.alterar(this.branch, msg, async (atuais) => {
       const pre = pasta(slug) + MIDIA;
-      return { mudancas: new Map([...atuais.keys()].filter((p) => p.startsWith(pre)).map((p) => [p, null])), resultado: null };
+      const alvo = caminhos ? new Set(caminhos.map((c) => pre + c)) : null;
+      const apagar = [...atuais.keys()].filter((p) => p.startsWith(pre) && (!alvo || alvo.has(p)));
+      return { mudancas: new Map(apagar.map((p) => [p, null])), resultado: null };
     });
   }
 }

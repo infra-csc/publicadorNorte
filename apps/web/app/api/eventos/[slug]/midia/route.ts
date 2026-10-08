@@ -17,11 +17,13 @@ export async function POST(req: Request, { params }: Ctx) {
   });
 }
 
-/** remove toda a mídia do evento (a interface pede confirmação antes) */
+/** exclui os arquivos indicados em { caminhos }, ou toda a mídia (a interface pede confirmação antes) */
 export async function DELETE(req: Request, { params }: Ctx) {
   return responder(req, async () => {
     const { slug } = await params;
-    await servicos().armazenamento.removerMidia(slug);
+    const corpo = (await req.json().catch(() => ({}))) as { caminhos?: string[] };
+    if (corpo.caminhos && (!Array.isArray(corpo.caminhos) || corpo.caminhos.some((c) => typeof c !== 'string' || c.includes('..')))) return erro(400, 'Lista de arquivos inválida.');
+    await servicos().armazenamento.removerMidia(slug, corpo.caminhos);
     return new Response(null, { status: 204 });
   });
 }

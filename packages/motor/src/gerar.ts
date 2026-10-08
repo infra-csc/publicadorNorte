@@ -21,6 +21,8 @@ export interface EntradaGerar {
   imagens?: Record<string, string>;
   /** caminhos dos arquivos enviados (pasta _media) */
   arquivos?: Iterable<string>;
+  /** arquivos escondidos no passo Mídia: não são oferecidos nem viram padrão */
+  midiaOculta?: Iterable<string>;
   /** data/hora de referência (o motor não lê o relógio). Reservado para o pós-evento (fase 3). */
   agora?: Date;
   /** seções escondidas (no evento todo e por cidade/etapa) */
@@ -279,7 +281,7 @@ export function gerar(e: EntradaGerar): ResultadoGerar {
       detalhe: 'Os cards sem cidade saem vazios e o status não muda para “em breve”. Transforme em card que se repete no passo Páginas.',
     });
   }
-  const semArquivo = [...det.variaveis.keys()].filter((b) => ehMidia(b) && !vars[b]?.ignorar && !vars[b]?.excluida && !opcoesMidia(b, det, cad.arquivos).length);
+  const semArquivo = [...det.variaveis.keys()].filter((b) => ehMidia(b) && !vars[b]?.ignorar && !vars[b]?.excluida && !opcoesMidia(b, det, cad.arquivosOpcoes).length);
   if (semArquivo.length) {
     avisos.push({
       codigo: 'midia-sem-arquivo', nivel: 'alerta', passo: 'paginas', titulo: semArquivo.length + ' imagem(ns) ou vídeo(s) sem arquivo',

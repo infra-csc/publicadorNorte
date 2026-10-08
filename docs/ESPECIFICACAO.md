@@ -236,6 +236,14 @@ Depois de montar a página:
 
 Seletor de página; seções com o nome da pasta; cada variável com faixa de miniaturas (vídeo com `<video preload=metadata>`); seleção marcada; prévia ao lado atualiza na hora. Variável sem arquivo na pasta → aviso com o caminho esperado.
 
+Adicionar arquivos direto na tela (arrastar do computador ou clicar para procurar):
+- Solto na **seção**: vai para `_media/<pagina>/<secao>/` com o nome do arquivo limpo (sem acento, espaço ou maiúscula).
+- Solto num **lugar** (variável): mesma pasta, com o nome do lugar (`desktop.mp4`, `desktop-2.mp4`…), e já fica escolhido para ele (na cidade selecionada, se for por cidade).
+- Nunca sobrescreve: nome ocupado ganha `-2`, `-3`… Conteúdo igual ao de um arquivo guardado não sobe de novo.
+- `@img_` só aceita imagem, `@video_` só vídeo, `@media_` e a seção aceitam os dois.
+
+Cada miniatura tem **Esconder** (sai das opções e não vira padrão, mas continua guardada; "Ver escondidas" mostra e permite trazer de volta) e **Excluir** (com confirmação; apaga o arquivo e as escolhas que apontavam para ele voltam ao padrão). Arquivo escondido continua valendo quando o HTML aponta direto para ele.
+
 ---
 
 ## 8. Prévia

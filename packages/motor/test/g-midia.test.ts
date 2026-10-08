@@ -114,6 +114,19 @@ describe('G. Mídia', () => {
     expect(r.paginas[2].html).toBe('<img src="_media/praca/arena/b.webp">');
   });
 
+  it('G14: arquivo escondido sai das opções e do padrão, mas continua valendo quando o HTML aponta direto para ele', () => {
+    const arqs = ['_media/praca/arena/desktop.webp', '_media/praca/arena/desktop.mp4', '_media/praca/marca/logo.webp'];
+    const r = gerar({
+      formato: 'tapume_praca',
+      modelos: { tapume: '', praca: '<img src="@media_arena_desktop"><img src="_media/praca/marca/logo.webp">' },
+      cidades: [linha({ cidade: 'SP' })],
+      arquivos: arqs,
+      midiaOculta: ['_media/praca/arena/desktop.webp', '_media/praca/marca/logo.webp'],
+    });
+    expect(r.paginas[1].html).toContain('src="_media/praca/arena/desktop.mp4"');
+    expect(r.paginas[1].html).toContain('src="_media/praca/marca/logo.webp"');
+  });
+
   it('mídia geral usa a escolha de "imagens"; escolha fora das opções volta ao padrão', () => {
     const arqs = ['_media/praca/kit/a.webp', '_media/praca/kit/b.webp'];
     const base = { formato: 'tapume_praca' as const, modelos: { tapume: '', praca: '<img src="@img_kit_foto">' }, cidades: [linha({ cidade: 'SP' })], arquivos: arqs };

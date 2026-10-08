@@ -1,9 +1,9 @@
 'use client';
 import { acharArquivo, acharVars, FORMATOS, NOME_PAGINA, normRef, refsDeArquivo, temCardsFixos, verificarHtml, type ResultadoConversao, type TipoPagina } from '@norte/motor';
 import { useMemo, useState } from 'react';
-import { arquivoAceito, caminhoGuardado, shaGit, tamanho } from '@/lib/comum/arquivos';
-import type { ArquivoMidia } from '@/lib/comum/tipos';
+import { arquivoAceito, caminhoGuardado, tamanho } from '@/lib/comum/arquivos';
 import { api, json } from '../api';
+import { enviarMidia, juntar } from '../enviarMidia';
 import { Cabecalho, NavPassos, useEditor, varsSincronizadas } from '../Editor';
 
 const DESC_PAG: Record<TipoPagina, string> = {
@@ -162,36 +162,11 @@ function CartaoMidia() {
     const aceitos = todos.filter((x) => arquivoAceito(x.caminho));
     const ignorados = todos.length - aceitos.length;
     if (!aceitos.length) return setErro('Nenhuma imagem, vídeo ou fonte nessa seleção.');
-    const existentes = new Map(arquivos.map((a) => [a.caminho, a.sha]));
-    const novos: ArquivoMidia[] = [];
-    let feitos = 0;
-    let pulados = 0;
-    const fila = [...aceitos];
-    const grandes: string[] = [];
-    const trabalhar = async () => {
-      for (let x = fila.shift(); x; x = fila.shift()) {
-        const bytes = new Uint8Array(await x.f.arrayBuffer());
-        const sha = await shaGit(bytes);
-        feitos++;
-        setProgresso(`Enviando ${feitos} de ${aceitos.length}…`);
-        // o mesmo arquivo já está guardado: não sobe de novo
-        if (existentes.get(x.caminho) === sha) { pulados++; continue; }
-        if (bytes.length > 100 * 1024 * 1024) { grandes.push(x.caminho); continue; }
-        const r = await api<{ sha: string }>('/api/arquivos', { method: 'POST', body: bytes });
-        novos.push({ caminho: x.caminho, sha: r.sha, bytes: bytes.length });
-      }
-    };
     try {
-      await Promise.all([trabalhar(), trabalhar(), trabalhar(), trabalhar()]);
-      if (novos.length) {
-        setProgresso('Guardando…');
-        await api(`/api/eventos/${evento.slug}/midia`, json('POST', { arquivos: novos }));
-        const mapa = new Map(arquivos.map((a) => [a.caminho, a]));
-        for (const n of novos) mapa.set(n.caminho, n);
-        setArquivos([...mapa.values()].sort((a, b) => (a.caminho < b.caminho ? -1 : 1)));
-      }
-      setProgresso(`${novos.length} arquivo(s) enviado(s)` + (pulados ? ` · ${pulados} já estavam guardados` : '') + (ignorados ? ` · ${ignorados} ignorados (não são imagem, vídeo ou fonte)` : ''));
-      if (grandes.length) setErro('Acima de 100 MB, o GitHub não aceita: ' + grandes.join(', ') + '. Comprima e envie de novo.');
+      const r = await enviarMidia(evento.slug, aceitos.map((x) => ({ file: x.f, caminho: x.caminho })), arquivos, setProgresso);
+      if (r.novos.length) setArquivos(juntar(arquivos, r.novos));
+      setProgresso(`${r.novos.length} arquivo(s) enviado(s)` + (r.pulados ? ` · ${r.pulados} já estavam guardados` : '') + (ignorados ? ` · ${ignorados} ignorados (não são imagem, vídeo ou fonte)` : ''));
+      if (r.grandes.length) setErro('Acima de 100 MB, o GitHub não aceita: ' + r.grandes.join(', ') + '. Comprima e envie de novo.');
     } catch (e) {
       setErro((e as Error).message);
       setProgresso('');
