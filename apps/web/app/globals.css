@@ -79,8 +79,32 @@ label.f small { font-weight: 400; color: var(--mute); }
 .inp:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
 .inp.big { font-size: 20px; font-weight: 600; }
 
-.fmt { position: relative; display: flex; flex-direction: column; gap: 8px; padding: 18px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--panel); cursor: pointer; text-align: left; }
+.fmt { position: relative; display: flex; flex-direction: column; gap: 12px; padding: 18px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--ink); font: inherit; cursor: pointer; text-align: left; transition: border-color .15s, box-shadow .15s; }
+.fmt:hover { border-color: var(--mute); }
 .fmt[aria-checked='true'] { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.fmt .tick { position: absolute; top: 12px; right: 12px; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--line); display: grid; place-items: center; transition: background .15s, border-color .15s; }
+.fmt .tick svg { display: block; }
+.fmt[aria-checked='true'] .tick { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.fmt svg.dg { width: 100%; height: 96px; overflow: visible; }
+.dg-box { fill: var(--sunk); stroke: var(--mute); stroke-width: 1.2; transform-box: fill-box; transform-origin: center; animation: dg-entra .45s cubic-bezier(.2,.8,.3,1.2) both; animation-delay: calc(var(--i, 0) * 70ms + 120ms); }
+.dg-key { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; transform-box: fill-box; transform-origin: center; animation: dg-entra .45s cubic-bezier(.2,.8,.3,1.2) both; }
+.dg-ln { stroke: var(--mute); stroke-width: 1.2; fill: none; stroke-linecap: round; }
+.dg-t { fill: var(--mute); font: 600 9px var(--f-ui); letter-spacing: .06em; }
+.dg-k { fill: var(--accent); }
+.dg-fluxo { stroke-dasharray: 3 3; }
+/* escolhido ou com o mouse em cima: as ligações correm da home para as internas e as páginas acendem em sequência */
+.fmt[aria-checked='true'] .dg-fluxo, .fmt:hover .dg-fluxo { stroke: var(--accent); animation: dg-corre .9s linear infinite; }
+.fmt[aria-checked='true'] .dg-box, .fmt:hover .dg-box { animation: dg-entra .45s cubic-bezier(.2,.8,.3,1.2) both, dg-acende 2.4s ease-in-out infinite; animation-delay: 0s, calc(var(--i, 0) * 300ms); }
+.fmt[aria-checked='true'] .dg-key, .fmt:hover .dg-key { animation: dg-respira 2.4s ease-in-out infinite; }
+.dg-escrita { stroke-dasharray: 40; stroke-dashoffset: 0; }
+.fmt[aria-checked='true'] .dg-escrita, .fmt:hover .dg-escrita { stroke: var(--accent); animation: dg-escreve 2.4s ease-in-out infinite; animation-delay: calc(var(--i, 0) * 180ms); }
+@keyframes dg-entra { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: none; } }
+@keyframes dg-corre { to { stroke-dashoffset: -12; } }
+@keyframes dg-acende { 0%, 60%, 100% { fill: var(--sunk); stroke: var(--mute); } 20%, 35% { fill: var(--accent-soft); stroke: var(--accent); } }
+@keyframes dg-respira { 0%, 100% { transform: none; } 50% { transform: scale(1.06); } }
+@keyframes dg-escreve { 0% { stroke-dashoffset: 40; } 45%, 80% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: -40; } }
+@media (prefers-reduced-motion: reduce) { .dg-box, .dg-key, .dg-ln, .dg-escrita { animation: none !important; } }
+.eyebrow-campo { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--mute); }
 .fmt h3 { font-size: 17px; }
 .fmt p { font-size: 13.5px; color: var(--mute); }
 

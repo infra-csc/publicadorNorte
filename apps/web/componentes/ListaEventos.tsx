@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { Evento, ResumoEvento } from '@/lib/comum/tipos';
 import { api, json } from './api';
+import { SeletorFormato } from './SeletorFormato';
 
 const quando = (iso: string) => {
   try { return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch { return ''; }
@@ -53,17 +54,17 @@ export function ListaEventos() {
       </div>
       {erro && <div className="w-item bad"><span className="ic">✕</span><div><b>Não deu certo</b>{erro}</div></div>}
       {novo && (
-        <section className="card stack">
+        <section className="card stack" style={{ gap: 18 }}>
+          <div>
+            <h2 style={{ fontSize: 22 }}>Novo evento</h2>
+            <p className="muted">Dê um nome e escolha como o site é montado. O formato define quais HTMLs você vai subir no próximo passo.</p>
+          </div>
           <label className="f">Nome do evento
-            <input className="inp big" autoFocus value={nome} onChange={(e) => setNome(e.target.value)} placeholder="ex.: Makai Beach Tennis Tour 2027" />
+            <input className="inp big" autoFocus value={nome} onChange={(e) => setNome(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && nome.trim() && !criando && criar()} placeholder="Ex.: Combo Circuito das Estações 2027" autoComplete="off" />
           </label>
-          <div className="grid3" role="radiogroup" aria-label="Formato">
-            {(Object.keys(FORMATOS) as Formato[]).map((f) => (
-              <button key={f} type="button" className="fmt" role="radio" aria-checked={formato === f} onClick={() => setFormato(f)}>
-                <h3>{FORMATOS[f].nome}</h3>
-                <p>{DESC[f]}</p>
-              </button>
-            ))}
+          <div className="stack" style={{ gap: 10 }}>
+            <span className="eyebrow-campo">Formato do site</span>
+            <SeletorFormato valor={formato} mudar={setFormato} />
           </div>
           <div className="row">
             <button className="btn pri" type="button" disabled={!nome.trim() || criando} onClick={criar}>{criando ? 'Criando…' : 'Criar evento'}</button>
@@ -109,8 +110,3 @@ export function ListaEventos() {
   );
 }
 
-export const DESC: Record<Formato, string> = {
-  unica: 'Página única, sem variáveis. Publica o HTML do jeito que ele é.',
-  tapume_praca: 'Uma página home que lista páginas internas por cidade.',
-  tapume_etapa_praca: 'Uma página home, um seletor de etapa e uma interna.',
-};

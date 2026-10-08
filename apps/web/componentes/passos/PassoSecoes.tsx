@@ -1,6 +1,7 @@
 'use client';
 // Seções da página: ordem (arrastar muda a ordem na página gerada) e mostrar/esconder, no evento todo e por cidade.
 import { FORMATOS, NOME_PAGINA, ordemFinal, RODAPE_HTML, secoesDe, temRodapeHtml, type TipoPagina } from '@norte/motor';
+import Link from 'next/link';
 import { useDeferredValue, useMemo, useState } from 'react';
 import { gerarEvento } from '@/lib/comum/montagem';
 import type { Evento } from '@/lib/comum/tipos';
@@ -12,6 +13,22 @@ import { EditorRodape } from './EditorRodape';
 const garantir = (e: Evento) => (e.secoes ??= { ocultas: [], porLinha: {}, ordem: {} });
 
 export function PassoSecoes() {
+  const { evento, modelos, hrefPasso } = useEditor();
+  const faltam = FORMATOS[evento.formato].paginas.filter((k) => modelos[k] == null);
+  if (faltam.length < FORMATOS[evento.formato].paginas.length) return <Secoes />;
+  // sem nenhum HTML ainda: não há seção para ordenar
+  return (
+    <>
+      <Cabecalho passo="secoes" titulo="Seções da página">Arraste para mudar a ordem das seções na página. Esconda o que não deve aparecer, no evento todo ou só numa cidade. A prévia mostra o resultado.</Cabecalho>
+      {faltam.map((k) => (
+        <div key={k} className="w-item bad"><span className="ic">✕</span><div><b>Falta o HTML da página {NOME_PAGINA[k]}</b>As seções aparecem aqui depois do envio. <Link href={hrefPasso('paginas')}>Enviar o HTML →</Link></div></div>
+      ))}
+      <NavPassos passo="secoes" />
+    </>
+  );
+}
+
+function Secoes() {
   const { evento, modelos, arquivos, cad, alterar, banco } = useEditor();
   const paginas = FORMATOS[evento.formato].paginas.filter((k) => modelos[k] != null);
   const [pag, setPag] = useState<TipoPagina>(paginas.includes('praca') ? 'praca' : paginas[0]);

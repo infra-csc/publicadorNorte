@@ -1,15 +1,16 @@
 'use client';
-import { FORMATOS, slug as fazerSlug, type Formato } from '@norte/motor';
+import { FORMATOS, slug as fazerSlug } from '@norte/motor';
 import { useState } from 'react';
 import { api, json } from '../api';
 import { Cabecalho, NavPassos, useEditor, varsSincronizadas } from '../Editor';
-import { DESC } from '../ListaEventos';
+import { SeletorFormato } from '../SeletorFormato';
 
 export function PassoEvento() {
   const { evento, modelos, alterar, salvarJa } = useEditor();
   const [novoSlug, setNovoSlug] = useState(evento.slug);
   const [msg, setMsg] = useState('');
   const [mudando, setMudando] = useState(false);
+  const temHtml = Object.values(modelos).some((h) => h != null);
 
   async function mudarEndereco() {
     setMudando(true);
@@ -27,19 +28,15 @@ export function PassoEvento() {
 
   return (
     <>
-      <Cabecalho passo="evento" titulo="Evento">O nome aparece na lista de eventos. O formato diz quais páginas o site tem.</Cabecalho>
+      <Cabecalho passo="evento" titulo="Evento">Dê um nome e escolha como o site é montado. O formato define quais HTMLs você vai subir no próximo passo.</Cabecalho>
       <section className="card stack">
         <label className="f">Nome do evento
-          <input className="inp big" value={evento.nome} onChange={(e) => { const v = e.target.value; alterar((x) => { x.nome = v; }); }} />
+          <input className="inp big" value={evento.nome} placeholder="Ex.: Combo Circuito das Estações 2027" autoComplete="off" onChange={(e) => { const v = e.target.value; alterar((x) => { x.nome = v; }); }} />
         </label>
-        <div className="grid3" role="radiogroup" aria-label="Formato">
-          {(Object.keys(FORMATOS) as Formato[]).map((f) => (
-            <button key={f} type="button" className="fmt" role="radio" aria-checked={evento.formato === f}
-              onClick={() => alterar((x) => { x.formato = f; x.vars = varsSincronizadas(x, modelos); })}>
-              <h3>{FORMATOS[f].nome}</h3>
-              <p>{DESC[f]}</p>
-            </button>
-          ))}
+        <div className="stack" style={{ gap: 10 }}>
+          <span className="eyebrow-campo">Formato do site</span>
+          <SeletorFormato valor={evento.formato} mudar={(f) => alterar((x) => { x.formato = f; x.vars = varsSincronizadas(x, modelos); })} />
+          {temHtml && <p className="small muted">Trocar o formato não apaga os HTMLs já enviados nem o cadastro. Páginas que não fazem parte do novo formato só deixam de ser geradas.</p>}
         </div>
       </section>
       <section className="card stack">
