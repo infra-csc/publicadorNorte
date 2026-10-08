@@ -3,13 +3,22 @@
 // Os arquivos da _media vêm do armazenamento (não precisa publicar para ver).
 import { useEffect, useRef, useState } from 'react';
 import { comArquivosDaPrevia } from '@/lib/comum/montagem';
+import type { ArquivoMidia } from '@/lib/comum/tipos';
 import { urlArquivo } from './api';
 import { useEditor } from './Editor';
 
 const TELAS = { cel: [390, 780], desk: [1280, 800] } as const;
 
-export function Previa({ html, titulo, altura = 640 }: { html: string | null; titulo?: string; altura?: number }) {
-  const { arquivosPrevia: arquivos, evento } = useEditor();
+type Props = { html: string | null; titulo?: string; altura?: number };
+
+/** dentro do editor: arquivos e endereço vêm do evento aberto */
+export function Previa(props: Props) {
+  const { arquivosPrevia, evento } = useEditor();
+  return <PreviaSolta {...props} arquivos={arquivosPrevia} baseUrl={evento.baseUrl} />;
+}
+
+/** fora do editor (ex.: aba Patrocínios): recebe os arquivos */
+export function PreviaSolta({ html, titulo, altura = 640, arquivos, baseUrl }: Props & { arquivos: ArquivoMidia[]; baseUrl?: string }) {
   const [tela, setTela] = useState<keyof typeof TELAS>('cel');
   const [doc, setDoc] = useState('');
   const caixa = useRef<HTMLDivElement>(null);
@@ -20,11 +29,11 @@ export function Previa({ html, titulo, altura = 640 }: { html: string | null; ti
     const t = setTimeout(() => {
       if (html == null) return setDoc('');
       let h = comArquivosDaPrevia(html, arquivos, (a) => location.origin + urlArquivo(a.sha, a.caminho));
-      if (evento.baseUrl && !/<base\s/i.test(h)) h = h.replace(/<head([^>]*)>/i, `<head$1><base href="${evento.baseUrl.replace(/"/g, '')}">`);
+      if (baseUrl && !/<base\s/i.test(h)) h = h.replace(/<head([^>]*)>/i, `<head$1><base href="${baseUrl.replace(/"/g, '')}">`);
       setDoc(h);
     }, 300);
     return () => clearTimeout(t);
-  }, [html, arquivos, evento.baseUrl]);
+  }, [html, arquivos, baseUrl]);
 
   useEffect(() => {
     const el = caixa.current;

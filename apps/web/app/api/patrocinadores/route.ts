@@ -21,19 +21,28 @@ export async function PUT(req: Request) {
     if (banco.patrocinadores.some((p) => !nomeOk(p.nome) || !/^[0-9a-f]{40}$/.test(p.sha) || !/^[\w.-]+\.(png|jpe?g|webp|svg|gif|avif)$/i.test(p.logo))) {
       return erro(400, 'Cada patrocinador precisa de nome e de um logo em imagem.');
     }
+    if (banco.cotas.some((c) => !nomeOk(c.nome) || !/^[\w-]+$/.test(c.id) || !['GG', 'G', 'M', 'P'].includes(c.tamanho))) return erro(400, 'Cada cota precisa de nome e tamanho (GG, G, M ou P).');
     const { armazenamento } = servicos();
-    const antes = new Map((await armazenamento.lerBanco()).banco.patrocinadores.map((p) => [p.id, p]));
+    const velho = (await armazenamento.lerBanco()).banco;
+    const antes = new Map(velho.patrocinadores.map((p) => [p.id, p]));
     const nova = await armazenamento.salvarBanco(banco, versao);
     // o que muda no site: nome (texto alternativo), link, logo e ativo
     const mudou = banco.patrocinadores.filter((p) => {
       const a = antes.get(p.id);
       return a && (a.nome !== p.nome || a.url !== p.url || a.sha !== p.sha || a.ativo !== p.ativo);
     });
-    if (mudou.length) {
+    // cotas: nome (título), tamanho, "ao lado" e a ordem mudam a seção
+    const chave = (c: { id: string; nome: string; tamanho: string; aoLado?: boolean }, i: number) => `${i}|${c.nome}|${c.tamanho}|${!!c.aoLado}`;
+    const posVelha = new Map((velho.cotas || []).map((c, i) => [c.id, chave(c, i)]));
+    const cotasMudadas = new Set((velho.cotas || []).filter((c) => !banco.cotas.some((n) => n.id === c.id)).map((c) => c.id));
+    banco.cotas.forEach((c, i) => { if (posVelha.has(c.id) && posVelha.get(c.id) !== chave(c, i)) cotasMudadas.add(c.id); });
+    if (mudou.length || cotasMudadas.size) {
       const uso = await armazenamento.usoPatrocinadores();
       const porEvento = new Map<string, string[]>();
-      for (const p of mudou) for (const u of uso[p.id] || []) if (u.publicado) porEvento.set(u.slug, [...(porEvento.get(u.slug) || []), p.nome]);
-      for (const [slug, nomes] of porEvento) await marcarPendencia(armazenamento, slug, `Patrocínios: ${nomes.join(', ')} mudou no cadastro`);
+      const anotar = (slug: string, m: string) => { const l = porEvento.get(slug) || []; if (!l.includes(m)) porEvento.set(slug, [...l, m]); };
+      for (const p of mudou) for (const u of uso[p.id] || []) if (u.publicado) anotar(u.slug, `${p.nome} mudou no cadastro`);
+      for (const us of Object.values(uso)) for (const u of us) if (u.publicado && u.aplicacoes.some((a) => cotasMudadas.has(a.cota))) anotar(u.slug, 'as cotas mudaram');
+      for (const [slug, motivos] of porEvento) await marcarPendencia(armazenamento, slug, `Patrocínios: ${motivos.join('; ')}`);
     }
     return Response.json({ versao: nova });
   });

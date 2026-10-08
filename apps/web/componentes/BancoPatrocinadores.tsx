@@ -2,12 +2,19 @@
 // Patrocínios: o cadastro geral de patrocinadores (um só para todos os sites), em cards.
 // Clicar num card mostra onde o logo aparece (evento, página e cota) com edição rápida.
 // Nada aqui publica: os eventos publicados afetados ficam com "atualização pendente".
-import { TAMANHOS, type Tamanho } from '@norte/motor';
-import Link from 'next/link';
-import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
-import type { AplicacaoPatrocinador, BancoPatrocinios, EventoPatrocinavel, PatrocinadorBanco, UsoPatrocinadores } from '@/lib/comum/tipos';
+import { slug as limpar, TAMANHOS, type Cota, type Tamanho } from '@norte/motor';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { arquivosDoBanco, gerarEvento } from '@/lib/comum/montagem';
+import type { AplicacaoPatrocinador, ArquivoMidia, BancoPatrocinios, Evento, EventoPatrocinavel, PatrocinadorBanco, UsoPatrocinadores } from '@/lib/comum/tipos';
 import { api, ErroApi, json } from './api';
 import { ehImagemLogo, novoPatrocinador, porNome, subirLogo, urlLogo } from './patrocinadores';
+import { PreviaSolta } from './Previa';
+import { Alca, mover, useReordenar } from './Reordenar';
+import { Seletor, type Opcao } from './Seletor';
+
+/** tamanho do card do logo no site (desktop) */
+const MEDIDA: Record<Tamanho, string> = { GG: '246×180', G: '202×150', M: '172×137', P: '127×103' };
+const NOME_TAMANHO: Record<Tamanho, string> = { GG: 'Extra grande', G: 'Grande', M: 'Médio', P: 'Pequeno' };
 
 type Dados = { banco: BancoPatrocinios; versao: string; uso: UsoPatrocinadores; eventos: EventoPatrocinavel[] };
 type Salvar = (fn: (b: BancoPatrocinios) => void) => Promise<void>;
@@ -97,7 +104,8 @@ function Card({ p, usos, aberto, abrir, salvar }: { p: PatrocinadorBanco; usos: 
   );
 }
 
-/** onde o logo aparece, com troca de cota/tamanho e retirada (não publica) */
+const opcoesCota = (cotas: Cota[]): Opcao[] => cotas.map((c) => ({ valor: c.id, rotulo: c.nome, detalhe: c.tamanho }));
+
 /** pôr o logo em páginas de um evento (tapume e cidades) numa cota */
 function Adicionar({ p, eventos, usos, adicionar, ocupado }: { p: PatrocinadorBanco; eventos: EventoPatrocinavel[]; usos: UsoPatrocinadores[string]; adicionar: (slug: string, paginas: string[], cota: string) => Promise<boolean>; ocupado: boolean }) {
   const [slug, setSlug] = useState('');
@@ -114,15 +122,9 @@ function Adicionar({ p, eventos, usos, adicionar, ocupado }: { p: PatrocinadorBa
     <div className="onde-add">
       <b className="small">Adicionar {p.nome} em um evento</b>
       <div className="row" style={{ gap: 8 }}>
-        <select className="inp" style={{ width: 'auto' }} aria-label="Evento" value={slug} onChange={(e) => trocarEvento(e.target.value)} disabled={ocupado}>
-          <option value="">Escolha o evento…</option>
-          {eventos.map((e) => <option key={e.slug} value={e.slug}>{e.nome}</option>)}
-        </select>
-        {ev && (
-          <select className="inp" style={{ width: 'auto' }} aria-label="Cota" value={cotaFinal} onChange={(e) => setCota(e.target.value)} disabled={ocupado}>
-            {ev.cotas.map((c) => <option key={c.id} value={c.id}>{c.nome} ({c.tamanho})</option>)}
-          </select>
-        )}
+        <Seletor rotulo="Evento" vazio="Escolha o evento…" largura={260} valor={slug} desativado={ocupado} mudar={trocarEvento}
+          opcoes={eventos.map((e) => ({ valor: e.slug, rotulo: e.nome, detalhe: e.publicado ? 'no ar' : undefined }))} />
+        {ev && <Seletor rotulo="Cota" largura={200} valor={cotaFinal} desativado={ocupado} mudar={setCota} opcoes={opcoesCota(ev.cotas)} />}
       </div>
       {ev && (
         <>
@@ -152,7 +154,8 @@ function Adicionar({ p, eventos, usos, adicionar, ocupado }: { p: PatrocinadorBa
   );
 }
 
-function OndeAparece({ p, usos, eventos, recarregar }: { p: PatrocinadorBanco; usos: UsoPatrocinadores[string]; eventos: EventoPatrocinavel[]; recarregar: () => Promise<unknown> }) {
+/** onde o logo aparece, com troca de cota e retirada (não publica) */
+function OndeAparece({ p, usos, eventos, recarregar, visualizar }: { p: PatrocinadorBanco; usos: UsoPatrocinadores[string]; eventos: EventoPatrocinavel[]; recarregar: () => Promise<unknown>; visualizar: (slug: string, nome: string, pagina: string) => void }) {
   const [ocupado, setOcupado] = useState('');
   const [erro, setErro] = useState('');
   const [feito, setFeito] = useState(false);
@@ -173,7 +176,7 @@ function OndeAparece({ p, usos, eventos, recarregar }: { p: PatrocinadorBanco; u
     }
   }
 
-  async function editar(slug: string, a: AplicacaoPatrocinador, pedido: { acao: 'cota' | 'tamanho' | 'remover'; cota?: string; tamanho?: Tamanho | '' }) {
+  async function editar(slug: string, a: AplicacaoPatrocinador, pedido: { acao: 'cota' | 'remover'; cota?: string }) {
     setOcupado(slug + a.pagina);
     setErro('');
     try {
@@ -202,21 +205,15 @@ function OndeAparece({ p, usos, eventos, recarregar }: { p: PatrocinadorBanco; u
             <b>{u.nome}</b>
             {u.publicado ? <span className="pill ok">no ar</span> : <span className="pill">rascunho</span>}
             {u.pendente && <span className="pill warn">atualização pendente</span>}
-            <Link className="small" href={`/eventos/${u.slug}/patrocinios`} style={{ marginLeft: 'auto' }}>Abrir no evento →</Link>
+            <button className="btn sm ghost" type="button" style={{ marginLeft: 'auto' }} onClick={() => visualizar(u.slug, u.nome, u.aplicacoes[0]?.pagina || 'tapume')}>Visualizar</button>
           </div>
           {u.aplicacoes.map((a) => {
             const ocupada = ocupado === u.slug + a.pagina;
             return (
               <div key={a.pagina + a.bloco} className="onde-pg" style={{ opacity: ocupada ? 0.5 : 1 }}>
                 <span>{a.nomePagina}</span>
-                <select className="inp" aria-label={`Cota em ${a.nomePagina}`} value={a.cota} disabled={!!ocupado} onChange={(e) => editar(u.slug, a, { acao: 'cota', cota: e.target.value })}>
-                  {!u.cotas.some((c) => c.id === a.cota) && <option value={a.cota}>{a.cotaNome}</option>}
-                  {u.cotas.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                </select>
-                <select className="inp" aria-label={`Tamanho em ${a.nomePagina}`} value={a.tamanho} disabled={!!ocupado} onChange={(e) => editar(u.slug, a, { acao: 'tamanho', tamanho: e.target.value as Tamanho | '' })}>
-                  <option value="">{a.tamanhoCota} (da cota)</option>
-                  {TAMANHOS.map((t) => <option key={t} value={t}>{t}</option>)}
-                </select>
+                <Seletor rotulo={`Cota em ${a.nomePagina}`} largura={200} valor={a.cota} desativado={!!ocupado} mudar={(v) => editar(u.slug, a, { acao: 'cota', cota: v })}
+                  opcoes={[...(u.cotas.some((c) => c.id === a.cota) ? [] : [{ valor: a.cota, rotulo: a.cotaNome }]), ...opcoesCota(u.cotas)]} />
                 <button className="btn sm ghost danger" type="button" disabled={!!ocupado} onClick={() => { if (confirm(`Tirar ${p.nome} de ${a.nomePagina} (${u.nome})?`)) editar(u.slug, a, { acao: 'remover' }); }}>Tirar</button>
               </div>
             );
@@ -228,7 +225,105 @@ function OndeAparece({ p, usos, eventos, recarregar }: { p: PatrocinadorBanco; u
   );
 }
 
+/** prévia de uma página do evento (celular/desktop), sem abrir o editor */
+function Visualizar({ slug, nome, pagina: inicial, banco, fechar }: { slug: string; nome: string; pagina: string; banco: BancoPatrocinios; fechar: () => void }) {
+  const [dados, setDados] = useState<{ evento: Evento; modelos: Partial<Record<string, string>>; arquivos: ArquivoMidia[] } | null>(null);
+  const [erro, setErro] = useState('');
+  const [pagina, setPagina] = useState(inicial);
+  useEffect(() => { api<NonNullable<typeof dados>>(`/api/eventos/${slug}`).then(setDados, (e) => setErro(e.message)); }, [slug]);
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') fechar(); };
+    document.addEventListener('keydown', esc);
+    return () => document.removeEventListener('keydown', esc);
+  }, [fechar]);
+  const resultado = useMemo(() => (dados ? gerarEvento(dados.evento, dados.modelos, dados.arquivos, banco) : null), [dados, banco]);
+  const arquivos = useMemo(() => [...(dados?.arquivos || []), ...arquivosDoBanco(banco)], [dados, banco]);
+  const paginas: Opcao[] = dados ? [{ valor: 'tapume', rotulo: 'Tapume (home)' }, ...dados.evento.cidades.map((c, i) => ({ valor: c._id, rotulo: String(c.cidade || c.praca || c.nome || `Cidade ${i + 1}`) }))] : [];
+  const pag = resultado?.paginas.find((p) => (pagina === 'tapume' ? p.tipo === 'tapume' : p.tipo === 'praca' && p.cidadeId === pagina));
+  return (
+    <div className="janela-fundo" onClick={(e) => { if (e.target === e.currentTarget) fechar(); }}>
+      <div className="janela" role="dialog" aria-modal="true" aria-label={`Prévia de ${nome}`}>
+        <div className="row between">
+          <span className="row" style={{ gap: 10 }}>
+            <b>{nome}</b>
+            {dados && <Seletor rotulo="Página" largura={220} valor={pagina} mudar={setPagina} opcoes={paginas} />}
+          </span>
+          <button className="btn sm ghost" type="button" onClick={fechar}>Fechar</button>
+        </div>
+        {erro ? <div className="w-item bad"><span className="ic">✕</span><div>{erro}</div></div>
+          : !dados ? <p className="muted">Montando a prévia…</p>
+          : <PreviaSolta html={pag?.html ?? null} titulo={pag ? `${pag.titulo} · ${pag.arquivo}` : 'Prévia'} altura={Math.max(360, (typeof window === 'undefined' ? 800 : window.innerHeight) - 200)} arquivos={arquivos} baseUrl={dados.evento.baseUrl} />}
+        <p className="small muted">Prévia com o que está salvo. O site no ar só muda quando o evento for publicado.</p>
+      </div>
+    </div>
+  );
+}
+
+/** cotas gerais: valem para todos os eventos */
+function Cotas({ banco, uso, salvar }: { banco: BancoPatrocinios; uso: UsoPatrocinadores; salvar: Salvar }) {
+  const cotas = banco.cotas;
+  const [nova, setNova] = useState('');
+  const [tamanhoNova, setTamanhoNova] = useState<Tamanho>('P');
+  const moverCota = (de: number, para: number) => salvar((b) => { b.cotas = mover(b.cotas, de, para); });
+  const { alca, alvo } = useReordenar(moverCota);
+  const mudar = (id: string, fn: (c: Cota) => void) => salvar((b) => { const c = b.cotas.find((x) => x.id === id); if (c) fn(c); });
+  // eventos que usam cada cota
+  const usoCota = new Map<string, Set<string>>();
+  for (const us of Object.values(uso)) for (const u of us) for (const a of u.aplicacoes) usoCota.set(a.cota, (usoCota.get(a.cota) || new Set()).add(u.nome));
+  const tamanhos: Opcao[] = TAMANHOS.map((t) => ({ valor: t, rotulo: `${t} · ${NOME_TAMANHO[t]}`, detalhe: MEDIDA[t] }));
+
+  function criar() {
+    const nome = nova.trim();
+    if (!nome) return;
+    salvar((b) => {
+      const base = limpar(nome) || 'cota';
+      let id = base;
+      for (let i = 2; b.cotas.some((x) => x.id === id); i++) id = `${base}-${i}`;
+      // entra antes da Ticketeria (perto das de tamanho P), ou no fim
+      const ondeT = b.cotas.findIndex((x) => x.id === 'ticketeria');
+      const c: Cota = { id, nome, tamanho: tamanhoNova };
+      if (ondeT >= 0) b.cotas.splice(ondeT, 0, c); else b.cotas.push(c);
+    }).then(() => setNova(''), () => {});
+  }
+
+  return (
+    <section className="card stack">
+      <div>
+        <h2 style={{ fontSize: 18 }}>Cotas</h2>
+        <p className="small muted">Valem para todos os eventos. A ordem aqui é a ordem na página (arraste para mudar). O tamanho define o card de cada logo da cota (largura × altura no desktop; no celular fica menor).</p>
+      </div>
+      <div className="lista-secoes">
+        {cotas.map((c, i) => {
+          const usam = usoCota.get(c.id);
+          return (
+            <div key={c.id} className="secao-item" {...alvo(i)}>
+              <Alca i={i} total={cotas.length} alca={alca} mover={moverCota} rotulo={c.nome} />
+              <div className="row" style={{ gap: 10 }}>
+                <input className="inp" style={{ maxWidth: 220 }} defaultValue={c.nome} aria-label="Nome da cota" onBlur={(e) => { const v = e.target.value.trim(); if (!v) e.target.value = c.nome; else if (v !== c.nome) mudar(c.id, (x) => { x.nome = v; }); }} />
+                <Seletor rotulo={`Tamanho da cota ${c.nome}`} largura={230} valor={c.tamanho} opcoes={tamanhos} mudar={(v) => mudar(c.id, (x) => { x.tamanho = v as Tamanho; })} />
+                <label className="row small" style={{ gap: 6 }}><input type="checkbox" checked={!!c.aoLado} disabled={i === 0} onChange={(e) => { const v = e.target.checked; mudar(c.id, (x) => { x.aoLado = v; }); }} />Ao lado da cota anterior</label>
+                <span className="small muted">{usam ? `Em ${usam.size} evento(s)` : 'Sem uso'}</span>
+                <button className="iconbtn" type="button" style={{ marginLeft: 'auto' }} aria-label={`Apagar a cota ${c.nome}`}
+                  onClick={() => { if (confirm(usam ? `A cota ${c.nome} está em uso em ${[...usam].join(', ')}. Apagar mesmo assim? Esses logos deixam de aparecer.` : `Apagar a cota ${c.nome}?`)) salvar((b) => { b.cotas = b.cotas.filter((x) => x.id !== c.id); }); }}>✕</button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="row">
+        <input className="inp" style={{ maxWidth: 260 }} placeholder="Nova cota (ex.: Apoio de mídia)" aria-label="Nome da nova cota" value={nova} onChange={(e) => setNova(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && criar()} />
+        <Seletor rotulo="Tamanho da nova cota" largura={230} valor={tamanhoNova} opcoes={tamanhos} mudar={(v) => setTamanhoNova(v as Tamanho)} />
+        <button className="btn sm pri" type="button" disabled={!nova.trim()} onClick={criar}>+ Criar cota</button>
+      </div>
+    </section>
+  );
+}
+
 export function BancoPatrocinadores() {
+  const [aba, setAba] = useState<'patrocinadores' | 'cotas'>('patrocinadores');
+  const [previa, setPrevia] = useState<{ slug: string; nome: string; pagina: string } | null>(null);
+  useEffect(() => { if (new URLSearchParams(location.search).get('aba') === 'cotas') setAba('cotas'); }, []);
+  const trocarAba = (a: typeof aba) => { setAba(a); history.replaceState(null, '', a === 'cotas' ? '?aba=cotas' : location.pathname); };
   const [dados, setDados] = useState<Dados | null>(null);
   const ref = useRef<Dados | null>(null);
   const [erro, setErro] = useState('');
@@ -269,7 +364,7 @@ export function BancoPatrocinadores() {
     const imagens = todos.filter((f) => ehImagemLogo(f.name));
     if (todos.length > imagens.length) setErro(`${todos.length - imagens.length} arquivo(s) ignorado(s): só imagens (svg, png, webp ou jpg).`);
     else setErro('');
-    if (imagens.length) setRascunhos((rs) => [...rs, ...imagens.map(novoRascunho)]);
+    if (imagens.length) { setRascunhos((rs) => [...rs, ...imagens.map(novoRascunho)]); trocarAba('patrocinadores'); }
   }
   const mudarRascunho = (id: string, m: Partial<Rascunho>) => setRascunhos((rs) => rs.map((r) => (r.id === id ? { ...r, ...m } : r)));
   function tirarRascunho(id: string) {
@@ -319,9 +414,16 @@ export function BancoPatrocinadores() {
       {arrastando && <div className="patro-solta-aviso">Solte os logos: cada imagem vira um patrocinador</div>}
       <div className="head">
         <h1>Patrocínios</h1>
-        <p>Um cadastro só para todos os sites. Arraste vários logos de uma vez para a página. Clique num patrocinador para ver em que eventos e páginas ele aparece e mudar a cota por ali.</p>
+        <p>{aba === 'cotas'
+          ? 'As cotas e os tamanhos dos logos, iguais para todos os eventos.'
+          : 'Um cadastro só para todos os sites. Arraste vários logos de uma vez para a página. Clique num patrocinador para ver em que eventos e páginas ele aparece e mudar a cota por ali.'}</p>
+      </div>
+      <div className="subabas" role="tablist" aria-label="Patrocínios">
+        <button type="button" role="tab" aria-selected={aba === 'patrocinadores'} onClick={() => trocarAba('patrocinadores')}>Patrocinadores</button>
+        <button type="button" role="tab" aria-selected={aba === 'cotas'} onClick={() => trocarAba('cotas')}>Cotas</button>
       </div>
       {erro && <div className="w-item bad"><span className="ic">✕</span><div>{erro}</div></div>}
+      {aba === 'cotas' ? <Cotas banco={banco} uso={uso} salvar={salvar} /> : <>
       <div className="row between">
         <span className="small muted">{banco.patrocinadores.length} patrocinador(es)</span>
         <span className="row" style={{ gap: 8 }}>
@@ -345,11 +447,13 @@ export function BancoPatrocinadores() {
         {lista.map((p) => (
           <Fragment key={p.id}>
             <Card p={p} usos={uso[p.id] || []} aberto={aberto === p.id} abrir={() => setAberto(aberto === p.id ? null : p.id)} salvar={salvar} />
-            {aberto === p.id && <OndeAparece p={p} usos={uso[p.id] || []} eventos={dados.eventos || []} recarregar={ler} />}
+            {aberto === p.id && <OndeAparece p={p} usos={uso[p.id] || []} eventos={dados.eventos || []} recarregar={ler} visualizar={(slug, nome, pagina) => setPrevia({ slug, nome, pagina })} />}
           </Fragment>
         ))}
         {!lista.length && busca && <p className="muted small">Nenhum patrocinador com esse nome.</p>}
       </div>
+      </>}
+      {previa && <Visualizar {...previa} banco={banco} fechar={() => setPrevia(null)} />}
     </div>
   );
 }

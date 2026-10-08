@@ -1,10 +1,19 @@
 // Junta o motor com os dados guardados: gera as páginas e descobre quais arquivos cada página usa.
-import { acharArquivo, COTAS_PADRAO, gerar, normRef, PASTA_LOGOS, refsDeArquivo, type ResultadoGerar } from '@norte/motor';
+import { acharArquivo, COTAS_PADRAO, gerar, normRef, PASTA_LOGOS, refsDeArquivo, type Cota, type ResultadoGerar } from '@norte/motor';
 import type { ArquivoMidia, BancoPatrocinios, Evento } from './tipos';
 
 /** logos do banco de patrocinadores, como arquivos do site (_patrocinadores/…) */
 export const arquivosDoBanco = (banco: BancoPatrocinios | null | undefined): ArquivoMidia[] =>
   (banco?.patrocinadores || []).map((p) => ({ caminho: PASTA_LOGOS + p.logo, sha: p.sha, bytes: p.bytes }));
+
+/**
+ * Cotas que valem no evento: as gerais (aba Patrocínios → Cotas; sem nenhuma, as padrão)
+ * e, depois delas, cotas antigas criadas só no evento.
+ */
+export function cotasDoEvento(evento: Pick<Evento, 'patrocinios'>, banco: Pick<BancoPatrocinios, 'cotas'> | null | undefined): Cota[] {
+  const gerais = banco?.cotas?.length ? banco.cotas : COTAS_PADRAO;
+  return [...gerais, ...(evento.patrocinios?.cotas || []).filter((c) => !gerais.some((g) => g.id === c.id))];
+}
 
 export function gerarEvento(evento: Evento, modelos: Partial<Record<string, string>>, arquivos: ArquivoMidia[], banco?: BancoPatrocinios | null): ResultadoGerar {
   return gerar({
@@ -18,7 +27,7 @@ export function gerarEvento(evento: Evento, modelos: Partial<Record<string, stri
     imagens: evento.imagens,
     secoes: evento.secoes,
     rodape: evento.rodape,
-    patrocinios: banco ? { porPagina: evento.patrocinios?.porPagina || {}, estilo: evento.patrocinios?.estilo, patrocinadores: banco.patrocinadores, cotas: evento.patrocinios?.cotas || COTAS_PADRAO } : undefined,
+    patrocinios: banco ? { porPagina: evento.patrocinios?.porPagina || {}, estilo: evento.patrocinios?.estilo, patrocinadores: banco.patrocinadores, cotas: cotasDoEvento(evento, banco) } : undefined,
     arquivos: arquivos.map((a) => a.caminho),
   });
 }
