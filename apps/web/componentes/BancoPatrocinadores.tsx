@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import type { AplicacaoPatrocinador, BancoPatrocinios, PatrocinadorBanco, UsoPatrocinadores } from '@/lib/comum/tipos';
 import { api, ErroApi, json } from './api';
-import { novoPatrocinador, porNome, subirLogo, urlLogo } from './patrocinadores';
+import { ehImagemLogo, novoPatrocinador, porNome, subirLogo, urlLogo } from './patrocinadores';
 
 type Dados = { banco: BancoPatrocinios; versao: string; uso: UsoPatrocinadores };
 type Salvar = (fn: (b: BancoPatrocinios) => void) => Promise<void>;
@@ -16,36 +16,37 @@ const semAcento = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-�
 /** clique dentro de campo ou botão não abre/fecha o card */
 const ehControle = (t: EventTarget) => t instanceof Element && !!t.closest('input, select, button, label, a, textarea');
 
-function NovoCard({ salvar, fechar }: { salvar: Salvar; fechar: () => void }) {
-  const [nome, setNome] = useState('');
-  const [url, setUrl] = useState('');
-  const [arquivo, setArquivo] = useState<File | null>(null);
-  const [msg, setMsg] = useState('');
-  const previa = arquivo ? URL.createObjectURL(arquivo) : '';
-  useEffect(() => () => { if (previa) URL.revokeObjectURL(previa); }, [previa]);
-  async function criar() {
-    if (!nome.trim()) return setMsg('O nome é obrigatório.');
-    if (!arquivo) return setMsg('Escolha o logo.');
-    setMsg('Salvando…');
-    try {
-      const logo = await subirLogo(nome, arquivo);
-      await salvar((b) => { b.patrocinadores.push(novoPatrocinador(b, { nome, url, ...logo })); });
-      fechar();
-    } catch (e) { setMsg((e as Error).message); }
-  }
+/** logo solto na página, esperando nome e link antes de entrar no cadastro */
+type Rascunho = { id: string; arquivo: File; previa: string; nome: string; url: string; msg: string };
+
+/** "patrocinador_xpto-2025.png" → "patrocinador xpto 2025" */
+const nomeDoArquivo = (f: string) => f.replace(/\.[a-z0-9]+$/i, '').replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim();
+const novoRascunho = (f: File): Rascunho => ({ id: crypto.randomUUID(), arquivo: f, previa: URL.createObjectURL(f), nome: nomeDoArquivo(f.name), url: '', msg: '' });
+const problemaRascunho = (r: Rascunho) =>
+  !r.nome.trim() ? 'O nome é obrigatório.' : r.url.trim() && !/^https?:\/\//i.test(r.url.trim()) ? 'O link precisa começar com https://' : '';
+
+function CardRascunho({ r, mudar, tirar, cadastrar, ocupado }: { r: Rascunho; mudar: (m: Partial<Rascunho>) => void; tirar: () => void; cadastrar: () => void; ocupado: boolean }) {
   return (
-    <div className="banco-card aberto" style={{ cursor: 'default' }}>
-      <label className="banco-logo" style={{ cursor: 'pointer' }} title="Escolher o logo">
-        {previa ? <img src={previa} alt="" /> : <span className="small muted">+ Logo (SVG ou PNG)</span>}
-        <input type="file" accept="image/*" hidden onChange={(e) => setArquivo(e.target.files?.[0] || null)} />
+    <div className="banco-card aberto rascunho" style={{ cursor: 'default' }}>
+      <label className="banco-logo" style={{ cursor: 'pointer' }} title="Trocar a imagem">
+        <img src={r.previa} alt="" />
+        <input type="file" accept="image/*" hidden onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (!f) return;
+          if (!ehImagemLogo(f.name)) return mudar({ msg: 'O logo precisa ser uma imagem (svg, png, webp ou jpg).' });
+          URL.revokeObjectURL(r.previa);
+          mudar({ arquivo: f, previa: URL.createObjectURL(f), msg: '' });
+        }} />
       </label>
-      <input className={'inp nome' + (msg === 'O nome é obrigatório.' ? ' erro' : '')} autoFocus placeholder="Nome (obrigatório)" aria-label="Nome" value={nome} onChange={(e) => setNome(e.target.value)} />
-      <input className="inp mono" placeholder="Link (opcional) https://…" aria-label="Link" value={url} onChange={(e) => setUrl(e.target.value)} />
+      <input className={'inp nome' + (r.msg === 'O nome é obrigatório.' ? ' erro' : '')} placeholder="Nome (obrigatório)" aria-label="Nome (obrigatório)" value={r.nome} disabled={ocupado}
+        onChange={(e) => mudar({ nome: e.target.value, msg: '' })} onKeyDown={(e) => e.key === 'Enter' && cadastrar()} />
+      <input className={'inp mono' + (r.msg.startsWith('O link') ? ' erro' : '')} placeholder="Link (opcional) https://…" aria-label="Link (opcional)" value={r.url} disabled={ocupado}
+        onChange={(e) => mudar({ url: e.target.value, msg: '' })} onKeyDown={(e) => e.key === 'Enter' && cadastrar()} />
       <div className="row" style={{ gap: 6 }}>
-        <button className="btn sm pri" type="button" onClick={criar}>Cadastrar</button>
-        <button className="btn sm ghost" type="button" onClick={fechar}>Cancelar</button>
+        <button className="btn sm pri" type="button" disabled={ocupado} onClick={cadastrar}>Cadastrar</button>
+        <button className="btn sm ghost" type="button" disabled={ocupado} onClick={tirar}>Descartar</button>
       </div>
-      {msg && <p className="small" style={{ color: msg === 'Salvando…' ? 'var(--mute)' : 'var(--bad)' }}>{msg}</p>}
+      {r.msg && <p className="small" style={{ color: r.msg.endsWith('…') ? 'var(--mute)' : 'var(--bad)' }}>{r.msg}</p>}
     </div>
   );
 }
@@ -161,7 +162,10 @@ export function BancoPatrocinadores() {
   const ref = useRef<Dados | null>(null);
   const [erro, setErro] = useState('');
   const [busca, setBusca] = useState('');
-  const [novo, setNovo] = useState(false);
+  const [rascunhos, setRascunhos] = useState<Rascunho[]>([]);
+  const [enviando, setEnviando] = useState<Set<string>>(new Set());
+  const [arrastando, setArrastando] = useState(false);
+  const profundidade = useRef(0);
   const [aberto, setAberto] = useState<string | null>(null);
 
   const ler = useCallback(() => api<Dados>('/api/patrocinadores').then((d) => { ref.current = d; setDados(d); return d; }), []);
@@ -188,25 +192,85 @@ export function BancoPatrocinadores() {
     }
   }, [ler]);
 
+  /** imagens soltas ou escolhidas viram rascunhos (um por imagem) */
+  function receber(arquivos: FileList | File[] | null | undefined) {
+    const todos = [...(arquivos || [])];
+    const imagens = todos.filter((f) => ehImagemLogo(f.name));
+    if (todos.length > imagens.length) setErro(`${todos.length - imagens.length} arquivo(s) ignorado(s): só imagens (svg, png, webp ou jpg).`);
+    else setErro('');
+    if (imagens.length) setRascunhos((rs) => [...rs, ...imagens.map(novoRascunho)]);
+  }
+  const mudarRascunho = (id: string, m: Partial<Rascunho>) => setRascunhos((rs) => rs.map((r) => (r.id === id ? { ...r, ...m } : r)));
+  function tirarRascunho(id: string) {
+    setRascunhos((rs) => {
+      const r = rs.find((x) => x.id === id);
+      if (r) URL.revokeObjectURL(r.previa);
+      return rs.filter((x) => x.id !== id);
+    });
+  }
+  /** sobe os logos e grava todos no cadastro de uma vez */
+  async function cadastrar(ids: string[]) {
+    const alvo = rascunhos.filter((r) => ids.includes(r.id));
+    let ok = true;
+    for (const r of alvo) { const p = problemaRascunho(r); if (p) { mudarRascunho(r.id, { msg: p }); ok = false; } }
+    if (!ok || !alvo.length) return;
+    setEnviando((s) => new Set([...s, ...ids]));
+    const prontos: { r: Rascunho; logo: Awaited<ReturnType<typeof subirLogo>> }[] = [];
+    for (const r of alvo) {
+      mudarRascunho(r.id, { msg: 'Enviando o logo…' });
+      try { prontos.push({ r, logo: await subirLogo(r.nome, r.arquivo) }); } catch (e) { mudarRascunho(r.id, { msg: (e as Error).message }); }
+    }
+    if (prontos.length) {
+      prontos.forEach(({ r }) => mudarRascunho(r.id, { msg: 'Salvando…' }));
+      try {
+        await salvar((b) => { for (const { r, logo } of prontos) b.patrocinadores.push(novoPatrocinador(b, { nome: r.nome, url: r.url, ...logo })); });
+        prontos.forEach(({ r }) => tirarRascunho(r.id));
+      } catch (e) {
+        prontos.forEach(({ r }) => mudarRascunho(r.id, { msg: (e as Error).message }));
+      }
+    }
+    setEnviando((s) => new Set([...s].filter((id) => !ids.includes(id))));
+  }
+
   if (!dados) return <p className="muted">{erro || 'Carregando os patrocínios…'}</p>;
   const { banco, uso } = dados;
   const lista = banco.patrocinadores.filter((p) => semAcento(p.nome).includes(semAcento(busca))).sort(porNome);
+  const temArquivos = (e: React.DragEvent) => e.dataTransfer.types.includes('Files');
 
   return (
-    <>
+    <div
+      className={'patro-solta' + (arrastando ? ' ativa' : '')}
+      onDragEnter={(e) => { if (temArquivos(e)) { e.preventDefault(); profundidade.current++; setArrastando(true); } }}
+      onDragOver={(e) => { if (temArquivos(e)) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } }}
+      onDragLeave={(e) => { if (temArquivos(e) && --profundidade.current <= 0) { profundidade.current = 0; setArrastando(false); } }}
+      onDrop={(e) => { if (!temArquivos(e)) return; e.preventDefault(); profundidade.current = 0; setArrastando(false); receber(e.dataTransfer.files); }}
+    >
+      {arrastando && <div className="patro-solta-aviso">Solte os logos: cada imagem vira um patrocinador</div>}
       <div className="head">
         <h1>Patrocínios</h1>
-        <p>Um cadastro só para todos os sites. Clique num patrocinador para ver em que eventos e páginas ele aparece e mudar a cota por ali.</p>
+        <p>Um cadastro só para todos os sites. Arraste vários logos de uma vez para a página. Clique num patrocinador para ver em que eventos e páginas ele aparece e mudar a cota por ali.</p>
       </div>
       {erro && <div className="w-item bad"><span className="ic">✕</span><div>{erro}</div></div>}
       <div className="row between">
         <span className="small muted">{banco.patrocinadores.length} patrocinador(es)</span>
-        <input className="inp" style={{ width: 240 }} placeholder="Buscar…" aria-label="Buscar patrocinador" value={busca} onChange={(e) => setBusca(e.target.value)} />
+        <span className="row" style={{ gap: 8 }}>
+          {rascunhos.length > 1 && (
+            <button className="btn sm pri" type="button" disabled={enviando.size > 0} onClick={() => cadastrar(rascunhos.map((r) => r.id))}>
+              {enviando.size ? 'Cadastrando…' : `Cadastrar todos (${rascunhos.length})`}
+            </button>
+          )}
+          <input className="inp" style={{ width: 240 }} placeholder="Buscar…" aria-label="Buscar patrocinador" value={busca} onChange={(e) => setBusca(e.target.value)} />
+        </span>
       </div>
       <div className="banco-grade">
-        {novo ? <NovoCard salvar={salvar} fechar={() => setNovo(false)} /> : (
-          <button className="banco-card novo" type="button" onClick={() => setNovo(true)}>+ Novo patrocinador</button>
-        )}
+        <label className="banco-card novo" title="Escolher imagens (pode ser várias)">
+          <span>+ Novos patrocinadores</span>
+          <span className="small muted" style={{ fontWeight: 400, textAlign: 'center' }}>Arraste os logos para cá<br />ou clique para escolher (pode ser vários)</span>
+          <input type="file" accept="image/*" multiple hidden onChange={(e) => { receber(e.target.files); e.target.value = ''; }} />
+        </label>
+        {rascunhos.map((r) => (
+          <CardRascunho key={r.id} r={r} ocupado={enviando.has(r.id)} mudar={(m) => mudarRascunho(r.id, m)} tirar={() => tirarRascunho(r.id)} cadastrar={() => cadastrar([r.id])} />
+        ))}
         {lista.map((p) => (
           <Fragment key={p.id}>
             <Card p={p} usos={uso[p.id] || []} aberto={aberto === p.id} abrir={() => setAberto(aberto === p.id ? null : p.id)} salvar={salvar} />
@@ -215,6 +279,6 @@ export function BancoPatrocinadores() {
         ))}
         {!lista.length && busca && <p className="muted small">Nenhum patrocinador com esse nome.</p>}
       </div>
-    </>
+    </div>
   );
 }

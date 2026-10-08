@@ -264,3 +264,10 @@ tr:last-child td { border-bottom: 0; }
 .onde-pg { display: grid; grid-template-columns: minmax(120px, 1fr) auto auto auto; gap: 8px; align-items: center; font-size: 14px; }
 .onde-pg select { padding: 5px 8px; width: auto; }
 @media (max-width: 640px) { .onde-pg { grid-template-columns: 1fr 1fr; } .onde-pg > :first-child { grid-column: 1 / -1; } }
+
+/* Patrocínios: soltar vários logos de uma vez */
+.patro-solta { position: relative; display: flex; flex-direction: column; gap: 18px; min-height: calc(100vh - 140px); border-radius: 14px; }
+.patro-solta.ativa { outline: 2px dashed var(--accent); outline-offset: 8px; background: var(--accent-soft); }
+.patro-solta-aviso { position: sticky; top: 64px; z-index: 4; align-self: center; padding: 10px 18px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-weight: 600; pointer-events: none; }
+.banco-card.novo { cursor: pointer; gap: 8px; text-align: center; }
+.banco-card.rascunho { border-style: dashed; }
