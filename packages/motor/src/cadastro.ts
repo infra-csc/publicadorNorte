@@ -1,6 +1,6 @@
 import { colunas, type Deteccao } from './detectar';
 import { avaliar, nomesFormula } from './formulas';
-import { caminhoMidia, valorMidia } from './midia';
+import { MARCA_OCULTA, midiaEscondida, valorMidia } from './midia';
 import { fmtBR, numBR, slug } from './texto';
 import type { Linha, TipoItem, Vars } from './tipos';
 import { ehMidia } from './variaveis';
@@ -16,8 +16,6 @@ export interface DadosCadastro {
   imagens?: Record<string, string>;
   /** caminhos dos arquivos enviados (pasta _media) */
   arquivos?: Iterable<string>;
-  /** arquivos escondidos: saem das opções de mídia (o HTML ainda pode apontar direto para eles) */
-  midiaOculta?: Iterable<string>;
 }
 
 /** primeira coluna preenchida entre estas vira o nome do item */
@@ -31,8 +29,6 @@ export class Cadastro {
   readonly etapas: Linha[];
   readonly imagens: Record<string, string>;
   readonly arquivos: string[];
-  /** arquivos oferecidos para as variáveis de mídia (sem os escondidos) */
-  readonly arquivosOpcoes: string[];
   readonly ordem: Partial<Record<TipoItem, string[]>>;
   private cacheCols = new Map<string, string[]>();
 
@@ -43,8 +39,6 @@ export class Cadastro {
     this.etapas = d.etapas || [];
     this.imagens = d.imagens || {};
     this.arquivos = [...(d.arquivos || [])];
-    const ocultos = new Set([...(d.midiaOculta || [])].map(caminhoMidia));
-    this.arquivosOpcoes = this.arquivos.filter((a) => !ocultos.has(caminhoMidia(a)));
     this.ordem = d.ordem || {};
   }
 
@@ -72,10 +66,13 @@ export class Cadastro {
     if (v?.excluida) return '';
     if (ehMidia(base)) {
       const geral = v?.dono === 'geral' || !it;
-      // por cidade: a escolha da linha; sem ela, a escolha geral; sem nenhuma, o arquivo padrão
-      const escolha = geral ? this.imagens[base] : it![base] || this.imagens[base];
-      const achado = valorMidia(base, escolha, this.det, this.arquivosOpcoes);
-      return !geral && it![base] && achado !== it![base] ? valorMidia(base, this.imagens[base], this.det, this.arquivosOpcoes) : achado;
+      // por cidade: a escolha da linha; sem ela (ou se o arquivo sumiu), a escolha geral; sem nenhuma, o arquivo padrão
+      for (const escolha of geral ? [this.imagens[base]] : [it![base], this.imagens[base]]) {
+        if (!escolha) continue;
+        if (midiaEscondida(escolha)) return MARCA_OCULTA;
+        if (valorMidia(base, escolha, this.det, this.arquivos) === escolha) return escolha;
+      }
+      return valorMidia(base, undefined, this.det, this.arquivos);
     }
     if (vistos?.has(base)) return '';
     const bruto = v?.dono === 'geral' || !it ? this.gerais[base] : it[base];

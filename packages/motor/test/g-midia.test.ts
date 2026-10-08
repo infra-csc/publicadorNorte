@@ -1,6 +1,6 @@
 // G. Mídia
 import { describe, expect, it } from 'vitest';
-import { ajustarTagsMidia, arquivoAceito, CSS_MIDIA, detectar, gerar, opcoesMidia, padraoMidia, refsDeArquivo, acharArquivo } from '../src/index';
+import { ajustarTagsMidia, arquivoAceito, CSS_MIDIA, OCULTA, detectar, gerar, opcoesMidia, padraoMidia, refsDeArquivo, acharArquivo } from '../src/index';
 import { linha, semEspacos } from './ajuda';
 
 const HERO = ['site/_media/praca/hero/hero_desktop.webp', 'site/_media/praca/hero/hero_desktop.mp4', 'site/_media/praca/hero/mobile/hero.webp'];
@@ -114,17 +114,25 @@ describe('G. Mídia', () => {
     expect(r.paginas[2].html).toBe('<img src="_media/praca/arena/b.webp">');
   });
 
-  it('G14: arquivo escondido sai das opções e do padrão, mas continua valendo quando o HTML aponta direto para ele', () => {
-    const arqs = ['_media/praca/arena/desktop.webp', '_media/praca/arena/desktop.mp4', '_media/praca/marca/logo.webp'];
+  it('G14: mídia escondida tira a tag da página (imagem, vídeo e fundo por CSS) sem trocar por outro arquivo', () => {
+    const arqs = ['_media/praca/arena/desktop.webp', '_media/praca/arena/desktop.mp4', '_media/praca/kit/foto.webp'];
+    const sp = linha({ cidade: 'SP' });
+    const rj = linha({ cidade: 'RJ', media_arena_desktop: OCULTA + '_media/praca/arena/desktop.mp4' });
     const r = gerar({
       formato: 'tapume_praca',
-      modelos: { tapume: '', praca: '<img src="@media_arena_desktop"><img src="_media/praca/marca/logo.webp">' },
-      cidades: [linha({ cidade: 'SP' })],
+      modelos: { tapume: '', praca: '<div class="a"><img class="x" src="@media_arena_desktop" alt="A"></div><div style="background:url(@img_kit_foto)"></div><p>fim</p>' },
+      cidades: [sp, rj],
+      vars: { media_arena_desktop: { dono: 'cidade', manual: true } },
+      imagens: { media_arena_desktop: '_media/praca/arena/desktop.mp4', img_kit_foto: OCULTA + '_media/praca/kit/foto.webp' },
       arquivos: arqs,
-      midiaOculta: ['_media/praca/arena/desktop.webp', '_media/praca/marca/logo.webp'],
     });
-    expect(r.paginas[1].html).toContain('src="_media/praca/arena/desktop.mp4"');
-    expect(r.paginas[1].html).toContain('src="_media/praca/marca/logo.webp"');
+    // SP: vídeo escolhido no geral; o fundo escondido some
+    expect(r.paginas[1].html).toContain('<video class="x"');
+    expect(r.paginas[1].html).toContain('<div style="background:url()"></div>');
+    // RJ: escondido só nesta cidade → o bloco fica sem a mídia
+    expect(r.paginas[2].html).toBe('<div class="a"></div><div style="background:url()"></div><p>fim</p>');
+    // esconder não conta como campo vazio
+    expect(r.avisos.find((a) => a.codigo === 'campos-vazios' || a.codigo === 'gerais-vazios')).toBeUndefined();
   });
 
   it('mídia geral usa a escolha de "imagens"; escolha fora das opções volta ao padrão', () => {

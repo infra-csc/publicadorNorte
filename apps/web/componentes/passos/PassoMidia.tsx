@@ -1,5 +1,5 @@
 'use client';
-import { ehMidia, FORMATOS, NOME_PAGINA, opcoesMidia, pastasMidia, secaoMidia, sincronizarVars, slotMidia, type OpcaoMidia, type TipoPagina } from '@norte/motor';
+import { arquivoDaEscolha, ehMidia, FORMATOS, midiaEscondida, NOME_PAGINA, OCULTA, opcoesMidia, pastasMidia, secaoMidia, sincronizarVars, slotMidia, type OpcaoMidia, type TipoPagina } from '@norte/motor';
 import { useDeferredValue, useMemo, useState } from 'react';
 import { gerarEvento } from '@/lib/comum/montagem';
 import { api, json, urlArquivo } from '../api';
@@ -30,11 +30,8 @@ export function PassoMidia() {
   const [arrastando, setArrastando] = useState<string | null>(null);
   const [status, setStatus] = useState<{ onde: string; texto: string; erro?: boolean } | null>(null);
   const [excluir, setExcluir] = useState<string | null>(null);
-  const [verOcultas, setVerOcultas] = useState<Set<string>>(new Set());
   const caminhos = useMemo(() => arquivos.map((a) => a.caminho), [arquivos]);
   const porCaminho = useMemo(() => new Map(arquivos.map((a) => [a.caminho, a])), [arquivos]);
-  const ocultos = useMemo(() => new Set(evento.midiaOculta || []), [evento.midiaOculta]);
-  const visiveis = useMemo(() => caminhos.filter((c) => !ocultos.has(c)), [caminhos, ocultos]);
 
   // variáveis de mídia desta página, por seção
   const secoes = useMemo(() => {
@@ -105,13 +102,16 @@ export function PassoMidia() {
     }
   }
 
-  function esconder(caminho: string, sim: boolean) {
-    alterar((e) => {
-      const l = new Set(e.midiaOculta || []);
-      if (sim) l.add(caminho);
-      else l.delete(caminho);
-      e.midiaOculta = [...l];
-    });
+  /** a escolha guardada do lugar (geral ou da cidade selecionada), escondida ou não */
+  function escolhaDe(b: string): string | undefined {
+    if (cad.vars[b]?.dono === 'geral') return evento.imagens[b];
+    return linhaDe(b)?.[b] || evento.imagens[b];
+  }
+
+  /** esconde a mídia do lugar (a tag sai da página) ou mostra de novo o mesmo arquivo */
+  function esconder(b: string, caminho: string) {
+    const atual = escolhaDe(b);
+    escolher(b, midiaEscondida(atual) && arquivoDaEscolha(atual) === caminho ? caminho : OCULTA + caminho);
   }
 
   async function apagar(caminho: string) {
@@ -121,9 +121,9 @@ export function PassoMidia() {
       setArquivos(arquivos.filter((a) => a.caminho !== caminho));
       // escolhas que apontavam para o arquivo voltam ao padrão
       alterar((e) => {
-        e.midiaOculta = (e.midiaOculta || []).filter((c) => c !== caminho);
-        for (const [k, v] of Object.entries(e.imagens)) if (v === caminho) delete e.imagens[k];
-        for (const l of [...e.cidades, ...e.etapas]) for (const [k, v] of Object.entries(l)) if (v === caminho && !k.startsWith('_')) delete l[k];
+        const aponta = (v: string | undefined) => v === caminho || v === OCULTA + caminho;
+        for (const [k, v] of Object.entries(e.imagens)) if (aponta(v)) delete e.imagens[k];
+        for (const l of [...e.cidades, ...e.etapas]) for (const [k, v] of Object.entries(l)) if (aponta(v) && !k.startsWith('_')) delete l[k];
       });
     } catch (e) {
       setStatus({ onde: 'geral', texto: (e as Error).message, erro: true });
@@ -142,28 +142,28 @@ export function PassoMidia() {
   });
   const msg = (onde: string) => status?.onde === onde && <p className="small" style={{ color: status.erro ? 'var(--bad)' : 'var(--mute)' }}>{status.texto}</p>;
 
-  const miniatura = ({ o, b, marcada, oculta, desativada }: { o: OpcaoMidia; b: string; marcada: boolean; oculta: boolean; desativada: boolean }) => {
+  const miniatura = ({ o, b, marcada, escondida, desativada }: { o: OpcaoMidia; b: string; marcada: boolean; escondida: boolean; desativada: boolean }) => {
     const a = porCaminho.get(o.arquivo);
     const src = a ? urlArquivo(a.sha, a.caminho) : '';
     const nome = o.caminho.split('/').pop();
     return (
-      <div key={o.caminho} className="thumbw" style={oculta ? { opacity: 0.5 } : undefined}>
-        <button type="button" role="radio" className="thumb" aria-checked={marcada} disabled={desativada || oculta} onClick={() => escolher(b, o.caminho)} title={o.caminho}>
+      <div key={o.caminho} className={'thumbw' + (escondida ? ' escondida' : '')}>
+        <button type="button" role="radio" className="thumb" aria-checked={marcada} disabled={desativada} onClick={() => escolher(b, o.caminho)} title={o.caminho}>
           {ehVideo(o.caminho) ? <video src={src} preload="metadata" muted /> : <img src={src} alt="" loading="lazy" />}
-          <span>{nome}</span>
+          <span>{escondida ? 'escondida' : nome}</span>
         </button>
-        {excluir === o.arquivo ? (
+        <span className="thumb-icones">
+          <button type="button" className={'ico' + (escondida ? ' on' : '')} disabled={desativada} aria-label={escondida ? `Mostrar ${nome} neste lugar` : `Esconder a mídia deste lugar (${nome})`}
+            title={escondida ? 'Mostrar de novo' : 'Esconder: o lugar fica sem imagem ou vídeo'} onClick={() => esconder(b, o.caminho)}>
+            {escondida ? <IconeOlhoFechado /> : <IconeOlho />}
+          </button>
+          <button type="button" className="ico perigo" aria-label={`Excluir ${nome}`} title="Excluir o arquivo" onClick={() => setExcluir(o.arquivo)}><IconeLixeira /></button>
+        </span>
+        {excluir === o.arquivo && (
           <div className="thumb-conf">
             <span>Excluir {nome}? Sai da pasta e de todos os lugares.</span>
             <button className="btn sm danger-fill" type="button" onClick={() => apagar(o.arquivo)}>Excluir</button>
             <button className="btn sm ghost" type="button" onClick={() => setExcluir(null)}>Não</button>
-          </div>
-        ) : (
-          <div className="thumb-acoes">
-            {oculta
-              ? <button type="button" title="Mostrar de novo nas opções" onClick={() => esconder(o.arquivo, false)}>Mostrar</button>
-              : <button type="button" title="Tirar das opções (o arquivo continua guardado)" onClick={() => esconder(o.arquivo, true)}>Esconder</button>}
-            <button type="button" title="Apagar o arquivo" onClick={() => setExcluir(o.arquivo)}>Excluir</button>
           </div>
         )}
       </div>
@@ -201,13 +201,14 @@ export function PassoMidia() {
               {arrastando === 'secao:' + s && <p className="small" style={{ color: 'var(--accent)' }}>Solte para adicionar na pasta {s}/</p>}
               {msg('secao:' + s)}
               {bases.map((b) => {
-                const todas = opcoesMidia(b, det, caminhos);
-                const ops = todas.filter((o) => !ocultos.has(o.arquivo));
-                const escondidas = todas.filter((o) => ocultos.has(o.arquivo));
+                const ops = opcoesMidia(b, det, caminhos);
                 const geral = cad.vars[b]?.dono === 'geral';
                 const l = geral ? null : linhaDe(b);
                 // o mesmo valor que vai para a página (por cidade sem escolha = escolha geral)
-                const atual = geral || !l ? cad.valorDe(null, b) : cad.valorDe(l, b);
+                const valor = geral || !l ? cad.valorDe(null, b) : cad.valorDe(l, b);
+                const guardada = escolhaDe(b);
+                const escondida = midiaEscondida(guardada);
+                const atual = escondida ? arquivoDaEscolha(guardada) : valor;
                 const herdada = !geral && l && !l[b];
                 // no tapume, só faz sentido escolher por cidade dentro do card que se repete
                 const podePorCidade = evento.cidades.length > 0 && (pag !== 'tapume' || !!det.variaveis.get(b)?.laco);
@@ -219,6 +220,7 @@ export function PassoMidia() {
                         <span className="v">@{b}</span>
                         <span className="small muted">
                           {geral ? 'a mesma em todas as cidades' : `escolha de ${l ? cad.nomeItem(tipoLinha(b), l) : '—'}${herdada ? ' (usando a escolha geral)' : ''}`}
+                          {escondida && <b style={{ color: 'var(--warn)' }}> · escondida: o lugar fica sem mídia</b>}
                         </span>
                       </span>
                       {podePorCidade && (
@@ -229,20 +231,14 @@ export function PassoMidia() {
                       )}
                     </div>
                     <div className="thumbs" role="radiogroup" aria-label={b}>
-                      {ops.map((o) => miniatura({ o, b, marcada: atual === o.caminho, oculta: false, desativada: !geral && !l }))}
-                      {verOcultas.has(b) && escondidas.map((o) => miniatura({ o, b, marcada: false, oculta: true, desativada: true }))}
+                      {ops.map((o) => miniatura({ o, b, marcada: atual === o.caminho, escondida: escondida && atual === o.caminho, desativada: !geral && !l }))}
                       <label className="thumb thumb-novo" title={`Adicionar ${regra.texto} para @${b}`}>
                         <span className="mais">+</span>
                         <span>Arraste ou clique</span>
                         <input type="file" multiple accept={regra.accept} className="sr" onChange={(e) => { receber(e.target.files, s, b); e.target.value = ''; }} />
                       </label>
                     </div>
-                    {!ops.length && !todas.length && <p className="small" style={{ color: 'var(--warn)' }}>Sem arquivo ainda. Arraste {regra.texto} para cá (ficam em <span className="mono">{pastasMidia(b, det).find((p) => p.startsWith('_media'))}</span>).</p>}
-                    {escondidas.length > 0 && (
-                      <button className="btn sm ghost" type="button" style={{ alignSelf: 'start' }} onClick={() => setVerOcultas((v) => { const n = new Set(v); if (n.has(b)) n.delete(b); else n.add(b); return n; })}>
-                        {verOcultas.has(b) ? 'Ocultar as escondidas' : `Ver escondidas (${escondidas.length})`}
-                      </button>
-                    )}
+                    {!ops.length && <p className="small" style={{ color: 'var(--warn)' }}>Sem arquivo ainda. Arraste {regra.texto} para cá (ficam em <span className="mono">{pastasMidia(b, det).find((p) => p.startsWith('_media'))}</span>).</p>}
                     {msg(b)}
                   </div>
                 );
@@ -255,4 +251,15 @@ export function PassoMidia() {
       <NavPassos passo="midia" />
     </>
   );
+}
+
+const svg = { width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, 'aria-hidden': true };
+function IconeOlho() {
+  return <svg {...svg}><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>;
+}
+function IconeOlhoFechado() {
+  return <svg {...svg}><path d="M3 3l18 18" /><path d="M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.2M6.3 6.3A17 17 0 0 0 2 12s3.5 7 10 7a9.6 9.6 0 0 0 5.7-1.8" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /></svg>;
+}
+function IconeLixeira() {
+  return <svg {...svg}><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M6 6l1 14h10l1-14" /><path d="M10 11v6M14 11v6" /></svg>;
 }

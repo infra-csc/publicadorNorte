@@ -74,6 +74,25 @@ export function valorMidia(base: string, escolhido: string | undefined, det: Det
   return padraoMidia(base, ops);
 }
 
+// ---- mídia escondida num lugar ----
+
+/** prefixo da escolha "escondida": guarda o arquivo para voltar quando mostrar de novo ("!oculta:_media/…") */
+export const OCULTA = '!oculta:';
+export const midiaEscondida = (escolha: string | undefined): boolean => !!escolha && escolha.startsWith(OCULTA);
+/** arquivo de uma escolha (escondida ou não) */
+export const arquivoDaEscolha = (escolha: string | undefined): string => (midiaEscondida(escolha) ? escolha!.slice(OCULTA.length) : escolha || '');
+/** valor provisório na montagem: a tag que o recebe sai da página */
+export const MARCA_OCULTA = '__PUB_MIDIA_OCULTA__';
+
+/** Tira da página as tags de mídia escondida (img, video, source); em CSS (url()) o caminho fica vazio. */
+export function tirarMidiaOculta(html: string): string {
+  if (!html.includes(MARCA_OCULTA)) return html;
+  return html
+    .replace(/<video\b[^>]*__PUB_MIDIA_OCULTA__[^>]*>[\s\S]*?<\/video>/gi, '')
+    .replace(/<(?:img|source)\b[^>]*__PUB_MIDIA_OCULTA__[^>]*>/gi, '')
+    .split(MARCA_OCULTA).join('');
+}
+
 // ---- referências de arquivo no HTML ----
 
 const RX_REF = /(?:\s(?:src|href|poster|data-src)\s*=\s*["']([^"']+)["'])|(?:url\(\s*["']?([^"')]+?)["']?\s*\))|(?:\ssrcset\s*=\s*["']([^"']+)["'])/gi;

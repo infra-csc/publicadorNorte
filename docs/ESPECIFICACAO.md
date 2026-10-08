@@ -242,7 +242,7 @@ Adicionar arquivos direto na tela (arrastar do computador ou clicar para procura
 - Nunca sobrescreve: nome ocupado ganha `-2`, `-3`… Conteúdo igual ao de um arquivo guardado não sobe de novo.
 - `@img_` só aceita imagem, `@video_` só vídeo, `@media_` e a seção aceitam os dois.
 
-Cada miniatura tem **Esconder** (sai das opções e não vira padrão, mas continua guardada; "Ver escondidas" mostra e permite trazer de volta) e **Excluir** (com confirmação; apaga o arquivo e as escolhas que apontavam para ele voltam ao padrão). Arquivo escondido continua valendo quando o HTML aponta direto para ele.
+Cada miniatura tem dois ícones: **olho** (esconde a mídia daquele lugar, no evento todo ou na cidade selecionada se for "por cidade": a tag `<img>`/`<video>`/`<source>` sai da página e, em CSS, `url()` fica vazio; nada entra no lugar. Clicar de novo mostra o mesmo arquivo. A escolha fica guardada como `!oculta:<caminho>`) e **lixeira** (exclui o arquivo, com confirmação; as escolhas que apontavam para ele voltam ao padrão).
 
 ---
 

@@ -15,7 +15,7 @@ export { avaliar, nomesFormula } from './formulas';
 export { Cadastro, novaLinha, COLUNAS_NOME, type DadosCadastro } from './cadastro';
 export {
   ajustarTagsMidia, refsDeArquivo, acharArquivo, normRef, opcoesMidia, padraoMidia, valorMidia, pastasMidia,
-  versaoTela, caminhoMidia, secaoMidia, slotMidia, arquivoAceito, tipoArquivo, TIPOS_ARQUIVO, CSS_MIDIA, type OpcaoMidia,
+  versaoTela, caminhoMidia, OCULTA, midiaEscondida, arquivoDaEscolha, tirarMidiaOculta, secaoMidia, slotMidia, arquivoAceito, tipoArquivo, TIPOS_ARQUIVO, CSS_MIDIA, type OpcaoMidia,
 } from './midia';
 export { gerar, type EntradaGerar, type PaginaGerada, type ResultadoGerar } from './gerar';
 export { temCardsFixos } from './cards-fixos';

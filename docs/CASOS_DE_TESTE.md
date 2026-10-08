@@ -120,7 +120,7 @@ Modelo:
 | G11 | variável de mídia por cidade (`_1`) | escolha diferente por linha |
 | G12 | página com `.hero__bg--desk{display:none}` e as duas tags trocadas por vídeo | o CSS injetado não vence o da página (especificidade zero, `:where`): só a versão daquela tela aparece |
 | G13 | mídia sem `_1` passada para "por cidade", uma cidade com escolha e outra sem | a sem escolha usa a escolha geral (não o arquivo padrão) |
-| G14 | arquivo escondido no passo Mídia | sai das opções e do padrão; continua valendo quando o HTML aponta direto para ele |
+| G14 | mídia escondida (geral numa imagem de fundo por CSS; numa cidade num `<img>` trocado por vídeo) | a tag sai da página e `url()` fica vazio; nada entra no lugar; não conta como campo vazio |
 
 ## H. Conversor de cards fixos
 

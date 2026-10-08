@@ -34,8 +34,6 @@ export interface Evento {
   baseUrl: string;
   /** seções escondidas (no evento todo e por cidade). Eventos antigos não têm. */
   secoes?: EscolhaSecoes;
-  /** arquivos de mídia escondidos das opções (continuam guardados) */
-  midiaOculta?: string[];
   publicacoes: Publicacao[];
   /** versão no ar (null = nenhuma) */
   versaoAtiva: number | null;
