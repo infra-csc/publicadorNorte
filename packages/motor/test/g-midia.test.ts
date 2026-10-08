@@ -100,6 +100,20 @@ describe('G. Mídia', () => {
     expect(r.paginas[2].html).toBe('<img src="_media/praca/hero/a.webp">');
   });
 
+  it('G13: mídia passada para "por cidade": a cidade sem escolha usa a escolha geral, não o padrão', () => {
+    const arqs = ['_media/praca/arena/a.webp', '_media/praca/arena/b.webp', '_media/praca/arena/c.webp'];
+    const r = gerar({
+      formato: 'tapume_praca',
+      modelos: { tapume: '', praca: '<img src="@media_arena_desktop">' },
+      cidades: [linha({ cidade: 'SP', media_arena_desktop: '_media/praca/arena/c.webp' }), linha({ cidade: 'RJ' })],
+      vars: { media_arena_desktop: { dono: 'cidade', manual: true } },
+      imagens: { media_arena_desktop: '_media/praca/arena/b.webp' },
+      arquivos: arqs,
+    });
+    expect(r.paginas[1].html).toBe('<img src="_media/praca/arena/c.webp">');
+    expect(r.paginas[2].html).toBe('<img src="_media/praca/arena/b.webp">');
+  });
+
   it('mídia geral usa a escolha de "imagens"; escolha fora das opções volta ao padrão', () => {
     const arqs = ['_media/praca/kit/a.webp', '_media/praca/kit/b.webp'];
     const base = { formato: 'tapume_praca' as const, modelos: { tapume: '', praca: '<img src="@img_kit_foto">' }, cidades: [linha({ cidade: 'SP' })], arquivos: arqs };

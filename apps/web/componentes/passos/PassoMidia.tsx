@@ -1,5 +1,5 @@
 'use client';
-import { ehMidia, FORMATOS, NOME_PAGINA, opcoesMidia, pastasMidia, secaoMidia, sincronizarVars, valorMidia, type TipoPagina } from '@norte/motor';
+import { ehMidia, FORMATOS, NOME_PAGINA, opcoesMidia, pastasMidia, secaoMidia, sincronizarVars, type TipoPagina } from '@norte/motor';
 import { useDeferredValue, useMemo, useState } from 'react';
 import { gerarEvento } from '@/lib/comum/montagem';
 import { urlArquivo } from '../api';
@@ -42,6 +42,17 @@ export function PassoMidia() {
     });
   }
 
+  /** passa a mídia para "uma escolha por cidade" (ou volta para a mesma em todas). As escolhas feitas ficam guardadas. */
+  function porCidade(b: string, sim: boolean) {
+    alterar((e) => {
+      e.vars = sincronizarVars(det, e.vars);
+      // a escolha que estava valendo para todas vira a base de quem ainda não escolheu
+      if (sim && e.vars[b].dono === 'geral' && !e.imagens[b]) e.imagens[b] = cad.valorDe(null, b);
+      e.vars[b].dono = sim ? (e.formato === 'tapume_etapa_praca' && det.variaveis.get(b)?.por.etapa && !det.variaveis.get(b)?.por.praca ? 'etapa' : 'cidade') : 'geral';
+      e.vars[b].manual = true;
+    });
+  }
+
   const ev = useDeferredValue(evento);
   const resultado = useMemo(() => gerarEvento(ev, modelos, arquivos), [ev, modelos, arquivos]);
   const pagina = resultado.paginas.find((p) => p.tipo === pag && (pag === 'tapume' || pag === 'unica' || p.cidadeId === linhaId)) || resultado.paginas.find((p) => p.tipo === pag);
@@ -72,12 +83,26 @@ export function PassoMidia() {
                 const ops = opcoesMidia(b, det, caminhos);
                 const geral = cad.vars[b]?.dono === 'geral';
                 const l = geral ? null : linhaDe(b);
-                const atual = valorMidia(b, geral ? evento.imagens[b] : l?.[b], det, caminhos);
+                // o mesmo valor que vai para a página (por cidade sem escolha = escolha geral)
+                const atual = geral || !l ? cad.valorDe(null, b) : cad.valorDe(l, b);
+                const herdada = !geral && l && !l[b];
+                // no tapume, só faz sentido escolher por cidade dentro do card que se repete
+                const podePorCidade = evento.cidades.length > 0 && (pag !== 'tapume' || !!det.variaveis.get(b)?.laco);
                 return (
                   <div key={b} className="img-slot">
-                    <div className="row" style={{ gap: 8 }}>
-                      <span className="v">@{b}</span>
-                      <span className="small muted">{geral ? 'igual em todas as páginas' : `escolha de ${l ? cad.nomeItem(tipoLinha(b), l) : '—'}`}</span>
+                    <div className="row between" style={{ gap: 8 }}>
+                      <span className="row" style={{ gap: 8 }}>
+                        <span className="v">@{b}</span>
+                        <span className="small muted">
+                          {geral ? 'a mesma em todas as cidades' : `escolha de ${l ? cad.nomeItem(tipoLinha(b), l) : '—'}${herdada ? ' (usando a escolha geral)' : ''}`}
+                        </span>
+                      </span>
+                      {podePorCidade && (
+                        <span className="seg" role="group" aria-label={`Como escolher @${b}`}>
+                          <button type="button" aria-pressed={geral} onClick={() => porCidade(b, false)}>Igual em todas</button>
+                          <button type="button" aria-pressed={!geral} onClick={() => porCidade(b, true)}>Por cidade</button>
+                        </span>
+                      )}
                     </div>
                     {ops.length ? (
                       <div className="thumbs" role="radiogroup" aria-label={b}>

@@ -66,7 +66,10 @@ export class Cadastro {
     if (v?.excluida) return '';
     if (ehMidia(base)) {
       const geral = v?.dono === 'geral' || !it;
-      return valorMidia(base, geral ? this.imagens[base] : it![base], this.det, this.arquivos);
+      // por cidade: a escolha da linha; sem ela, a escolha geral; sem nenhuma, o arquivo padrão
+      const escolha = geral ? this.imagens[base] : it![base] || this.imagens[base];
+      const achado = valorMidia(base, escolha, this.det, this.arquivos);
+      return !geral && it![base] && achado !== it![base] ? valorMidia(base, this.imagens[base], this.det, this.arquivos) : achado;
     }
     if (vistos?.has(base)) return '';
     const bruto = v?.dono === 'geral' || !it ? this.gerais[base] : it[base];

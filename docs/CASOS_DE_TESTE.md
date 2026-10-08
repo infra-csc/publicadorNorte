@@ -36,6 +36,7 @@ Notação: **Entrada** (HTML-modelo e/ou cadastro) → **Esperado**.
 | B5 | Variável movida à mão para geral e HTML reenviado | continua geral (`manual`) |
 | B6 | `@media_*`, `@img_*`, `@video_*` | grupo mídia, nunca coluna de texto |
 | B7 | Formato com etapas, `<!-- @se noturna = sim -->` só no HTML da etapa | etapa (coluna de bloco segue a regra de `_1`) |
+| B8 | HTML trocado por versão com seções novas | cadastro, donos movidos à mão e escolhas de mídia continuam valendo; variáveis novas entram com dono inferido |
 
 ## C. Preço e gratuito (padrão do guia)
 
@@ -118,6 +119,7 @@ Modelo:
 | G10 | pasta antiga `_images/praca/kit/` | aceita como `_media` |
 | G11 | variável de mídia por cidade (`_1`) | escolha diferente por linha |
 | G12 | página com `.hero__bg--desk{display:none}` e as duas tags trocadas por vídeo | o CSS injetado não vence o da página (especificidade zero, `:where`): só a versão daquela tela aparece |
+| G13 | mídia sem `_1` passada para "por cidade", uma cidade com escolha e outra sem | a sem escolha usa a escolha geral (não o arquivo padrão) |
 
 ## H. Conversor de cards fixos
 

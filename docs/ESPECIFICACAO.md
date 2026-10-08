@@ -206,7 +206,8 @@ Tipos aceitos: png, jpg, jpeg, gif, webp, svg, avif, mp4, webm, woff2, woff, ttf
 - Opções = arquivos dentro das pastas `_media/<pagina>/<secao>/` de todas as páginas em que a variável aparece.
 - Desktop/mobile: se o nome do slot tem `desktop`/`desk` ou `mobile`/`mob`/`celular` como palavra, só aparecem arquivos da mesma versão (nome do arquivo ou subpasta). Arquivo sem versão aparece nas duas.
 - Arquivo padrão: o arquivo cujo nome (sem extensão) é igual ao fim da variável, **preferindo imagem**; senão a primeira imagem; senão o primeiro arquivo.
-- Dono: geral (igual em todas as páginas) ou cidade/etapa (escolha por linha). Mesmo menu de chips do passo Variáveis.
+- Dono: geral (igual em todas as páginas) ou cidade/etapa (escolha por linha). Mesmo menu de chips do passo Variáveis, e também uma chave no passo Mídia ("Igual em todas as cidades" / "Escolher por cidade").
+- Por cidade, a linha sem escolha usa a escolha geral; sem escolha geral, o arquivo padrão.
 
 ### 7.3 Referências de arquivo no HTML
 

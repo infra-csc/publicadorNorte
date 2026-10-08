@@ -1,6 +1,6 @@
 // B. Dono (em qual tabela o valor é preenchido)
 import { describe, expect, it } from 'vitest';
-import { colunas, detectar, inferirDonos, sincronizarVars } from '../src/index';
+import { colunas, detectar, gerar, inferirDonos, sincronizarVars } from '../src/index';
 
 describe('B. Dono', () => {
   it('B1: variável sem número é geral', () => {
@@ -47,6 +47,21 @@ describe('B. Dono', () => {
     const depois = sincronizarVars(det2, vars);
     expect(depois.local.dono).toBe('geral');
     expect(depois.uf.dono).toBe('cidade');
+  });
+
+  it('B8: HTML novo com seções a mais substitui o antigo e o cadastro e as escolhas de mídia continuam valendo', () => {
+    const antigo = '<h1>@cidade_1</h1><img src="@media_hero_desktop">';
+    const novo = antigo + '<section id="kit"><p>Kit: @kit_1</p><img src="@img_kit_foto"></section>';
+    const arqs = ['_media/praca/hero/a.webp', '_media/praca/hero/b.webp', '_media/praca/kit/foto.webp'];
+    const det1 = detectar({ tapume: '', praca: antigo }, 'tapume_praca');
+    const vars = sincronizarVars(det1);
+    vars.media_hero_desktop = { ...vars.media_hero_desktop, dono: 'cidade', manual: true }; // passada para "por cidade"
+    const cidades = [{ _id: 'sp', cidade: 'SP', media_hero_desktop: '_media/praca/hero/b.webp' }];
+    const depois = sincronizarVars(detectar({ tapume: '', praca: novo }, 'tapume_praca'), vars);
+    expect(depois.media_hero_desktop).toMatchObject({ dono: 'cidade', manual: true });
+    expect(depois.kit.dono).toBe('cidade');
+    const r = gerar({ formato: 'tapume_praca', modelos: { tapume: '', praca: novo }, vars: depois, cidades: [{ ...cidades[0], kit: 'Camiseta' }], arquivos: arqs });
+    expect(r.paginas[1].html).toBe('<h1>SP</h1><img src="_media/praca/hero/b.webp"><section id="kit"><p>Kit: Camiseta</p><img src="_media/praca/kit/foto.webp"></section>');
   });
 
   it('B5b: sem "manual", o dono é deduzido de novo a cada envio', () => {
