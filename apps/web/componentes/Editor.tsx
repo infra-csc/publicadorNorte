@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ArquivoMidia, Evento, EventoCompleto } from '@/lib/comum/tipos';
 import { api, ErroApi, json } from './api';
+import { useRolagemArrastando } from './rolagemArrastando';
 import { Topo } from './Topo';
 
 export const PASSOS = [
@@ -60,6 +61,7 @@ export function Editor({ slug, children }: { slug: string; children: React.React
   const salvando = useRef<Promise<void> | null>(null);
   const pendente = useRef(false);
   const path = usePathname();
+  useRolagemArrastando();
 
   useEffect(() => {
     api<EventoCompleto>(`/api/eventos/${slug}`).then(
