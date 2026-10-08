@@ -242,3 +242,25 @@ tr:last-child td { border-bottom: 0; }
 .banco-card .colpanel { grid-column: 1 / -1; }
 .banco-logo { height: 90px; display: grid; place-items: center; background: #fff; border: 1px solid #e3e3e3; border-radius: 10px; }
 .banco-logo img { max-width: 80%; max-height: 70px; object-fit: contain; }
+
+/* abas Eventos | Patrocínios */
+.abas { display: flex; gap: 4px; }
+.abas a { padding: 6px 12px; border-radius: 8px; color: var(--mute); text-decoration: none; font-weight: 600; font-size: 14px; }
+.abas a:hover { background: var(--sunk); color: var(--ink); }
+.abas a[aria-current="page"] { background: var(--sunk); color: var(--ink); }
+
+/* Patrocínios: cards e "onde aparece" */
+.banco-card { cursor: pointer; transition: border-color .15s; }
+.banco-card:hover { border-color: var(--mute); }
+.banco-card.aberto { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.banco-card.novo { font: inherit; font-weight: 600; align-items: center; justify-content: center; min-height: 230px; border-style: dashed; color: var(--mute); background: none; }
+.banco-grade { grid-auto-flow: dense; }
+.banco-card .inp { padding: 6px 8px; font-size: 14px; }
+.banco-card .inp.nome { font-weight: 600; }
+.banco-card .inp.erro { border-color: var(--bad); }
+.onde { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 14px; padding: 16px; border: 1px solid var(--accent); border-radius: 12px; background: var(--panel); }
+.onde-ev { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+.onde-ev:first-of-type { border-top: 0; padding-top: 0; }
+.onde-pg { display: grid; grid-template-columns: minmax(120px, 1fr) auto auto auto; gap: 8px; align-items: center; font-size: 14px; }
+.onde-pg select { padding: 5px 8px; width: auto; }
+@media (max-width: 640px) { .onde-pg { grid-template-columns: 1fr 1fr; } .onde-pg > :first-child { grid-column: 1 / -1; } }

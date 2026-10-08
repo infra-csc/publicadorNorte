@@ -1,7 +1,7 @@
 'use client';
 // Seção de patrocinadores de cada página: o tapume e cada cidade montam a sua (a etapa usa a da cidade).
 // Os logos vêm do banco geral; cadastrar um novo aqui já salva no banco.
-import { TAMANHOS, type BlocoPatrocinio, type ComposicaoPatrocinio, type OrdemBloco, type Tamanho } from '@norte/motor';
+import { COTAS_PADRAO, slug, TAMANHOS, type BlocoPatrocinio, type Cota, type ComposicaoPatrocinio, type OrdemBloco, type Tamanho } from '@norte/motor';
 import Link from 'next/link';
 import { useDeferredValue, useMemo, useState } from 'react';
 import { gerarEvento } from '@/lib/comum/montagem';
@@ -12,6 +12,8 @@ import { Previa } from '../Previa';
 import { Alca, mover, useReordenar } from '../Reordenar';
 
 const novoId = () => crypto.randomUUID().slice(0, 8);
+/** cotas do evento (por padrão: Master GG, Gold G, Silver M, Apoio/Ticketeria/Realização P) */
+const cotasDo = (e: Evento): Cota[] => e.patrocinios?.cotas || COTAS_PADRAO;
 const garantir = (e: Evento, pagina: string): ComposicaoPatrocinio => {
   e.patrocinios ??= { porPagina: {} };
   return (e.patrocinios.porPagina[pagina] ??= { blocos: [] });
@@ -88,10 +90,11 @@ function Escolher({ banco, jaTem, escolher, fechar }: { banco: BancoPatrocinios;
 }
 
 function Bloco({ pagina, b, i, total, alca, moverBloco }: { pagina: string; b: BlocoPatrocinio; i: number; total: number; alca: ReturnType<typeof useReordenar>['alca']; moverBloco: (de: number, para: number) => void }) {
-  const { banco, alterar } = useEditor();
+  const { banco, evento, alterar } = useEditor();
+  const cotas = cotasDo(evento);
   const [escolhendo, setEscolhendo] = useState(false);
   const [remover, setRemover] = useState(false);
-  const cota = banco?.cotas.find((c) => c.id === b.cota);
+  const cota = cotas.find((c) => c.id === b.cota);
   const porId = new Map((banco?.patrocinadores || []).map((p) => [p.id, p]));
   const mudar = (fn: (x: BlocoPatrocinio) => void) =>
     alterar((e) => {
@@ -109,7 +112,7 @@ function Bloco({ pagina, b, i, total, alca, moverBloco }: { pagina: string; b: B
       <div className="row" style={{ gap: 10 }}>
         <Alca i={i} total={total} alca={alca} mover={moverBloco} rotulo={cota?.nome || 'cota'} />
         <select className="inp" style={{ width: 'auto' }} aria-label="Cota" value={b.cota} onChange={(e) => { const v = e.target.value; mudar((x) => { x.cota = v; }); }}>
-          {(banco?.cotas || []).map((c) => <option key={c.id} value={c.id}>{c.nome} ({c.tamanho})</option>)}
+          {cotas.map((c) => <option key={c.id} value={c.id}>{c.nome} ({c.tamanho})</option>)}
         </select>
         <input className="inp" style={{ maxWidth: 220 }} aria-label="Título" disabled={semTitulo} placeholder={cota?.nome || 'Título'} value={b.titulo ?? ''} onChange={(e) => { const v = e.target.value; mudar((x) => { x.titulo = v || undefined; }); }} />
         <label className="row small" style={{ gap: 6 }}><input type="checkbox" checked={semTitulo} onChange={(e) => { const v = e.target.checked; mudar((x) => { x.titulo = v ? '' : undefined; }); }} />Sem título</label>
@@ -171,7 +174,29 @@ export function PassoPatrocinios() {
   const resultado = useMemo(() => gerarEvento(ev, modelos, arquivos, banco), [ev, modelos, arquivos, banco]);
   const pag = pagina === 'tapume' ? resultado.paginas.find((p) => p.tipo === 'tapume') : resultado.paginas.find((p) => p.tipo === 'praca' && p.cidadeId === pagina);
 
+  const cotas = cotasDo(evento);
+  const [novaCota, setNovaCota] = useState<{ nome: string; tamanho: Tamanho } | null>(null);
+  function criarCota() {
+    const nome = novaCota?.nome.trim();
+    if (!nome) return;
+    const tamanho = novaCota!.tamanho;
+    alterar((e) => {
+      const lista = structuredClone(cotasDo(e));
+      const base = slug(nome) || 'cota';
+      let id = base;
+      for (let i = 2; lista.some((x) => x.id === id); i++) id = `${base}-${i}`;
+      // entra antes da Ticketeria (perto das de tamanho P), ou no fim
+      const ondeT = lista.findIndex((x) => x.id === 'ticketeria');
+      const c: Cota = { id, nome, tamanho };
+      if (ondeT >= 0) lista.splice(ondeT, 0, c); else lista.push(c);
+      e.patrocinios ??= { porPagina: {} };
+      e.patrocinios.cotas = lista;
+      garantir(e, pagina).blocos.push({ id: novoId(), cota: id, ordem: 'alfabetica', itens: [] });
+    });
+    setNovaCota(null);
+  }
   function adicionarCota(cotaId: string) {
+    if (cotaId === '__nova') return setNovaCota({ nome: '', tamanho: 'P' });
     alterar((e) => { garantir(e, pagina).blocos.push({ id: novoId(), cota: cotaId, ordem: 'alfabetica', itens: [] }); });
   }
   function copiarDe(origem: string) {
@@ -207,7 +232,7 @@ export function PassoPatrocinios() {
                   {nome}
                 </label>
               ))}
-              <Link href="/patrocinadores" target="_blank">Banco de patrocinadores ↗</Link>
+              <Link href="/patrocinios" target="_blank">Patrocínios ↗</Link>
             </span>
           </div>
           <div className="split">
@@ -221,8 +246,19 @@ export function PassoPatrocinios() {
               <div className="row">
                 <select className="inp" style={{ width: 'auto' }} value="" aria-label="Adicionar cota" onChange={(e) => e.target.value && adicionarCota(e.target.value)}>
                   <option value="">+ Adicionar cota…</option>
-                  {banco.cotas.map((c) => <option key={c.id} value={c.id}>{c.nome} ({c.tamanho})</option>)}
+                  {cotas.map((c) => <option key={c.id} value={c.id}>{c.nome} ({c.tamanho})</option>)}
+                  <option value="__nova">Nova cota…</option>
                 </select>
+                {novaCota && (
+                  <>
+                    <input className="inp" style={{ maxWidth: 240 }} autoFocus placeholder="Nome da cota (ex.: Apoio de mídia)" aria-label="Nome da nova cota" value={novaCota.nome} onChange={(e) => setNovaCota({ ...novaCota, nome: e.target.value })} onKeyDown={(e) => e.key === 'Enter' && criarCota()} />
+                    <select className="inp" style={{ width: 'auto' }} aria-label="Tamanho da nova cota" value={novaCota.tamanho} onChange={(e) => setNovaCota({ ...novaCota, tamanho: e.target.value as Tamanho })}>
+                      {TAMANHOS.map((t) => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                    <button className="btn sm pri" type="button" disabled={!novaCota.nome.trim()} onClick={criarCota}>Criar cota</button>
+                    <button className="btn sm ghost" type="button" onClick={() => setNovaCota(null)}>Cancelar</button>
+                  </>
+                )}
               </div>
             </div>
             <div className="lado"><Previa html={pag?.html ?? null} titulo={pag ? `${pag.titulo} · ${pag.arquivo}` : 'Prévia'} altura={560} /></div>

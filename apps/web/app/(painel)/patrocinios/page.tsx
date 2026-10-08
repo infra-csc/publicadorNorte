@@ -1,10 +1,10 @@
 import { BancoPatrocinadores } from '@/componentes/BancoPatrocinadores';
 import { Topo } from '@/componentes/Topo';
 
-export default function Patrocinadores() {
+export default function Patrocinios() {
   return (
     <>
-      <Topo crumb="Patrocinadores" />
+      <Topo aba="patrocinios" />
       <div className="shell home">
         <main className="main">
           <BancoPatrocinadores />

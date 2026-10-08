@@ -23,7 +23,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     const versao = Math.max(0, ...c.evento.publicacoes.map((p) => p.versao)) + 1;
     const { commit } = await destino.publicar(slug, versao, arquivos);
     const pub: Publicacao = { versao, commit, em: new Date().toISOString(), paginas: r.paginas.length, avisos: r.avisos.length, url: await destino.url(slug) };
-    const salvo = await armazenamento.atualizar(slug, (e) => { e.publicacoes.push(pub); e.versaoAtiva = versao; }, `Registra a publicação v${versao} de ${slug}`);
+    const salvo = await armazenamento.atualizar(slug, (e) => { e.publicacoes.push(pub); e.versaoAtiva = versao; delete e.pendencia; }, `Registra a publicação v${versao} de ${slug}`);
     return Response.json({ publicacao: pub, arquivos: usados.size, ...salvo });
   });
 }

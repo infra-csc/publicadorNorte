@@ -120,6 +120,13 @@ export function PassoPublicar() {
           </span>
         </div>
         {erro && <div className="w-item bad"><span className="ic">✕</span><div><b>Não deu para publicar</b>{erro}</div></div>}
+        {!!evento.pendencia?.motivos.length && (
+          <div className="w-item warn"><span className="ic">!</span><div>
+            <b>Atualização pendente: o site no ar ainda não tem estas mudanças</b>
+            <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>{evento.pendencia.motivos.map((m) => <li key={m}>{m}</li>)}</ul>
+            Publique de novo para levar ao ar.
+          </div></div>
+        )}
         {r.bloqueado ? <Avisos avisos={r.avisos.filter((a) => a.nivel === 'bloqueia')} /> : r.avisos.length > 0 && (
           <div className="w-item warn"><span className="ic">!</span><div><b>{r.avisos.length} aviso(s) em aberto</b>Dá para publicar assim mesmo: as variáveis sem valor saem em branco. Veja no passo Conferir.</div></div>
         )}

@@ -208,14 +208,15 @@ Em cada página gerada, nesta ordem: reordena as seções (6.5), tira as seçõe
 
 ### 6.7 Patrocinadores
 
-- **Banco geral** (um só para todos os sites; tela "Banco de patrocinadores", fora dos eventos): patrocinador = nome, logo (imagem), link (opcional) e ativo. Cotas = nome, tamanho (GG, G, M, P) e "ao lado da cota anterior". Cotas padrão: Master (GG), Gold (G), Silver (M), Apoio (P), Ticketeria (P), Realização (P, ao lado da Ticketeria). Dá para criar cotas novas (entram antes da Ticketeria) e mudar a ordem.
-- Cadastrar um patrocinador dentro do evento grava no banco geral. Patrocinador usado em evento não pode ser apagado (só desativado). Patrocinador desativado não aparece nas páginas e gera aviso.
+- **Aba Patrocínios** (ao lado de Eventos; um cadastro só para todos os sites): cada patrocinador é um card com logo, nome (obrigatório) e link (opcional), editáveis ali mesmo, mais trocar logo e ativar/desativar. Clicar no card lista os eventos e páginas (tapume e cidades) em que o logo está, com a cota e o tamanho; dá para trocar a cota, o tamanho ou tirar o logo dali. Essa aba **não publica**: os eventos já publicados afetados (por essas edições ou por mudança de nome, link, logo ou ativo) ficam com **"atualização pendente"** (na lista de eventos e no passo Publicar, com os motivos) até serem publicados de novo.
+- **Cotas ficam no evento**: padrão Master (GG), Gold (G), Silver (M), Apoio (P), Ticketeria (P), Realização (P, ao lado da Ticketeria). No passo Patrocínios dá para criar uma cota nova (nome e tamanho; entra antes da Ticketeria), só para aquele evento.
+- Cadastrar um patrocinador dentro do evento grava no cadastro geral. Patrocinador usado em evento não pode ser apagado (só desativado). Patrocinador desativado não aparece nas páginas e gera aviso.
 - **Composição por página**: o tapume tem a sua; cada cidade monta a sua; a página da etapa usa a da cidade. "Copiar de…" copia de outra página.
 - Bloco = uma cota com os seus logos: título (o nome da cota, outro texto ou sem título), ao lado do bloco anterior (padrão da cota), ordem dos logos (alfabética, escolhida arrastando, ou aleatória a cada visita) e tamanho por logo (padrão da cota). Num bloco misto, cada tamanho forma uma linha, do maior para o menor (ex.: um GG em cima e dois P embaixo).
 - Página: blocos um abaixo do outro; blocos "ao lado" dividem a mesma faixa. Cards brancos com borda arredondada; tamanhos GG 246×180, G 202×150, M 172×137, P 127×103 px (no celular, menores). Fundo da seção e cor dos títulos por evento.
 - Logos com link abrem em nova aba (`rel="noopener sponsored"`). Ordem aleatória: um script curto embaralha a cada visita.
 - Posição: sempre antes do rodapé (antes do `<footer>` do HTML, se houver; senão antes de `</body>`, e o rodapé padrão vem depois).
-- Os logos vão para o site em `_patrocinadores/`. Mudou um patrocinador no banco: a tela mostra os eventos publicados que o usam e oferece "Republicar esses eventos".
+- Os logos vão para o site em `_patrocinadores/`. Publicar o evento limpa a "atualização pendente".
 
 ---
 

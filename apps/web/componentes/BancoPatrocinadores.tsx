@@ -1,85 +1,158 @@
 'use client';
-// Banco geral de patrocinadores: alimenta todos os eventos. Tela separada (no futuro, acesso só do setor de patrocínios).
-import { TAMANHOS, slug, type Cota, type Tamanho } from '@norte/motor';
+// Patrocínios: o cadastro geral de patrocinadores (um só para todos os sites), em cards.
+// Clicar num card mostra onde o logo aparece (evento, página e cota) com edição rápida.
+// Nada aqui publica: os eventos publicados afetados ficam com "atualização pendente".
+import { TAMANHOS, type Tamanho } from '@norte/motor';
 import Link from 'next/link';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type { BancoPatrocinios, PatrocinadorBanco, UsoPatrocinadores } from '@/lib/comum/tipos';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
+import type { AplicacaoPatrocinador, BancoPatrocinios, PatrocinadorBanco, UsoPatrocinadores } from '@/lib/comum/tipos';
 import { api, ErroApi, json } from './api';
 import { novoPatrocinador, porNome, subirLogo, urlLogo } from './patrocinadores';
-import { Alca, mover, useReordenar } from './Reordenar';
 
 type Dados = { banco: BancoPatrocinios; versao: string; uso: UsoPatrocinadores };
+type Salvar = (fn: (b: BancoPatrocinios) => void) => Promise<void>;
 
-function FormPatrocinador({ inicial, salvar, cancelar }: { inicial?: PatrocinadorBanco; salvar: (d: { nome: string; url: string; arquivo: File | null }) => Promise<void>; cancelar: () => void }) {
-  const [nome, setNome] = useState(inicial?.nome || '');
-  const [url, setUrl] = useState(inicial?.url || '');
+const semAcento = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+/** clique dentro de campo ou botão não abre/fecha o card */
+const ehControle = (t: EventTarget) => t instanceof Element && !!t.closest('input, select, button, label, a, textarea');
+
+function NovoCard({ salvar, fechar }: { salvar: Salvar; fechar: () => void }) {
+  const [nome, setNome] = useState('');
+  const [url, setUrl] = useState('');
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [msg, setMsg] = useState('');
+  const previa = arquivo ? URL.createObjectURL(arquivo) : '';
+  useEffect(() => () => { if (previa) URL.revokeObjectURL(previa); }, [previa]);
+  async function criar() {
+    if (!nome.trim()) return setMsg('O nome é obrigatório.');
+    if (!arquivo) return setMsg('Escolha o logo.');
+    setMsg('Salvando…');
+    try {
+      const logo = await subirLogo(nome, arquivo);
+      await salvar((b) => { b.patrocinadores.push(novoPatrocinador(b, { nome, url, ...logo })); });
+      fechar();
+    } catch (e) { setMsg((e as Error).message); }
+  }
   return (
-    <div className="colpanel">
-      <b>{inicial ? `Editar ${inicial.nome}` : 'Novo patrocinador'}</b>
-      <div className="grid3">
-        <label className="f">Nome<input className="inp" autoFocus value={nome} onChange={(e) => setNome(e.target.value)} /></label>
-        <label className="f">Link <small>Opcional, começa com https://</small><input className="inp mono" placeholder="https://…" value={url} onChange={(e) => setUrl(e.target.value)} /></label>
-        <label className="f">{inicial ? 'Trocar o logo' : 'Logo'} <small>SVG ou PNG de preferência</small><input className="inp" type="file" accept="image/*" onChange={(e) => setArquivo(e.target.files?.[0] || null)} /></label>
-      </div>
-      <div className="row">
-        <button className="btn sm pri" type="button" onClick={async () => {
-          if (!nome.trim()) return setMsg('Dê um nome.');
-          if (!inicial && !arquivo) return setMsg('Escolha o logo.');
-          setMsg('Salvando…');
-          try { await salvar({ nome, url, arquivo }); } catch (e) { setMsg((e as Error).message); }
-        }}>Salvar</button>
-        <button className="btn sm ghost" type="button" onClick={cancelar}>Cancelar</button>
+    <div className="banco-card aberto" style={{ cursor: 'default' }}>
+      <label className="banco-logo" style={{ cursor: 'pointer' }} title="Escolher o logo">
+        {previa ? <img src={previa} alt="" /> : <span className="small muted">+ Logo (SVG ou PNG)</span>}
+        <input type="file" accept="image/*" hidden onChange={(e) => setArquivo(e.target.files?.[0] || null)} />
+      </label>
+      <input className={'inp nome' + (msg === 'O nome é obrigatório.' ? ' erro' : '')} autoFocus placeholder="Nome (obrigatório)" aria-label="Nome" value={nome} onChange={(e) => setNome(e.target.value)} />
+      <input className="inp mono" placeholder="Link (opcional) https://…" aria-label="Link" value={url} onChange={(e) => setUrl(e.target.value)} />
+      <div className="row" style={{ gap: 6 }}>
+        <button className="btn sm pri" type="button" onClick={criar}>Cadastrar</button>
+        <button className="btn sm ghost" type="button" onClick={fechar}>Cancelar</button>
       </div>
       {msg && <p className="small" style={{ color: msg === 'Salvando…' ? 'var(--mute)' : 'var(--bad)' }}>{msg}</p>}
     </div>
   );
 }
 
-function Cotas({ dados, salvarBanco }: { dados: Dados; salvarBanco: (fn: (b: BancoPatrocinios) => void, mudou?: string[]) => Promise<void> }) {
-  const cotas = dados.banco.cotas;
-  const [nova, setNova] = useState('');
-  const moverCota = (de: number, para: number) => salvarBanco((b) => { b.cotas = mover(b.cotas, de, para); });
-  const { alca, alvo } = useReordenar(moverCota);
-  const mudar = (id: string, fn: (c: Cota) => void) => salvarBanco((b) => { const c = b.cotas.find((x) => x.id === id); if (c) fn(c); });
+function Card({ p, usos, aberto, abrir, salvar }: { p: PatrocinadorBanco; usos: UsoPatrocinadores[string]; aberto: boolean; abrir: () => void; salvar: Salvar }) {
+  const [nome, setNome] = useState(p.nome);
+  const [url, setUrl] = useState(p.url);
+  const [msg, setMsg] = useState('');
+  useEffect(() => { setNome(p.nome); setUrl(p.url); }, [p.nome, p.url]);
+  const mudar = (fn: (x: PatrocinadorBanco) => void) => salvar((b) => { const x = b.patrocinadores.find((y) => y.id === p.id); if (x) fn(x); });
+  const aplicacoes = usos.reduce((n, u) => n + u.aplicacoes.length, 0);
+
+  async function gravarNome() {
+    const v = nome.trim();
+    if (!v) { setMsg('O nome é obrigatório.'); setNome(p.nome); return; }
+    setMsg('');
+    if (v !== p.nome) await mudar((x) => { x.nome = v; }).catch(() => setNome(p.nome));
+  }
+  async function gravarUrl() {
+    const v = url.trim();
+    if (v && !/^https?:\/\//i.test(v)) { setMsg('O link precisa começar com https://'); return; }
+    setMsg('');
+    if (v !== p.url) await mudar((x) => { x.url = v; }).catch(() => setUrl(p.url));
+  }
+  async function trocarLogo(f: File | undefined) {
+    if (!f) return;
+    setMsg('Enviando o logo…');
+    try { const logo = await subirLogo(p.nome, f); await mudar((x) => Object.assign(x, logo)); setMsg(''); } catch (e) { setMsg((e as Error).message); }
+  }
+
   return (
-    <section className="card stack">
-      <div>
-        <h2 style={{ fontSize: 18 }}>Cotas</h2>
-        <p className="small muted">Valem para todos os eventos. A ordem aqui é a ordem sugerida na página. Tamanhos: GG (Master), G (Gold), M (Silver), P (Apoio, Ticketeria, Realização).</p>
+    <div className={'banco-card' + (p.ativo ? '' : ' inativo') + (aberto ? ' aberto' : '')} onClick={(e) => { if (!ehControle(e.target)) abrir(); }}
+      role="group" aria-label={p.nome}>
+      <div className="banco-logo"><img src={urlLogo(p)} alt="" loading="lazy" /></div>
+      <input className="inp nome" aria-label="Nome (obrigatório)" value={nome} onChange={(e) => setNome(e.target.value)} onBlur={gravarNome} onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} />
+      <input className="inp mono" aria-label="Link (opcional)" placeholder="Link (opcional)" value={url} onChange={(e) => setUrl(e.target.value)} onBlur={gravarUrl} onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} />
+      {msg && <span className="small" style={{ color: msg.startsWith('Enviando') ? 'var(--mute)' : 'var(--bad)' }}>{msg}</span>}
+      <button type="button" className="small" style={{ all: 'unset', cursor: 'pointer', color: usos.length ? 'var(--accent)' : 'var(--mute)', fontSize: 13 }} onClick={abrir} aria-expanded={aberto}>
+        {usos.length ? `Em ${usos.length} evento(s), ${aplicacoes} página(s) ${aberto ? '▴' : '▾'}` : 'Não usado em nenhum evento'}
+        {!p.ativo && ' · desativado'}
+      </button>
+      <div className="row" style={{ gap: 6 }}>
+        <label className="btn sm ghost">Trocar logo<input type="file" accept="image/*" hidden onChange={(e) => trocarLogo(e.target.files?.[0])} /></label>
+        <button className="btn sm ghost" type="button" onClick={() => mudar((x) => { x.ativo = !x.ativo; })}>{p.ativo ? 'Desativar' : 'Ativar'}</button>
+        {!usos.length && <button className="btn sm ghost danger" type="button" onClick={() => { if (confirm(`Apagar ${p.nome} do cadastro?`)) salvar((b) => { b.patrocinadores = b.patrocinadores.filter((y) => y.id !== p.id); }); }}>Apagar</button>}
       </div>
-      <div className="lista-secoes">
-        {cotas.map((c, i) => (
-          <div key={c.id} className="secao-item" {...alvo(i)}>
-            <Alca i={i} total={cotas.length} alca={alca} mover={moverCota} rotulo={c.nome} />
-            <div className="row" style={{ gap: 10 }}>
-              <input className="inp" style={{ maxWidth: 220 }} defaultValue={c.nome} aria-label="Nome da cota" onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== c.nome) mudar(c.id, (x) => { x.nome = v; }); }} />
-              <select className="inp" style={{ width: 'auto' }} aria-label="Tamanho" value={c.tamanho} onChange={(e) => { const v = e.target.value as Tamanho; mudar(c.id, (x) => { x.tamanho = v; }); }}>
-                {TAMANHOS.map((t) => <option key={t} value={t}>{t}</option>)}
-              </select>
-              <label className="row small" style={{ gap: 6 }}><input type="checkbox" checked={!!c.aoLado} onChange={(e) => { const v = e.target.checked; mudar(c.id, (x) => { x.aoLado = v; }); }} />Ao lado da cota anterior</label>
-              <button className="iconbtn" type="button" aria-label={`Apagar a cota ${c.nome}`} title="Apagar a cota (os eventos que usam deixam de mostrar esse bloco)" onClick={() => { if (confirm(`Apagar a cota ${c.nome}? Os eventos que usam deixam de mostrar esse bloco.`)) salvarBanco((b) => { b.cotas = b.cotas.filter((x) => x.id !== c.id); }); }}>✕</button>
-            </div>
+    </div>
+  );
+}
+
+/** onde o logo aparece, com troca de cota/tamanho e retirada (não publica) */
+function OndeAparece({ p, usos, recarregar }: { p: PatrocinadorBanco; usos: UsoPatrocinadores[string]; recarregar: () => Promise<unknown> }) {
+  const [ocupado, setOcupado] = useState('');
+  const [erro, setErro] = useState('');
+  const [feito, setFeito] = useState(false);
+
+  async function editar(slug: string, a: AplicacaoPatrocinador, pedido: { acao: 'cota' | 'tamanho' | 'remover'; cota?: string; tamanho?: Tamanho | '' }) {
+    setOcupado(slug + a.pagina);
+    setErro('');
+    try {
+      await api(`/api/eventos/${slug}/patrocinios`, json('PATCH', { pagina: a.pagina, patrocinador: p.id, nome: p.nome, ...pedido }));
+      await recarregar();
+      setFeito(true);
+    } catch (e) {
+      setErro((e as Error).message);
+    } finally {
+      setOcupado('');
+    }
+  }
+
+  return (
+    <div className="onde">
+      <div className="row between">
+        <b>Onde {p.nome} aparece</b>
+        <span className="small muted">As mudanças aqui não publicam o site: o evento fica com “atualização pendente”.</span>
+      </div>
+      {erro && <div className="w-item bad"><span className="ic">✕</span><div>{erro}</div></div>}
+      {feito && <div className="w-item info"><span className="ic">✓</span><div>Salvo. Os eventos já publicados mudam no ar só quando forem publicados de novo.</div></div>}
+      {!usos.length && <p className="small muted">Este logo ainda não está em nenhum evento. Para usar, abra o evento e vá em Patrocínios.</p>}
+      {usos.map((u) => (
+        <div key={u.slug} className="onde-ev">
+          <div className="row" style={{ gap: 8 }}>
+            <b>{u.nome}</b>
+            {u.publicado ? <span className="pill ok">no ar</span> : <span className="pill">rascunho</span>}
+            {u.pendente && <span className="pill warn">atualização pendente</span>}
+            <Link className="small" href={`/eventos/${u.slug}/patrocinios`} style={{ marginLeft: 'auto' }}>Abrir no evento →</Link>
           </div>
-        ))}
-      </div>
-      <div className="row">
-        <input className="inp" style={{ maxWidth: 260 }} placeholder="Nova cota (ex.: Apoio de mídia)" value={nova} onChange={(e) => setNova(e.target.value)} />
-        <button className="btn sm" type="button" disabled={!nova.trim()} onClick={() => {
-          const nome = nova.trim();
-          salvarBanco((b) => {
-            const base = slug(nome) || 'cota';
-            let id = base;
-            for (let i = 2; b.cotas.some((x) => x.id === id); i++) id = `${base}-${i}`;
-            // entra antes da Ticketeria (perto das de tamanho P), ou no fim
-            const ondeT = b.cotas.findIndex((x) => x.id === 'ticketeria');
-            const c: Cota = { id, nome, tamanho: 'P' };
-            if (ondeT >= 0) b.cotas.splice(ondeT, 0, c); else b.cotas.push(c);
-          }).then(() => setNova(''));
-        }}>+ Criar cota</button>
-      </div>
-    </section>
+          {u.aplicacoes.map((a) => {
+            const ocupada = ocupado === u.slug + a.pagina;
+            return (
+              <div key={a.pagina + a.bloco} className="onde-pg" style={{ opacity: ocupada ? 0.5 : 1 }}>
+                <span>{a.nomePagina}</span>
+                <select className="inp" aria-label={`Cota em ${a.nomePagina}`} value={a.cota} disabled={!!ocupado} onChange={(e) => editar(u.slug, a, { acao: 'cota', cota: e.target.value })}>
+                  {!u.cotas.some((c) => c.id === a.cota) && <option value={a.cota}>{a.cotaNome}</option>}
+                  {u.cotas.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                </select>
+                <select className="inp" aria-label={`Tamanho em ${a.nomePagina}`} value={a.tamanho} disabled={!!ocupado} onChange={(e) => editar(u.slug, a, { acao: 'tamanho', tamanho: e.target.value as Tamanho | '' })}>
+                  <option value="">{a.tamanhoCota} (da cota)</option>
+                  {TAMANHOS.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+                <button className="btn sm ghost danger" type="button" disabled={!!ocupado} onClick={() => { if (confirm(`Tirar ${p.nome} de ${a.nomePagina} (${u.nome})?`)) editar(u.slug, a, { acao: 'remover' }); }}>Tirar</button>
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -87,26 +160,25 @@ export function BancoPatrocinadores() {
   const [dados, setDados] = useState<Dados | null>(null);
   const ref = useRef<Dados | null>(null);
   const [erro, setErro] = useState('');
-  const [editando, setEditando] = useState<string | null>(null);
   const [busca, setBusca] = useState('');
-  const [mudados, setMudados] = useState<Set<string>>(new Set());
-  const [republicando, setRepublicando] = useState('');
+  const [novo, setNovo] = useState(false);
+  const [aberto, setAberto] = useState<string | null>(null);
 
   const ler = useCallback(() => api<Dados>('/api/patrocinadores').then((d) => { ref.current = d; setDados(d); return d; }), []);
   useEffect(() => { ler().catch((e) => setErro(e.message)); }, [ler]);
 
-  /** muda e grava o banco; `mudou` = patrocinadores alterados (para oferecer republicar os eventos que usam) */
-  const salvarBanco = useCallback(async (fn: (b: BancoPatrocinios) => void, mudou: string[] = []) => {
+  /** muda e grava o cadastro (o servidor marca os eventos publicados afetados como pendentes) */
+  const salvar = useCallback<Salvar>(async (fn) => {
     setErro('');
     for (let tentativa = 0; ; tentativa++) {
       const atual = ref.current!;
-      const novo = structuredClone(atual.banco);
-      fn(novo);
+      const novoBanco = structuredClone(atual.banco);
+      fn(novoBanco);
       try {
-        const r = await api<{ versao: string }>('/api/patrocinadores', json('PUT', { banco: novo, versao: atual.versao }));
-        ref.current = { ...atual, banco: novo, versao: r.versao };
+        const r = await api<{ versao: string }>('/api/patrocinadores', json('PUT', { banco: novoBanco, versao: atual.versao }));
+        ref.current = { ...atual, banco: novoBanco, versao: r.versao };
         setDados(ref.current);
-        if (mudou.length) setMudados((m) => new Set([...m, ...mudou]));
+        ler().catch(() => {}); // atualiza o uso e as pendências
         return;
       } catch (e) {
         if (e instanceof ErroApi && e.status === 409 && tentativa < 2) { await ler(); continue; }
@@ -116,85 +188,33 @@ export function BancoPatrocinadores() {
     }
   }, [ler]);
 
-  if (!dados) return <p className="muted">{erro || 'Carregando o banco…'}</p>;
+  if (!dados) return <p className="muted">{erro || 'Carregando os patrocínios…'}</p>;
   const { banco, uso } = dados;
-  const lista = [...banco.patrocinadores].filter((p) => p.nome.toLowerCase().includes(busca.toLowerCase())).sort(porNome);
-  // eventos publicados que usam patrocinadores alterados
-  const afetados = new Map<string, string>();
-  for (const id of mudados) for (const u of uso[id] || []) if (u.publicado) afetados.set(u.slug, u.nome);
-
-  async function republicar() {
-    const slugs = [...afetados.keys()];
-    for (let i = 0; i < slugs.length; i++) {
-      setRepublicando(`Republicando ${i + 1} de ${slugs.length}: ${afetados.get(slugs[i])}…`);
-      try { await api(`/api/eventos/${slugs[i]}/publicar`, { method: 'POST' }); } catch (e) { setErro(`${afetados.get(slugs[i])}: ${(e as Error).message}`); }
-    }
-    setRepublicando('');
-    setMudados(new Set());
-    ler();
-  }
+  const lista = banco.patrocinadores.filter((p) => semAcento(p.nome).includes(semAcento(busca))).sort(porNome);
 
   return (
     <>
       <div className="head">
-        <span className="eyebrow"><Link href="/">← Eventos</Link></span>
-        <h1>Banco de patrocinadores</h1>
-        <p>Um cadastro só para todos os sites. Os eventos escolhem daqui os logos de cada cota.</p>
+        <h1>Patrocínios</h1>
+        <p>Um cadastro só para todos os sites. Clique num patrocinador para ver em que eventos e páginas ele aparece e mudar a cota por ali.</p>
       </div>
       {erro && <div className="w-item bad"><span className="ic">✕</span><div>{erro}</div></div>}
-      {afetados.size > 0 && (
-        <div className="w-item warn"><span className="ic">!</span><div>
-          <b>{afetados.size} evento(s) publicado(s) usam patrocinadores que mudaram</b>
-          {[...afetados.values()].join(', ')}. Os sites só mudam quando forem publicados de novo.{' '}
-          {republicando ? <span className="small">{republicando}</span> : <button className="btn sm" type="button" onClick={republicar}>Republicar esses eventos</button>}
-        </div></div>
-      )}
-      <section className="card stack">
-        <div className="row between">
-          <h2 style={{ fontSize: 18 }}>Patrocinadores <span className="cnt">{banco.patrocinadores.length}</span></h2>
-          <span className="row" style={{ gap: 8 }}>
-            <input className="inp" style={{ width: 220 }} placeholder="Buscar…" value={busca} onChange={(e) => setBusca(e.target.value)} />
-            <button className="btn sm pri" type="button" onClick={() => setEditando('novo')}>+ Novo patrocinador</button>
-          </span>
-        </div>
-        {editando === 'novo' && (
-          <FormPatrocinador cancelar={() => setEditando(null)} salvar={async ({ nome, url, arquivo }) => {
-            const logo = await subirLogo(nome, arquivo!);
-            await salvarBanco((b) => { b.patrocinadores.push(novoPatrocinador(b, { nome, url, ...logo })); });
-            setEditando(null);
-          }} />
+      <div className="row between">
+        <span className="small muted">{banco.patrocinadores.length} patrocinador(es)</span>
+        <input className="inp" style={{ width: 240 }} placeholder="Buscar…" aria-label="Buscar patrocinador" value={busca} onChange={(e) => setBusca(e.target.value)} />
+      </div>
+      <div className="banco-grade">
+        {novo ? <NovoCard salvar={salvar} fechar={() => setNovo(false)} /> : (
+          <button className="banco-card novo" type="button" onClick={() => setNovo(true)}>+ Novo patrocinador</button>
         )}
-        <div className="banco-grade">
-          {lista.map((p) => {
-            const usos = uso[p.id] || [];
-            return (
-              <div key={p.id} className={'banco-card' + (p.ativo ? '' : ' inativo')}>
-                {editando === p.id ? (
-                  <FormPatrocinador inicial={p} cancelar={() => setEditando(null)} salvar={async ({ nome, url, arquivo }) => {
-                    const logo = arquivo ? await subirLogo(nome, arquivo) : null;
-                    await salvarBanco((b) => { const x = b.patrocinadores.find((y) => y.id === p.id)!; x.nome = nome.trim(); x.url = url.trim(); if (logo) Object.assign(x, logo); }, [p.id]);
-                    setEditando(null);
-                  }} />
-                ) : (
-                  <>
-                    <div className="banco-logo"><img src={urlLogo(p)} alt="" loading="lazy" /></div>
-                    <b>{p.nome}</b>
-                    <span className="small muted mono" style={{ overflowWrap: 'anywhere' }}>{p.url || 'sem link'}</span>
-                    <span className="small muted">{usos.length ? `Em ${usos.length} evento(s): ${usos.map((u) => u.nome).join(', ')}` : 'Não usado em nenhum evento'}</span>
-                    <div className="row" style={{ gap: 6 }}>
-                      <button className="btn sm" type="button" onClick={() => setEditando(p.id)}>Editar</button>
-                      <button className="btn sm ghost" type="button" onClick={() => salvarBanco((b) => { const x = b.patrocinadores.find((y) => y.id === p.id)!; x.ativo = !x.ativo; }, [p.id])}>{p.ativo ? 'Desativar' : 'Ativar'}</button>
-                      {!usos.length && <button className="btn sm ghost danger" type="button" onClick={() => { if (confirm(`Apagar ${p.nome} do banco?`)) salvarBanco((b) => { b.patrocinadores = b.patrocinadores.filter((y) => y.id !== p.id); }); }}>Apagar</button>}
-                    </div>
-                  </>
-                )}
-              </div>
-            );
-          })}
-          {!lista.length && <p className="muted small">Nenhum patrocinador {busca ? 'com esse nome' : 'cadastrado ainda'}.</p>}
-        </div>
-      </section>
-      <Cotas dados={dados} salvarBanco={salvarBanco} />
+        {lista.map((p) => (
+          <Fragment key={p.id}>
+            <Card p={p} usos={uso[p.id] || []} aberto={aberto === p.id} abrir={() => setAberto(aberto === p.id ? null : p.id)} salvar={salvar} />
+            {aberto === p.id && <OndeAparece p={p} usos={uso[p.id] || []} recarregar={ler} />}
+          </Fragment>
+        ))}
+        {!lista.length && busca && <p className="muted small">Nenhum patrocinador com esse nome.</p>}
+      </div>
     </>
   );
 }

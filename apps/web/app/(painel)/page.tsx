@@ -4,7 +4,7 @@ import { Topo } from '@/componentes/Topo';
 export default function Inicio() {
   return (
     <>
-      <Topo />
+      <Topo aba="eventos" />
       <div className="shell home">
         <main className="main">
           <ListaEventos />

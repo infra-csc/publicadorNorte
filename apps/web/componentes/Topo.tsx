@@ -1,6 +1,7 @@
 import Link from 'next/link';
 
-export function Topo({ crumb, children }: { crumb?: string; children?: React.ReactNode }) {
+/** `aba`: mostra as abas Eventos | Patrocínios (telas de fora do evento) */
+export function Topo({ crumb, aba, children }: { crumb?: string; aba?: 'eventos' | 'patrocinios'; children?: React.ReactNode }) {
   return (
     <header className="top">
       <div className="top-in">
@@ -11,6 +12,12 @@ export function Topo({ crumb, children }: { crumb?: string; children?: React.Rea
           </svg>
           <span>Publicador</span>
         </Link>
+        {aba && (
+          <nav className="abas" aria-label="Seções do publicador">
+            <Link href="/" aria-current={aba === 'eventos' ? 'page' : undefined}>Eventos</Link>
+            <Link href="/patrocinios" aria-current={aba === 'patrocinios' ? 'page' : undefined}>Patrocínios</Link>
+          </nav>
+        )}
         {crumb && <span className="crumb">{crumb}</span>}
         {children}
       </div>

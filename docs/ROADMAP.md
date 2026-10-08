@@ -9,7 +9,7 @@ Uso: equipe da Norte Marketing. Primeira entrega sem login. Prioridade absoluta:
 | 2 | Rodapé padrão | feito (por evento, com troca por cidade); falta o layout oficial da Norte (D4) |
 | 3 | Pós-evento (página e virada automática) | mapeado |
 | 4 | Login, convite e papéis | mapeado |
-| 5 | Patrocinadores (banco + seção padrão) | feito (banco geral, cotas, composição por página); falta o login só de patrocínios (fase 4) |
+| 5 | Patrocinadores (banco + seção padrão) | feito (aba Patrocínios em cards com "onde aparece" e edição rápida, cotas por evento, composição por página, atualização pendente); falta o login só de patrocínios (fase 4) |
 | 6 | Data, local e preço vindos de API | mapeado |
 
 ---

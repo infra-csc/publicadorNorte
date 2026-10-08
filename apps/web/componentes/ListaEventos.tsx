@@ -49,7 +49,7 @@ export function ListaEventos() {
     <>
       <div className="head">
         <h1>Eventos</h1>
-        <p>Cada evento é um hotsite: uma home (tapume) e uma página por cidade. <Link href="/patrocinadores">Banco de patrocinadores →</Link></p>
+        <p>Cada evento é um hotsite: uma home (tapume) e uma página por cidade.</p>
       </div>
       {erro && <div className="w-item bad"><span className="ic">✕</span><div><b>Não deu certo</b>{erro}</div></div>}
       {novo && (
@@ -95,6 +95,7 @@ export function ListaEventos() {
                     <span className="pill">{FORMATOS[e.formato].nome}</span>
                     <span className="pill">{e.cidades} cidade(s)</span>
                     {e.url ? <span className="pill ok">no ar</span> : <span className="pill">rascunho</span>}
+                    {e.pendente && <span className="pill warn" title="Há mudanças (ex.: em Patrocínios) esperando publicação">atualização pendente</span>}
                   </span>
                   <span className="foot">Editado {quando(e.atualizadoEm)}</span>
                 </Link>

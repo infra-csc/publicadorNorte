@@ -37,7 +37,9 @@ export interface Evento {
   /** rodapé padrão do publicador */
   rodape?: EscolhaRodape;
   /** seção de patrocinadores: composição por página ("tapume" e o _id de cada cidade) */
-  patrocinios?: { porPagina: Record<string, ComposicaoPatrocinio>; estilo?: EstiloPatrocinio };
+  patrocinios?: { porPagina: Record<string, ComposicaoPatrocinio>; estilo?: EstiloPatrocinio; /** cotas do evento (sem isso, as padrão) */ cotas?: Cota[] };
+  /** mudanças feitas fora do evento (ex.: na aba Patrocínios) que ainda não foram publicadas */
+  pendencia?: { desde: string; motivos: string[] };
   /** ordem dos blocos de mídia na tela do publicador, por página (não muda o site) */
   ordemMidia?: Partial<Record<TipoPagina, string[]>>;
   publicacoes: Publicacao[];
@@ -62,7 +64,18 @@ export interface BancoPatrocinios {
 }
 
 /** onde cada patrocinador é usado: id → eventos */
-export type UsoPatrocinadores = Record<string, { slug: string; nome: string; publicado: boolean }[]>;
+export interface AplicacaoPatrocinador {
+  /** "tapume" ou o _id da cidade */
+  pagina: string;
+  nomePagina: string;
+  bloco: string;
+  cota: string;
+  cotaNome: string;
+  /** tamanho próprio do logo ('' = o da cota) */
+  tamanho: string;
+  tamanhoCota: string;
+}
+export type UsoPatrocinadores = Record<string, { slug: string; nome: string; publicado: boolean; pendente: boolean; aplicacoes: AplicacaoPatrocinador[]; cotas: Cota[] }[]>;
 
 export interface ResumoEvento {
   slug: string;
@@ -71,6 +84,8 @@ export interface ResumoEvento {
   cidades: number;
   atualizadoEm: string;
   url: string | null;
+  /** há mudança esperando publicação */
+  pendente: boolean;
 }
 
 export interface ArquivoMidia {

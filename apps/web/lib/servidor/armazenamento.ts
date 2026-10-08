@@ -1,7 +1,7 @@
 // Onde os eventos ficam guardados. Hoje: um branch do GitHub. Na Cloudflare: outra implementação
 // desta mesma interface (ex.: D1 + R2), sem mexer nas telas nem nas rotas.
 import type { TipoPagina } from '@norte/motor';
-import { COTAS_PADRAO } from '@norte/motor';
+import { COTAS_PADRAO, type Cota } from '@norte/motor';
 import type { ArquivoMidia, BancoPatrocinios, Evento, EventoCompleto, ResumoEvento, UsoPatrocinadores } from '../comum/tipos';
 import { ErroGitHub, type GitHub, type Mudancas } from './github';
 
@@ -65,7 +65,7 @@ export class ArmazenamentoGitHub implements Armazenamento {
       [...todos].filter(([p]) => p.startsWith(PASTA) && p.endsWith('/' + ARQ_EVENTO) && p.split('/').length === 3).map(async ([, a]) => {
         const e = JSON.parse(await this.gh.lerTexto(a.sha)) as Evento;
         const ativa = e.publicacoes.find((p) => p.versao === e.versaoAtiva);
-        out.push({ slug: e.slug, nome: e.nome, formato: e.formato, cidades: e.cidades.length, atualizadoEm: e.atualizadoEm, url: ativa?.url || null });
+        out.push({ slug: e.slug, nome: e.nome, formato: e.formato, cidades: e.cidades.length, atualizadoEm: e.atualizadoEm, url: ativa?.url || null, pendente: !!e.pendencia?.motivos.length });
       }),
     );
     return out.sort((a, b) => (a.atualizadoEm < b.atualizadoEm ? 1 : -1));
@@ -224,9 +224,26 @@ export class ArmazenamentoGitHub implements Armazenamento {
     await Promise.all(
       [...todos].filter(([p]) => p.startsWith(PASTA) && p.endsWith('/' + ARQ_EVENTO) && p.split('/').length === 3).map(async ([, a]) => {
         const e = JSON.parse(await this.gh.lerTexto(a.sha)) as Evento;
-        const ids = new Set<string>();
-        for (const comp of Object.values(e.patrocinios?.porPagina || {})) for (const b of comp.blocos) for (const i of b.itens) ids.add(i.patrocinador);
-        for (const id of ids) (uso[id] ??= []).push({ slug: e.slug, nome: e.nome, publicado: e.versaoAtiva != null });
+        const cotas: Cota[] = e.patrocinios?.cotas || COTAS_PADRAO;
+        const nomePagina = (pg: string) => {
+          if (pg === 'tapume') return 'Tapume';
+          const i = e.cidades.findIndex((c) => c._id === pg);
+          const c = e.cidades[i];
+          return (c && (c.cidade || c.praca || c.nome || c.local)) || 'Cidade ' + (i + 1);
+        };
+        const porId = new Map<string, UsoPatrocinadores[string][number]>();
+        for (const [pagina, comp] of Object.entries(e.patrocinios?.porPagina || {})) {
+          if (pagina !== 'tapume' && !e.cidades.some((c) => c._id === pagina)) continue;
+          for (const b of comp.blocos) {
+            const cota = cotas.find((c) => c.id === b.cota);
+            for (const it of b.itens) {
+              let reg = porId.get(it.patrocinador);
+              if (!reg) porId.set(it.patrocinador, (reg = { slug: e.slug, nome: e.nome, publicado: e.versaoAtiva != null, pendente: !!e.pendencia?.motivos.length, aplicacoes: [], cotas }));
+              reg.aplicacoes.push({ pagina, nomePagina: nomePagina(pagina), bloco: b.id, cota: b.cota, cotaNome: cota?.nome || b.cota, tamanho: it.tamanho || '', tamanhoCota: cota?.tamanho || 'P' });
+            }
+          }
+        }
+        for (const [id, reg] of porId) (uso[id] ??= []).push(reg);
       }),
     );
     return uso;
