@@ -123,7 +123,8 @@ export function acharArquivo(ref: string, arquivos: Iterable<string>): string | 
 const ATTR_VIDEO = /\s(autoplay|muted|loop|playsinline|controls|preload|poster)(=("[^"]*"|'[^']*'|\S+))?/gi;
 const VID = /\.(?:mp4|webm)(?:[?#][^"']*)?$/i;
 const IMG = /\.(?:webp|png|jpe?g|gif|avif|svg)(?:[?#][^"']*)?$/i;
-export const CSS_MIDIA = '<style>video[data-pub-midia],img[data-pub-midia]{display:block;width:100%;height:100%;object-fit:cover}</style>';
+// :where() = especificidade zero: o CSS da página (ex.: .hero__bg--desk{display:none}) sempre vence
+export const CSS_MIDIA = '<style>:where(video[data-pub-midia],img[data-pub-midia]){display:block;width:100%;height:100%;object-fit:cover}</style>';
 const limparAttrs = (s: string) => s.replace(/\s+/g, ' ').replace(/\s+$/, '');
 
 /** `<img>` com vídeo vira `<video>`, `<video>` com imagem vira `<img>`, e o `<picture>` acompanha. */

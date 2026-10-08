@@ -38,6 +38,14 @@ describe('G. Mídia', () => {
     expect(out).toContain(CSS_MIDIA + '</head>');
   });
 
+  it('G12: o estilo injetado não vence o CSS da página (desktop e mobile em duas tags)', () => {
+    // a página esconde a versão de outra tela pela classe (.hero__bg--desk{display:none});
+    // o estilo do publicador tem de ter especificidade zero para não mostrar as duas versões
+    expect(CSS_MIDIA).toBe('<style>:where(video[data-pub-midia],img[data-pub-midia]){display:block;width:100%;height:100%;object-fit:cover}</style>');
+    const out = ajustarTagsMidia('<head><style>.bg--desk{display:none}</style></head><img class="bg bg--desk" src="d.mp4"><img class="bg bg--mob" src="m.mp4">');
+    expect(out.match(/<style>[^<]*<\/style>/g)).toEqual(['<style>.bg--desk{display:none}</style>', CSS_MIDIA]);
+  });
+
   it('G5: <picture> cujo <img> é vídeo vira um <video> inteiro', () => {
     const out = ajustarTagsMidia('<picture><source srcset="m.webp"><img src="x.mp4"></picture>');
     expect(out).toBe(CSS_MIDIA + '<video src="x.mp4" data-pub-midia autoplay muted loop playsinline></video>');

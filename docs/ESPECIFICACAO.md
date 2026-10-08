@@ -220,7 +220,7 @@ Depois de montar a página:
 - `<picture>` cujo `<img>` é vídeo → o `<picture>` inteiro vira o `<video>` acima.
 - `<source srcset="*.mp4">` dentro de `<picture>` → removido.
 - `<video src="*.webp">` → `<img data-pub-midia>`.
-- Se houve troca, injeta no `<head>`: `video[data-pub-midia],img[data-pub-midia]{display:block;width:100%;height:100%;object-fit:cover}`.
+- Se houve troca, injeta no `<head>`: `:where(video[data-pub-midia],img[data-pub-midia]){display:block;width:100%;height:100%;object-fit:cover}`. O `:where()` deixa a regra com especificidade zero: o CSS da página (que esconde a versão desktop no celular e vice-versa pela classe) sempre vence.
 
 ### 7.5 Tela Mídia
 

@@ -117,6 +117,7 @@ Modelo:
 | G9 | `const v = window.innerWidth < 700 ? "_media/praca/hero/m.mp4" : "_media/praca/hero/d.mp4"` | as duas referências detectadas |
 | G10 | pasta antiga `_images/praca/kit/` | aceita como `_media` |
 | G11 | variável de mídia por cidade (`_1`) | escolha diferente por linha |
+| G12 | página com `.hero__bg--desk{display:none}` e as duas tags trocadas por vídeo | o CSS injetado não vence o da página (especificidade zero, `:where`): só a versão daquela tela aparece |
 
 ## H. Conversor de cards fixos
 
