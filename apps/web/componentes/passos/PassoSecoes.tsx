@@ -12,7 +12,7 @@ import { EditorRodape } from './EditorRodape';
 const garantir = (e: Evento) => (e.secoes ??= { ocultas: [], porLinha: {}, ordem: {} });
 
 export function PassoSecoes() {
-  const { evento, modelos, arquivos, cad, alterar } = useEditor();
+  const { evento, modelos, arquivos, cad, alterar, banco } = useEditor();
   const paginas = FORMATOS[evento.formato].paginas.filter((k) => modelos[k] != null);
   const [pag, setPag] = useState<TipoPagina>(paginas.includes('praca') ? 'praca' : paginas[0]);
   const [linhaId, setLinhaId] = useState<string>(evento.cidades[0]?._id || '');
@@ -59,7 +59,7 @@ export function PassoSecoes() {
   const temRodape = useMemo(() => html != null && temRodapeHtml(html), [html]);
 
   const ev = useDeferredValue(evento);
-  const resultado = useMemo(() => gerarEvento(ev, modelos, arquivos), [ev, modelos, arquivos]);
+  const resultado = useMemo(() => gerarEvento(ev, modelos, arquivos, banco), [ev, modelos, arquivos, banco]);
   const pagina = resultado.paginas.find((p) => p.tipo === pag && (pag === 'tapume' || p.cidadeId === linhaId)) || resultado.paginas.find((p) => p.tipo === pag);
 
   return (

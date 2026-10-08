@@ -23,7 +23,7 @@ function aceita(base: string | null) {
 }
 
 export function PassoMidia() {
-  const { evento, modelos, arquivos, setArquivos, det, cad, alterar } = useEditor();
+  const { evento, modelos, arquivos, setArquivos, det, cad, alterar, banco } = useEditor();
   const paginas = FORMATOS[evento.formato].paginas.filter((k) => modelos[k] != null);
   const [pag, setPag] = useState<TipoPagina>(paginas.includes('praca') ? 'praca' : paginas[0]);
   const [linhaId, setLinhaId] = useState<string>(evento.cidades[0]?._id || '');
@@ -137,7 +137,7 @@ export function PassoMidia() {
   }
 
   const ev = useDeferredValue(evento);
-  const resultado = useMemo(() => gerarEvento(ev, modelos, arquivos), [ev, modelos, arquivos]);
+  const resultado = useMemo(() => gerarEvento(ev, modelos, arquivos, banco), [ev, modelos, arquivos, banco]);
   const pagina = resultado.paginas.find((p) => p.tipo === pag && (pag === 'tapume' || pag === 'unica' || p.cidadeId === linhaId)) || resultado.paginas.find((p) => p.tipo === pag);
 
   /** propriedades de uma área que aceita arquivos arrastados */

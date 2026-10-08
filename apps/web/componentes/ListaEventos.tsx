@@ -49,7 +49,7 @@ export function ListaEventos() {
     <>
       <div className="head">
         <h1>Eventos</h1>
-        <p>Cada evento é um hotsite: uma home (tapume) e uma página por cidade.</p>
+        <p>Cada evento é um hotsite: uma home (tapume) e uma página por cidade. <Link href="/patrocinadores">Banco de patrocinadores →</Link></p>
       </div>
       {erro && <div className="w-item bad"><span className="ic">✕</span><div><b>Não deu certo</b>{erro}</div></div>}
       {novo && (

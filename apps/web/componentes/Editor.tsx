@@ -4,7 +4,8 @@ import { Cadastro, detectar, FORMATOS, sincronizarVars, type Deteccao, type Tipo
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import type { ArquivoMidia, Evento, EventoCompleto } from '@/lib/comum/tipos';
+import { arquivosDoBanco } from '@/lib/comum/montagem';
+import type { ArquivoMidia, BancoPatrocinios, Evento, EventoCompleto, UsoPatrocinadores } from '@/lib/comum/tipos';
 import { api, ErroApi, json } from './api';
 import { useRolagemArrastando } from './rolagemArrastando';
 import { Topo } from './Topo';
@@ -15,13 +16,14 @@ export const PASSOS = [
   ['variaveis', 'Variáveis', 'O que muda em cada página'],
   ['cadastro', 'Cadastro', 'Valores de cada cidade'],
   ['midia', 'Mídia', 'Trocar imagens e vídeos'],
+  ['patrocinios', 'Patrocínios', 'Logos dos patrocinadores'],
   ['secoes', 'Seções', 'Ordem e o que aparece'],
   ['conferir', 'Conferir', 'Prévia e avisos'],
   ['publicar', 'Publicar', 'Colocar o site no ar'],
 ] as const;
 export type Passo = (typeof PASSOS)[number][0];
 
-export const passosDo = (e: Evento) => PASSOS.filter(([k]) => e.formato !== 'unica' || !['variaveis', 'cadastro', 'midia', 'secoes'].includes(k));
+export const passosDo = (e: Evento) => PASSOS.filter(([k]) => e.formato !== 'unica' || !['variaveis', 'cadastro', 'midia', 'patrocinios', 'secoes'].includes(k));
 
 type EstadoSalvar = 'ok' | 'pend' | 'salvando' | 'erro' | 'conflito';
 
@@ -29,6 +31,13 @@ interface Contexto {
   evento: Evento;
   modelos: Partial<Record<TipoPagina, string>>;
   arquivos: ArquivoMidia[];
+  /** arquivos para a prévia: os do evento + os logos do banco de patrocinadores */
+  arquivosPrevia: ArquivoMidia[];
+  /** banco geral de patrocinadores (null enquanto carrega) */
+  banco: BancoPatrocinios | null;
+  usoPatrocinadores: UsoPatrocinadores;
+  /** muda e grava o banco geral (refaz em cima da versão nova se outra pessoa gravou antes) */
+  salvarBanco: (fn: (b: BancoPatrocinios) => void) => Promise<void>;
   /** detecção das variáveis dos HTMLs atuais */
   det: Deteccao;
   /** leitura do cadastro (valores calculados, nomes, arquivos) */
@@ -61,6 +70,26 @@ export function Editor({ slug, children }: { slug: string; children: React.React
   const salvando = useRef<Promise<void> | null>(null);
   const pendente = useRef(false);
   const path = usePathname();
+  const [banco, setBanco] = useState<{ banco: BancoPatrocinios; versao: string; uso: UsoPatrocinadores } | null>(null);
+  const bancoRef = useRef<{ banco: BancoPatrocinios; versao: string; uso: UsoPatrocinadores } | null>(null);
+  const lerBanco = useCallback(() => api<{ banco: BancoPatrocinios; versao: string; uso: UsoPatrocinadores }>('/api/patrocinadores').then((b) => { bancoRef.current = b; setBanco(b); return b; }), []);
+  useEffect(() => { lerBanco().catch(() => {}); }, [lerBanco]);
+  const salvarBanco = useCallback(async (fn: (b: BancoPatrocinios) => void) => {
+    for (let tentativa = 0; ; tentativa++) {
+      const atual = bancoRef.current || (await lerBanco());
+      const novo = structuredClone(atual.banco);
+      fn(novo);
+      try {
+        const r = await api<{ versao: string }>('/api/patrocinadores', json('PUT', { banco: novo, versao: atual.versao }));
+        bancoRef.current = { ...atual, banco: novo, versao: r.versao };
+        setBanco(bancoRef.current);
+        return;
+      } catch (e) {
+        if (e instanceof ErroApi && e.status === 409 && tentativa < 2) { await lerBanco(); continue; }
+        throw e;
+      }
+    }
+  }, [lerBanco]);
   useRolagemArrastando();
 
   useEffect(() => {
@@ -129,6 +158,7 @@ export function Editor({ slug, children }: { slug: string; children: React.React
   const hrefPasso = (p: Passo) => `/eventos/${ev.slug}/${p}`;
   const contexto: Contexto = {
     evento: ev, modelos: dados.modelos, arquivos: dados.arquivos, det, cad, alterar, salvarJa, hrefPasso,
+    arquivosPrevia: [...dados.arquivos, ...arquivosDoBanco(banco?.banco)], banco: banco?.banco || null, usoPatrocinadores: banco?.uso || {}, salvarBanco,
     setModelo: (tipo, html) => setDados((d) => (d ? { ...d, modelos: { ...d.modelos, [tipo]: html } } : d)),
     setArquivos: (a) => setDados((d) => (d ? { ...d, arquivos: a } : d)),
     substituir: (e, versao) => { evRef.current = e; versaoRef.current = versao; setDados((d) => (d ? { ...d, evento: e } : d)); setEstado('ok'); },
@@ -140,6 +170,7 @@ export function Editor({ slug, children }: { slug: string; children: React.React
     variaveis: det.variaveis.size > 0,
     cadastro: ev.cidades.length > 0,
     midia: dados.arquivos.length > 0,
+    patrocinios: Object.values(ev.patrocinios?.porPagina || {}).some((c) => c.blocos.length > 0),
     secoes: !!(ev.secoes?.ocultas?.length || Object.keys(ev.secoes?.ordem || {}).length),
     conferir: false,
     publicar: ev.versaoAtiva != null,

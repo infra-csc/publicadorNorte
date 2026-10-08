@@ -224,11 +224,11 @@ function Tabela({ tipo, foco, setFoco }: { tipo: TipoItem; foco: string | null; 
 }
 
 export function PassoCadastro() {
-  const { evento, modelos, arquivos, cad, alterar } = useEditor();
+  const { evento, modelos, arquivos, cad, alterar, banco } = useEditor();
   const [foco, setFoco] = useState<string | null>(null);
   const gerais = cad.colunas('geral');
   const ev = useDeferredValue(evento);
-  const resultado = useMemo(() => gerarEvento(ev, modelos, arquivos), [ev, modelos, arquivos]);
+  const resultado = useMemo(() => gerarEvento(ev, modelos, arquivos, banco), [ev, modelos, arquivos, banco]);
   const pagina =
     resultado.paginas.find((p) => foco && (p.etapaId === foco || (p.cidadeId === foco && !p.etapaId))) ||
     resultado.paginas.find((p) => p.tipo === 'praca') ||

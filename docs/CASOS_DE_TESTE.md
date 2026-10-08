@@ -188,3 +188,14 @@ Os tapumes de cards fixos dos casos H1–H4 são fixtures sintéticos em `packag
 | L5 | desligado no evento, ligado numa cidade | só aquela cidade tem |
 | L6 | cor ou fonte inválida (tentando quebrar o CSS) | volta ao padrão |
 | L7 | logo, descrição com `**negrito**`, título "Dúvidas", links e rede com texto | duas colunas (logo e descrição / título, links e redes), negrito, texto ao lado do ícone, empilha no celular; logo com caminho estranho é descartado |
+
+## M. Patrocinadores
+
+| # | Entrada | Esperado |
+|---|---|---|
+| M1 | Master, Gold e Silver com logos fora de ordem | cotas uma abaixo da outra, com título e tamanho da cota; logos em ordem alfabética; link em nova aba; sem link, só o logo |
+| M2 | Apoio, Ticketeria e Realização | Ticketeria e Realização na mesma faixa |
+| M3 | bloco sem título com um GG e dois P (Lei de ICMS) | linha GG em cima, linha P embaixo, sem título |
+| M4 | ordem escolhida e ordem aleatória | escolhida respeita a ordem; aleatória marca a linha e põe o script |
+| M5 | só patrocinador desativado | seção não aparece; aviso |
+| M6 | tapume, duas cidades e uma etapa | cada página com a sua; etapa com a da cidade; antes do rodapé do HTML e do rodapé padrão |

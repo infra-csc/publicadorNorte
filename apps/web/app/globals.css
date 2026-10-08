@@ -221,3 +221,24 @@ tr:last-child td { border-bottom: 0; }
 
 .rede-ico { width: 34px; height: 34px; flex: none; border-radius: 50%; display: grid; place-items: center; }
 .rede-ico svg { width: 18px; height: 18px; }
+
+/* patrocínios */
+.patro-itens { display: flex; flex-wrap: wrap; gap: 8px; }
+.patro-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+.patro-item img { width: 56px; height: 36px; object-fit: contain; background: #fff; border-radius: 6px; }
+.patro-item select { border: 1px solid var(--line); border-radius: 6px; background: var(--panel); padding: 3px 4px; font-size: 12px; }
+.patro-item.inativo { opacity: 0.5; }
+.patro-nome { font-size: 13px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.patro-mais { border-style: dashed; color: var(--mute); cursor: pointer; padding: 10px 14px; font-weight: 600; }
+.patro-mais:hover { border-color: var(--accent); color: var(--accent); }
+.patro-escolha { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; max-height: 320px; overflow: auto; }
+.patro-card { display: flex; flex-direction: column; gap: 6px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); cursor: pointer; }
+.patro-card:hover { border-color: var(--accent); }
+.patro-card img { width: 100%; height: 56px; object-fit: contain; background: #fff; border-radius: 6px; }
+.patro-card span { font-size: 12px; text-align: center; }
+.banco-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.banco-card { display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.banco-card.inativo { opacity: 0.55; }
+.banco-card .colpanel { grid-column: 1 / -1; }
+.banco-logo { height: 90px; display: grid; place-items: center; background: #fff; border: 1px solid #e3e3e3; border-radius: 10px; }
+.banco-logo img { max-width: 80%; max-height: 70px; object-fit: contain; }

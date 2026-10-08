@@ -1,8 +1,12 @@
 // Junta o motor com os dados guardados: gera as páginas e descobre quais arquivos cada página usa.
-import { acharArquivo, gerar, normRef, refsDeArquivo, type ResultadoGerar } from '@norte/motor';
-import type { ArquivoMidia, Evento } from './tipos';
+import { acharArquivo, gerar, normRef, PASTA_LOGOS, refsDeArquivo, type ResultadoGerar } from '@norte/motor';
+import type { ArquivoMidia, BancoPatrocinios, Evento } from './tipos';
 
-export function gerarEvento(evento: Evento, modelos: Partial<Record<string, string>>, arquivos: ArquivoMidia[]): ResultadoGerar {
+/** logos do banco de patrocinadores, como arquivos do site (_patrocinadores/…) */
+export const arquivosDoBanco = (banco: BancoPatrocinios | null | undefined): ArquivoMidia[] =>
+  (banco?.patrocinadores || []).map((p) => ({ caminho: PASTA_LOGOS + p.logo, sha: p.sha, bytes: p.bytes }));
+
+export function gerarEvento(evento: Evento, modelos: Partial<Record<string, string>>, arquivos: ArquivoMidia[], banco?: BancoPatrocinios | null): ResultadoGerar {
   return gerar({
     formato: evento.formato,
     modelos,
@@ -14,6 +18,7 @@ export function gerarEvento(evento: Evento, modelos: Partial<Record<string, stri
     imagens: evento.imagens,
     secoes: evento.secoes,
     rodape: evento.rodape,
+    patrocinios: banco ? { porPagina: evento.patrocinios?.porPagina || {}, estilo: evento.patrocinios?.estilo, patrocinadores: banco.patrocinadores, cotas: banco.cotas } : undefined,
     arquivos: arquivos.map((a) => a.caminho),
   });
 }

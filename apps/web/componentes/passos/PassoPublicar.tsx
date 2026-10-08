@@ -12,9 +12,9 @@ const quando = (iso: string) => {
 };
 
 export function PassoPublicar() {
-  const { evento, modelos, arquivos, salvarJa, substituir } = useEditor();
+  const { evento, modelos, arquivos, salvarJa, substituir, banco } = useEditor();
   const ev = useDeferredValue(evento);
-  const r = useMemo(() => gerarEvento(ev, modelos, arquivos), [ev, modelos, arquivos]);
+  const r = useMemo(() => gerarEvento(ev, modelos, arquivos, banco), [ev, modelos, arquivos, banco]);
   const [site, setSite] = useState<EstadoSite | null>(null);
   const [ocupado, setOcupado] = useState('');
   const [erro, setErro] = useState('');

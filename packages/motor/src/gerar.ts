@@ -8,6 +8,7 @@ import { FORMATOS, NOME_PAGINA, type Aviso, type Formato, type Linha, type Model
 import { ehMidia, trocarVars } from './variaveis';
 import { ocultasDaPagina, removerSecoes, reordenarSecoes, type EscolhaSecoes } from './secoes';
 import { colocarRodape, rodapeDaPagina, type EscolhaRodape } from './rodape';
+import { colocarPatrocinios, montarPatrocinios, patrocinadoresFora, type EntradaPatrocinios } from './patrocinios';
 
 export interface EntradaGerar {
   formato: Formato;
@@ -28,6 +29,8 @@ export interface EntradaGerar {
   secoes?: EscolhaSecoes;
   /** rodapé padrão do publicador (geral e por cidade/etapa) */
   rodape?: EscolhaRodape;
+  /** patrocinadores: composição por página (tapume e cada cidade) e o banco geral */
+  patrocinios?: EntradaPatrocinios;
 }
 
 export interface PaginaGerada {
@@ -230,7 +233,10 @@ export function gerar(e: EntradaGerar): ResultadoGerar {
     const ocultas = ocultasDaPagina(kind, e.secoes, kind === 'tapume' || kind === 'unica' ? [] : [ctx.cidade?._id, ctx.etapa?._id]);
     const linhasDaPagina = kind === 'tapume' || kind === 'unica' ? [] : [ctx.cidade?._id, ctx.etapa?._id];
     const corpo = tirarMidiaOculta(removerSecoes(reordenarSecoes(montador.render(arv.raiz, { ...ctx, kind }, R), e.secoes?.ordem?.[kind]), ocultas));
-    const html = ajustarTagsMidia(colocarRodape(corpo, rodapeDaPagina(e.rodape, linhasDaPagina)));
+    // patrocinadores: o tapume tem a dele; praça e etapa usam a da cidade
+    const chavePatro = kind === 'tapume' ? 'tapume' : ctx.cidade?._id;
+    const comPatro = e.patrocinios && chavePatro ? colocarPatrocinios(corpo, montarPatrocinios(e.patrocinios.porPagina[chavePatro], e.patrocinios)) : corpo;
+    const html = ajustarTagsMidia(colocarRodape(comPatro, rodapeDaPagina(e.rodape, linhasDaPagina)));
     for (const f of R.faltas) {
       if (!vazios.has(f.chave)) vazios.set(f.chave, new Set());
       vazios.get(f.chave)!.add(f.quem ?? titulo);
@@ -301,6 +307,14 @@ export function gerar(e: EntradaGerar): ResultadoGerar {
   }
   if (faltaG.size) {
     avisos.push({ codigo: 'gerais-vazios', nivel: 'alerta', passo: 'cadastro', titulo: 'Gerais do evento sem valor', detalhe: [...faltaG].join(', ') + ' — saem em branco em todas as páginas.' });
+  }
+  const foraPatro = e.patrocinios ? patrocinadoresFora(e.patrocinios) : [];
+  if (foraPatro.length) {
+    avisos.push({
+      codigo: 'patrocinador-fora', nivel: 'alerta', passo: 'patrocinios',
+      titulo: foraPatro.length + ' patrocinador(es) desativado(s) ou apagado(s) no banco',
+      detalhe: foraPatro.join(', ') + ' — não aparecem nas páginas. Troque ou tire no passo Patrocínios.',
+    });
   }
   const cont: Record<string, number> = {};
   for (const p of paginas) cont[p.arquivo] = (cont[p.arquivo] || 0) + 1;

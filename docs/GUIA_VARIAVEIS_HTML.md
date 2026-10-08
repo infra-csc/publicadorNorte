@@ -320,6 +320,9 @@ Escreva sempre uma tag `<img>` com a variável `@media_`. Se for escolhido um v�
 - No passo **Mídia**, escolha a página, veja as seções e clique na imagem ou no vídeo de cada lugar. A prévia atualiza na hora.
 - O `.zip` sai com os arquivos usados na mesma estrutura `_media/...`, prontos para subir junto dos HTMLs.
 
+### Patrocinadores
+A seção de patrocinadores é montada pelo publicador (banco geral de logos) e entra sozinha antes do rodapé. **Não monte seção de patrocinadores no HTML.**
+
 ### Rodapé
 O publicador tem um **rodapé padrão** (feito no passo Seções), e quem publica pode esconder o rodapé que vier no HTML. Por isso:
 - Se o HTML tiver rodapé, ele fica num `<footer>` **fora** das seções, no fim do `<body>`.

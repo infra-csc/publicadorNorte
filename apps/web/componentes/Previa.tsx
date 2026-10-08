@@ -9,7 +9,7 @@ import { useEditor } from './Editor';
 const TELAS = { cel: [390, 780], desk: [1280, 800] } as const;
 
 export function Previa({ html, titulo, altura = 640 }: { html: string | null; titulo?: string; altura?: number }) {
-  const { arquivos, evento } = useEditor();
+  const { arquivosPrevia: arquivos, evento } = useEditor();
   const [tela, setTela] = useState<keyof typeof TELAS>('cel');
   const [doc, setDoc] = useState('');
   const caixa = useRef<HTMLDivElement>(null);

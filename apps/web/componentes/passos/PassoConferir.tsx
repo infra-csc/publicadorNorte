@@ -6,7 +6,7 @@ import { gerarEvento } from '@/lib/comum/montagem';
 import { Cabecalho, NavPassos, useEditor, type Passo } from '../Editor';
 import { Previa } from '../Previa';
 
-const PASSO_DO_AVISO: Record<Aviso['passo'], Passo> = { evento: 'evento', paginas: 'paginas', variaveis: 'variaveis', cadastro: 'cadastro', midia: 'midia', conferir: 'conferir', publicar: 'publicar' };
+const PASSO_DO_AVISO: Record<Aviso['passo'], Passo> = { evento: 'evento', paginas: 'paginas', variaveis: 'variaveis', cadastro: 'cadastro', midia: 'midia', patrocinios: 'patrocinios', secoes: 'secoes', conferir: 'conferir', publicar: 'publicar' };
 
 export function Avisos({ avisos }: { avisos: Aviso[] }) {
   const { hrefPasso } = useEditor();
@@ -24,9 +24,9 @@ export function Avisos({ avisos }: { avisos: Aviso[] }) {
 }
 
 export function PassoConferir() {
-  const { evento, modelos, arquivos } = useEditor();
+  const { evento, modelos, arquivos, banco } = useEditor();
   const ev = useDeferredValue(evento);
-  const r = useMemo(() => gerarEvento(ev, modelos, arquivos), [ev, modelos, arquivos]);
+  const r = useMemo(() => gerarEvento(ev, modelos, arquivos, banco), [ev, modelos, arquivos, banco]);
   const [sel, setSel] = useState(0);
   const p = r.paginas[Math.min(sel, r.paginas.length - 1)];
   return (

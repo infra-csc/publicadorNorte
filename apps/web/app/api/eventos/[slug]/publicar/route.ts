@@ -1,5 +1,5 @@
 import type { Publicacao } from '@/lib/comum/tipos';
-import { arquivosUsados, gerarEvento } from '@/lib/comum/montagem';
+import { arquivosDoBanco, arquivosUsados, gerarEvento } from '@/lib/comum/montagem';
 import { servicos } from '@/lib/servidor/config';
 import { erro, responder } from '@/lib/servidor/rotas';
 import type { ArquivoPublicado } from '@/lib/servidor/destino';
@@ -11,10 +11,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     const { armazenamento, destino } = servicos();
     const c = await armazenamento.ler(slug);
     if (!c) return erro(404, 'Evento não encontrado.');
-    const r = gerarEvento(c.evento, c.modelos, c.arquivos);
+    const { banco } = await armazenamento.lerBanco();
+    const r = gerarEvento(c.evento, c.modelos, c.arquivos, banco);
     if (r.bloqueado) return Response.json({ erro: 'Há itens que impedem a publicação. Resolva no passo Conferir.', avisos: r.avisos }, { status: 409 });
     if (!r.paginas.length) return erro(400, 'Nenhuma página para publicar.');
-    const usados = arquivosUsados(r.paginas.map((p) => p.html), c.arquivos);
+    const usados = arquivosUsados(r.paginas.map((p) => p.html), [...c.arquivos, ...arquivosDoBanco(banco)]);
     const arquivos: ArquivoPublicado[] = [
       ...r.paginas.map((p) => ({ caminho: p.arquivo, texto: p.html })),
       ...[...usados].map(([caminho, a]) => ({ caminho, sha: a.sha })),

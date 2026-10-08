@@ -1,7 +1,8 @@
 // Onde os eventos ficam guardados. Hoje: um branch do GitHub. Na Cloudflare: outra implementação
 // desta mesma interface (ex.: D1 + R2), sem mexer nas telas nem nas rotas.
 import type { TipoPagina } from '@norte/motor';
-import type { ArquivoMidia, Evento, EventoCompleto, ResumoEvento } from '../comum/tipos';
+import { COTAS_PADRAO } from '@norte/motor';
+import type { ArquivoMidia, BancoPatrocinios, Evento, EventoCompleto, ResumoEvento, UsoPatrocinadores } from '../comum/tipos';
 import { ErroGitHub, type GitHub, type Mudancas } from './github';
 
 export class Conflito extends Error {}
@@ -24,7 +25,17 @@ export interface Armazenamento {
   adicionarMidia(slug: string, arquivos: ArquivoMidia[]): Promise<void>;
   /** remove os arquivos indicados, ou toda a mídia do evento se nenhum for indicado */
   removerMidia(slug: string, caminhos?: string[]): Promise<void>;
+  /** banco geral de patrocinadores (um só para todos os eventos) */
+  lerBanco(): Promise<{ banco: BancoPatrocinios; versao: string }>;
+  /** grava se ninguém tiver gravado depois da `versao` lida; senão lança Conflito */
+  salvarBanco(banco: BancoPatrocinios, versao: string): Promise<string>;
+  /** quais eventos usam cada patrocinador */
+  usoPatrocinadores(): Promise<UsoPatrocinadores>;
 }
+
+const BANCO = 'patrocinadores/banco.json';
+const LOGOS = 'patrocinadores/logos/';
+export const BANCO_VAZIO = (): BancoPatrocinios => ({ patrocinadores: [], cotas: COTAS_PADRAO.map((c) => ({ ...c })), atualizadoEm: '' });
 
 const PASTA = 'eventos/';
 const pasta = (slug: string) => `${PASTA}${slug}/`;
@@ -183,6 +194,42 @@ export class ArmazenamentoGitHub implements Armazenamento {
       const apagar = [...atuais.keys()].filter((p) => p.startsWith(pre) && (!alvo || alvo.has(p)));
       return { mudancas: new Map(apagar.map((p) => [p, null])), resultado: null };
     });
+  }
+
+  async lerBanco(): Promise<{ banco: BancoPatrocinios; versao: string }> {
+    const sha = (await this.arquivosDoBranch()).get(BANCO)?.sha;
+    if (!sha) return { banco: BANCO_VAZIO(), versao: '' };
+    return { banco: JSON.parse(await this.gh.lerTexto(sha)) as BancoPatrocinios, versao: sha };
+  }
+
+  async salvarBanco(banco: BancoPatrocinios, versao: string): Promise<string> {
+    banco.atualizadoEm = new Date().toISOString();
+    const sha = await this.gh.criarBlobTexto(JSON.stringify(banco, null, 2) + '\n');
+    await this.gh.alterar(this.branch, 'Atualiza o banco de patrocinadores', async (atuais) => {
+      if ((atuais.get(BANCO) || '') !== versao) throw new Conflito('Outra pessoa mudou o banco de patrocinadores enquanto você editava.');
+      const mudancas: Mudancas = new Map([[BANCO, sha]]);
+      // os logos ficam guardados junto do banco; logo de patrocinador apagado sai
+      const logos = new Map(banco.patrocinadores.map((p) => [LOGOS + p.logo, p.sha]));
+      for (const [p, s] of logos) if (atuais.get(p) !== s) mudancas.set(p, s);
+      for (const p of atuais.keys()) if (p.startsWith(LOGOS) && !logos.has(p)) mudancas.set(p, null);
+      if (!atuais.has(LEIA_ME)) mudancas.set(LEIA_ME, await this.gh.criarBlobTexto(TEXTO_LEIA_ME));
+      return { mudancas, resultado: null };
+    });
+    return sha;
+  }
+
+  async usoPatrocinadores(): Promise<UsoPatrocinadores> {
+    const todos = await this.arquivosDoBranch();
+    const uso: UsoPatrocinadores = {};
+    await Promise.all(
+      [...todos].filter(([p]) => p.startsWith(PASTA) && p.endsWith('/' + ARQ_EVENTO) && p.split('/').length === 3).map(async ([, a]) => {
+        const e = JSON.parse(await this.gh.lerTexto(a.sha)) as Evento;
+        const ids = new Set<string>();
+        for (const comp of Object.values(e.patrocinios?.porPagina || {})) for (const b of comp.blocos) for (const i of b.itens) ids.add(i.patrocinador);
+        for (const id of ids) (uso[id] ??= []).push({ slug: e.slug, nome: e.nome, publicado: e.versaoAtiva != null });
+      }),
+    );
+    return uso;
   }
 }
 

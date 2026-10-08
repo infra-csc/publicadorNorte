@@ -1,5 +1,5 @@
 // Tipos compartilhados entre o navegador e o servidor.
-import type { EscolhaRodape, EscolhaSecoes, Formato, Linha, TipoItem, TipoPagina, Vars } from '@norte/motor';
+import type { ComposicaoPatrocinio, Cota, EscolhaRodape, EscolhaSecoes, EstiloPatrocinio, Formato, Patrocinador, Linha, TipoItem, TipoPagina, Vars } from '@norte/motor';
 
 export interface RegistroPagina {
   arquivo: string;
@@ -36,6 +36,8 @@ export interface Evento {
   secoes?: EscolhaSecoes;
   /** rodapé padrão do publicador */
   rodape?: EscolhaRodape;
+  /** seção de patrocinadores: composição por página ("tapume" e o _id de cada cidade) */
+  patrocinios?: { porPagina: Record<string, ComposicaoPatrocinio>; estilo?: EstiloPatrocinio };
   /** ordem dos blocos de mídia na tela do publicador, por página (não muda o site) */
   ordemMidia?: Partial<Record<TipoPagina, string[]>>;
   publicacoes: Publicacao[];
@@ -44,6 +46,23 @@ export interface Evento {
   criadoEm: string;
   atualizadoEm: string;
 }
+
+/** patrocinador no banco geral, com o arquivo do logo guardado */
+export interface PatrocinadorBanco extends Patrocinador {
+  sha: string;
+  bytes: number;
+  criadoEm: string;
+}
+
+/** banco geral de patrocinadores: alimenta todos os eventos */
+export interface BancoPatrocinios {
+  patrocinadores: PatrocinadorBanco[];
+  cotas: Cota[];
+  atualizadoEm: string;
+}
+
+/** onde cada patrocinador é usado: id → eventos */
+export type UsoPatrocinadores = Record<string, { slug: string; nome: string; publicado: boolean }[]>;
 
 export interface ResumoEvento {
   slug: string;

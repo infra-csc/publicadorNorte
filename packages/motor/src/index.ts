@@ -26,4 +26,8 @@ export {
   montarRodape, colocarRodape, rodapeDaPagina, linkFonte, urlSegura, caminhoSeguro, REDES, RODAPE_PADRAO, FONTES_SUGERIDAS,
   type ConfigRodape, type EscolhaRodape, type RedeSocial,
 } from './rodape';
+export {
+  montarPatrocinios, colocarPatrocinios, patrocinadoresFora, COTAS_PADRAO, TAMANHOS, PASTA_LOGOS, SCRIPT_ALEATORIO,
+  type Patrocinador, type Cota, type Tamanho, type BlocoPatrocinio, type ComposicaoPatrocinio, type EstiloPatrocinio, type EntradaPatrocinios, type OrdemBloco,
+} from './patrocinios';
 export { verificarHtml, SINONIMOS, type Problema, type CodigoProblema } from './verificador';

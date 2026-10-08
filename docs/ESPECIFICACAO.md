@@ -41,11 +41,12 @@ No formato com etapas, cada etapa pertence a uma cidade (campo interno `_cidade`
 3. **Variáveis**: as variáveis encontradas em chips agrupados: *Igual em todas as páginas*, *Muda em cada cidade*, *Muda em cada etapa*, *Imagens e vídeos*, *Preenchidas sozinhas*, *Excluídas do cadastro*, *Não são variáveis*. Clicar num chip abre um menu para mover de grupo. Mostra também um resumo dos blocos encontrados.
 4. **Cadastro**: campos gerais + tabela de cidades (+ tabela de etapas). Prévia ao vivo ao lado.
 5. **Mídia**: por página e por seção, miniaturas das opções de cada variável de mídia; clicar escolhe. Prévia ao lado. Os blocos podem ser arrastados para outra ordem (só na tela; o site não muda).
-6. **Seções**: por página, as seções do HTML com Mostrar/Esconder (no evento todo e por cidade) e arrastar para mudar a ordem **na página gerada**. Prévia ao lado.
-7. **Conferir**: lista de páginas que serão geradas, avisos (seção 10) e prévia celular/desktop.
-8. **Publicar**: hoje gera um `.zip`. No programa novo, publica numa URL real (ROADMAP, fase 1).
+6. **Patrocínios**: por página (tapume e cada cidade), a seção de patrocinadores montada com cotas e logos do banco geral. Prévia ao lado.
+7. **Seções**: por página, as seções do HTML com Mostrar/Esconder (no evento todo e por cidade) e arrastar para mudar a ordem **na página gerada**. Prévia ao lado.
+8. **Conferir**: lista de páginas que serão geradas, avisos (seção 10) e prévia celular/desktop.
+9. **Publicar**: hoje gera um `.zip`. No programa novo, publica numa URL real (ROADMAP, fase 1).
 
-Os passos Variáveis, Cadastro, Mídia e Seções não aparecem no formato One page. A barra lateral mostra os passos com check quando concluídos. Lista inicial de eventos com abrir e excluir (com confirmação).
+Os passos Variáveis, Cadastro, Mídia, Patrocínios e Seções não aparecem no formato One page. A barra lateral mostra os passos com check quando concluídos. Lista inicial de eventos com abrir e excluir (com confirmação).
 
 ---
 
@@ -184,7 +185,7 @@ Contexto: página (tapume/praça/etapa), cidade e etapa da página, item atual d
 
 ### 6.4 Pós-processamento
 
-Em cada página gerada, nesta ordem: reordena as seções (6.5), tira as seções escondidas e o rodapé do HTML se escondido (6.5, 6.6), tira a mídia escondida (7.5), põe o rodapé padrão (6.6) e roda `ajustarTagsMidia` (seção 7.4).
+Em cada página gerada, nesta ordem: reordena as seções (6.5), tira as seções escondidas e o rodapé do HTML se escondido (6.5, 6.6), tira a mídia escondida (7.5), põe a seção de patrocinadores (6.7), põe o rodapé padrão (6.6) e roda `ajustarTagsMidia` (seção 7.4).
 
 ### 6.5 Seções (esconder e mostrar)
 
@@ -204,6 +205,17 @@ Em cada página gerada, nesta ordem: reordena as seções (6.5), tira as seçõe
 - Geral do evento (Mostrar/Esconder); por cidade, "igual ao evento / mostrar / esconder" e, se quiser, um rodapé próprio (começa como cópia do geral). Na página da etapa, a escolha da etapa vence a da cidade. O tapume usa o geral.
 - Entra antes de `</body>` (ou no fim), com a fonte no `<head>`. Estilo próprio isolado pela classe `.pub-rodape`.
 - Segurança: links só com `https://`, `http://`, `mailto:`, `tel:` ou `#` (os outros não aparecem); textos escapados; cor ou fonte inválida volta ao padrão.
+
+### 6.7 Patrocinadores
+
+- **Banco geral** (um só para todos os sites; tela "Banco de patrocinadores", fora dos eventos): patrocinador = nome, logo (imagem), link (opcional) e ativo. Cotas = nome, tamanho (GG, G, M, P) e "ao lado da cota anterior". Cotas padrão: Master (GG), Gold (G), Silver (M), Apoio (P), Ticketeria (P), Realização (P, ao lado da Ticketeria). Dá para criar cotas novas (entram antes da Ticketeria) e mudar a ordem.
+- Cadastrar um patrocinador dentro do evento grava no banco geral. Patrocinador usado em evento não pode ser apagado (só desativado). Patrocinador desativado não aparece nas páginas e gera aviso.
+- **Composição por página**: o tapume tem a sua; cada cidade monta a sua; a página da etapa usa a da cidade. "Copiar de…" copia de outra página.
+- Bloco = uma cota com os seus logos: título (o nome da cota, outro texto ou sem título), ao lado do bloco anterior (padrão da cota), ordem dos logos (alfabética, escolhida arrastando, ou aleatória a cada visita) e tamanho por logo (padrão da cota). Num bloco misto, cada tamanho forma uma linha, do maior para o menor (ex.: um GG em cima e dois P embaixo).
+- Página: blocos um abaixo do outro; blocos "ao lado" dividem a mesma faixa. Cards brancos com borda arredondada; tamanhos GG 246×180, G 202×150, M 172×137, P 127×103 px (no celular, menores). Fundo da seção e cor dos títulos por evento.
+- Logos com link abrem em nova aba (`rel="noopener sponsored"`). Ordem aleatória: um script curto embaralha a cada visita.
+- Posição: sempre antes do rodapé (antes do `<footer>` do HTML, se houver; senão antes de `</body>`, e o rodapé padrão vem depois).
+- Os logos vão para o site em `_patrocinadores/`. Mudou um patrocinador no banco: a tela mostra os eventos publicados que o usam e oferece "Republicar esses eventos".
 
 ---
 

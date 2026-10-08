@@ -42,7 +42,7 @@ export interface Linha {
 
 export type Modelos = Partial<Record<TipoPagina, string>>;
 
-export type Passo = 'evento' | 'paginas' | 'variaveis' | 'cadastro' | 'midia' | 'conferir' | 'publicar';
+export type Passo = 'evento' | 'paginas' | 'variaveis' | 'cadastro' | 'midia' | 'patrocinios' | 'secoes' | 'conferir' | 'publicar';
 
 export interface Aviso {
   /** código estável para a interface e os testes */
@@ -58,7 +58,8 @@ export interface Aviso {
     | 'midia-sem-arquivo'
     | 'campos-vazios'
     | 'gerais-vazios'
-    | 'espacos-sobrando';
+    | 'espacos-sobrando'
+    | 'patrocinador-fora';
   nivel: 'bloqueia' | 'alerta';
   titulo: string;
   detalhe: string;
