@@ -26,7 +26,7 @@ Público: designers e atendimento da Norte Marketing. Ninguém que usa a ferrame
 
 | Chave | Nome na tela | Páginas | Saída |
 |---|---|---|---|
-| `unica` | One page | página única | `index.html` com o HTML como está, sem variáveis |
+| `unica` | One page | página única | `index.html`, com variáveis, mídia, patrocínios, seções e rodapé como uma praça; o cadastro tem os campos gerais e uma linha só |
 | `tapume_praca` | Tapume + praça | tapume, praça | `index.html` + `<cidade>.html` |
 | `tapume_etapa_praca` | Tapume + praça + etapa | tapume, praça, etapa | `index.html` + `<cidade>.html` + `<cidade>-<etapa>.html` |
 
@@ -41,12 +41,12 @@ No formato com etapas, cada etapa pertence a uma cidade (campo interno `_cidade`
 3. **Variáveis**: as variáveis encontradas em chips agrupados: *Igual em todas as páginas*, *Muda em cada cidade*, *Muda em cada etapa*, *Imagens e vídeos*, *Preenchidas sozinhas*, *Excluídas do cadastro*, *Não são variáveis*. Clicar num chip abre um menu para mover de grupo. Mostra também um resumo dos blocos encontrados.
 4. **Cadastro**: campos gerais + tabela de cidades (+ tabela de etapas). Prévia ao vivo ao lado.
 5. **Mídia**: por página e por seção, miniaturas das opções de cada variável de mídia; clicar escolhe. Prévia ao lado. Os blocos podem ser arrastados para outra ordem (só na tela; o site não muda).
-6. **Patrocínios**: por página (tapume e cada cidade), a seção de patrocinadores montada com cotas e logos do banco geral. Prévia ao lado.
+6. **Patrocínios**: por página interna (a página do One page, cada praça no tapume + praça, cada etapa no formato com etapas; o tapume não tem), a seção de patrocinadores montada com cotas e logos do banco geral. Prévia ao lado.
 7. **Seções**: por página, as seções do HTML com Mostrar/Esconder (no evento todo e por cidade) e arrastar para mudar a ordem **na página gerada**. Prévia ao lado.
 8. **Conferir**: lista de páginas que serão geradas, avisos (seção 10) e prévia celular/desktop.
 9. **Publicar**: hoje gera um `.zip`. No programa novo, publica numa URL real (ROADMAP, fase 1).
 
-Os passos Variáveis, Cadastro, Mídia, Patrocínios e Seções não aparecem no formato One page. A barra lateral mostra os passos com check quando concluídos. Lista inicial de eventos com abrir e excluir (com confirmação).
+O formato One page tem todos os passos; o cadastro dele é a linha única da página (sem tabela de cidades). A barra lateral mostra os passos com check quando concluídos. Lista inicial de eventos com abrir e excluir (com confirmação).
 
 ---
 
@@ -211,7 +211,7 @@ Em cada página gerada, nesta ordem: reordena as seções (6.5), tira as seçõe
 - **Aba Patrocínios** (ao lado de Eventos; um cadastro só para todos os sites): cada patrocinador é um card com logo, nome (obrigatório) e link (opcional), editáveis ali mesmo. Dá para arrastar várias imagens de uma vez para a página (ou escolher várias): cada uma vira um card de rascunho com nome (sugerido pelo nome do arquivo) e link próprios, cadastrado um a um ou em "Cadastrar todos"; arquivos que não são imagem são ignorados com aviso, mais trocar logo e ativar/desativar. Clicar no card lista os eventos e páginas (tapume e cidades) em que o logo está, com a cota; dá para trocar a cota (o tamanho não muda por aqui), tirar o logo dali, abrir a **prévia** da página (celular/desktop) em "Visualizar", e **adicionar o logo em um evento**: escolher o evento, marcar as páginas (tapume e cidades; as que já têm o logo ficam travadas) e a cota (as do evento). O que se faz aqui aparece igual no passo Patrocínios do evento, e vice-versa. Essa aba **não publica**: os eventos já publicados afetados (por essas edições ou por mudança de nome, link, logo ou ativo) ficam com **"atualização pendente"** (na lista de eventos e no passo Publicar, com os motivos) até serem publicados de novo.
 - **Cotas** (subaba de Patrocínios, valem para todos os eventos): organizadas em **blocos**, um por linha, na ordem da página (arrastar). Um bloco pode ter várias cotas lado a lado (ex.: Ticketeria e Realização); "+ Cota neste bloco", "Separar" e "Juntar com o de cima" mudam isso. Cada cota tem nome (opcional; sem nome, os logos ficam sem título) e tamanho (GG 246×180, G 202×150, M 172×137, P 127×103 px no desktop). Bloco com mais de uma cota tem nome do bloco opcional, que aparece acima da faixa. Padrão: Master (GG), Gold (G), Silver (M), Apoio (P), e Ticketeria (P) + Realização (P) no mesmo bloco. As mudanças aparecem na hora e gravam em segundo plano; mudar ou apagar uma cota em uso deixa os eventos publicados que a usam com "atualização pendente" (no mesmo salvamento, sem publicar nada). Dentro do evento, o tamanho de um logo ainda pode ser trocado só naquela página.
 - Cadastrar um patrocinador dentro do evento grava no cadastro geral. Patrocinador usado em evento não pode ser apagado (só desativado). Patrocinador desativado não aparece nas páginas e gera aviso.
-- **Composição por página**: o tapume tem a sua; cada cidade monta a sua; a página da etapa usa a da cidade. "Copiar de…" copia de outra página.
+- **Composição por página interna**: a página do One page (chave `unica`); no tapume + praça, cada praça monta a sua; no formato com etapas, cada etapa monta a sua (a praça, que lista as etapas, não tem). O tapume nunca tem. "Copiar de…" copia de outra página.
 - Bloco = uma cota com os seus logos: título (o nome da cota, outro texto ou sem título), ao lado do bloco anterior (padrão da cota), ordem dos logos (alfabética, escolhida arrastando, ou aleatória a cada visita) e tamanho por logo (padrão da cota). Num bloco misto, cada tamanho forma uma linha, do maior para o menor (ex.: um GG em cima e dois P embaixo).
 - Página: blocos um abaixo do outro; blocos "ao lado" dividem a mesma faixa. Cards brancos com borda arredondada; tamanhos GG 246×180, G 202×150, M 172×137, P 127×103 px (no celular, menores). Fundo da seção e cor dos títulos por evento.
 - Logos com link abrem em nova aba (`rel="noopener sponsored"`). Ordem aleatória: um script curto embaralha a cada visita.

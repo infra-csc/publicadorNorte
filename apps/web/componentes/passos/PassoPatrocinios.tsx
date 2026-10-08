@@ -1,10 +1,10 @@
 'use client';
-// Seção de patrocinadores de cada página: o tapume e cada cidade montam a sua (a etapa usa a da cidade).
+// Seção de patrocinadores de cada página interna: a do One page, cada praça (tapume + praça) ou cada etapa (formato com etapas).
 // Os logos vêm do banco geral; cadastrar um novo aqui já salva no banco.
 import { TAMANHOS, type BlocoPatrocinio, type ComposicaoPatrocinio, type OrdemBloco, type Tamanho } from '@norte/motor';
 import Link from 'next/link';
 import { useDeferredValue, useMemo, useState } from 'react';
-import { cotasDoEvento, gerarEvento } from '@/lib/comum/montagem';
+import { cotasDoEvento, gerarEvento, paginaDoPatrocinio, paginasComPatrocinio } from '@/lib/comum/montagem';
 import type { BancoPatrocinios, Evento } from '@/lib/comum/tipos';
 import { Cabecalho, NavPassos, useEditor } from '../Editor';
 import { novoPatrocinador, porNome, subirLogo, urlLogo } from '../patrocinadores';
@@ -159,9 +159,10 @@ function Bloco({ pagina, b, i, total, alca, moverBloco }: { pagina: string; b: B
 }
 
 export function PassoPatrocinios() {
-  const { evento, modelos, arquivos, banco, cad, alterar } = useEditor();
-  const paginas = useMemo(() => [{ id: 'tapume', nome: 'Tapume (home)' }, ...evento.cidades.map((c) => ({ id: c._id, nome: cad.nomeItem('cidade', c) }))], [evento.cidades, cad]);
-  const [pagina, setPagina] = useState(paginas[0].id);
+  const { evento, modelos, arquivos, banco, alterar, hrefPasso } = useEditor();
+  const paginas = useMemo(() => paginasComPatrocinio(evento), [evento]);
+  const [escolhida, setPagina] = useState('');
+  const pagina = paginas.some((p) => p.id === escolhida) ? escolhida : paginas[0]?.id || '';
   const comp = evento.patrocinios?.porPagina[pagina];
   const blocos = comp?.blocos || [];
   const outras = paginas.filter((p) => p.id !== pagina && evento.patrocinios?.porPagina[p.id]?.blocos.length);
@@ -170,7 +171,7 @@ export function PassoPatrocinios() {
 
   const ev = useDeferredValue(evento);
   const resultado = useMemo(() => gerarEvento(ev, modelos, arquivos, banco), [ev, modelos, arquivos, banco]);
-  const pag = pagina === 'tapume' ? resultado.paginas.find((p) => p.tipo === 'tapume') : resultado.paginas.find((p) => p.tipo === 'praca' && p.cidadeId === pagina);
+  const pag = paginaDoPatrocinio(resultado.paginas, pagina);
   const cotas = cotasDoEvento(evento, banco);
 
   function adicionarCota(cotaId: string) {
@@ -186,8 +187,10 @@ export function PassoPatrocinios() {
 
   return (
     <>
-      <Cabecalho passo="patrocinios" titulo="Patrocínios">Monte a seção de patrocinadores de cada página. Ela entra sempre antes do rodapé. Cada cidade monta a sua; as páginas de etapa usam a da cidade.</Cabecalho>
-      {!banco ? <p className="muted">Carregando o banco de patrocinadores…</p> : (
+      <Cabecalho passo="patrocinios" titulo="Patrocínios">{evento.formato === 'unica' ? 'Monte a seção de patrocinadores da página. Ela entra sempre antes do rodapé.' : `Monte a seção de patrocinadores de cada ${evento.formato === 'tapume_praca' ? 'praça' : 'etapa'}. Ela entra sempre antes do rodapé. O tapume${evento.formato === 'tapume_etapa_praca' ? ' e a página da cidade (que lista as etapas) não têm' : ' não tem'}.`}</Cabecalho>
+      {!paginas.length ? (
+        <div className="w-item warn"><span className="ic">!</span><div><b>Nenhuma {evento.formato === 'tapume_praca' ? 'cidade' : 'etapa'} cadastrada</b>Os patrocínios ficam nas páginas {evento.formato === 'tapume_praca' ? 'de cada cidade' : 'de cada etapa'}. <Link href={hrefPasso('cadastro')}>Ir para o cadastro →</Link></div></div>
+      ) : !banco ? <p className="muted">Carregando o banco de patrocinadores…</p> : (
         <>
           <div className="row">
             <label className="row small" style={{ gap: 6 }}>Página:

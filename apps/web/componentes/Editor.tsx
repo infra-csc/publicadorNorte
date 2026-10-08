@@ -4,7 +4,7 @@ import { Cadastro, detectar, FORMATOS, sincronizarVars, type Deteccao, type Tipo
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { arquivosDoBanco } from '@/lib/comum/montagem';
+import { arquivosDoBanco, paginasComPatrocinio } from '@/lib/comum/montagem';
 import type { ArquivoMidia, BancoPatrocinios, Evento, EventoCompleto, UsoPatrocinadores } from '@/lib/comum/tipos';
 import { api, ErroApi, json } from './api';
 import { useRolagemArrastando } from './rolagemArrastando';
@@ -14,7 +14,7 @@ export const PASSOS = [
   ['evento', 'Evento', 'Nome e formato'],
   ['paginas', 'Páginas', 'Subir os HTMLs e a mídia'],
   ['variaveis', 'Variáveis', 'O que muda em cada página'],
-  ['cadastro', 'Cadastro', 'Valores de cada cidade'],
+  ['cadastro', 'Cadastro', 'Valores das páginas'],
   ['midia', 'Mídia', 'Trocar imagens e vídeos'],
   ['patrocinios', 'Patrocínios', 'Logos dos patrocinadores'],
   ['secoes', 'Seções', 'Ordem e o que aparece'],
@@ -23,7 +23,8 @@ export const PASSOS = [
 ] as const;
 export type Passo = (typeof PASSOS)[number][0];
 
-export const passosDo = (e: Evento) => PASSOS.filter(([k]) => e.formato !== 'unica' || !['variaveis', 'cadastro', 'midia', 'patrocinios', 'secoes'].includes(k));
+// todos os formatos têm todos os passos (o One page é uma página interna com a linha única do cadastro)
+export const passosDo = (_e: Evento) => PASSOS;
 
 type EstadoSalvar = 'ok' | 'pend' | 'salvando' | 'erro' | 'conflito';
 
@@ -170,7 +171,7 @@ export function Editor({ slug, children }: { slug: string; children: React.React
     variaveis: det.variaveis.size > 0,
     cadastro: ev.cidades.length > 0,
     midia: dados.arquivos.length > 0,
-    patrocinios: Object.values(ev.patrocinios?.porPagina || {}).some((c) => c.blocos.length > 0),
+    patrocinios: paginasComPatrocinio(ev).some((p) => (ev.patrocinios?.porPagina[p.id]?.blocos.length || 0) > 0),
     secoes: !!(ev.secoes?.ocultas?.length || Object.keys(ev.secoes?.ordem || {}).length),
     conferir: false,
     publicar: ev.versaoAtiva != null,

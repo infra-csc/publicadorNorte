@@ -3,7 +3,7 @@
 import { FORMATOS, type Formato } from '@norte/motor';
 
 export const DESC: Record<Formato, string> = {
-  unica: 'Página única, sem variáveis. Publica o HTML do jeito que ele é.',
+  unica: 'Uma página só, sem home. Tem variáveis, mídia, patrocínios e rodapé, como uma praça.',
   tapume_praca: 'Uma página home que lista páginas internas por cidade.',
   tapume_etapa_praca: 'Uma página home, um seletor de etapa e uma interna.',
 };

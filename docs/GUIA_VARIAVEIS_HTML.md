@@ -186,6 +186,12 @@ O publicador lê qualquer `@nome` como variável e cria a coluna sozinho. També
 - Toda variável da cidade termina em `_1`: ela vira o valor da cidade daquela página.
 - O publicador gera um arquivo por cidade cadastrada (`sao-paulo.html`, `recife.html`…).
 
+### One page (página única, sem tapume)
+
+- Escreva o HTML **igual a uma página de cidade**: o que muda vem com `_1` (`@cidade_1`, `@local_1`, `@media_hero_desktop`…) e o que é geral vai sem número (`@evento`).
+- O cadastro do One page tem os campos gerais e **uma linha só**. Sai um `index.html`.
+- Mídia, patrocinadores, seções e rodapé funcionam como na página de cidade. As imagens ficam em `_media/pagina/`.
+
 ---
 
 ## 7. Tapume (home com os cards das cidades)
@@ -321,7 +327,7 @@ Escreva sempre uma tag `<img>` com a variável `@media_`. Se for escolhido um v�
 - O `.zip` sai com os arquivos usados na mesma estrutura `_media/...`, prontos para subir junto dos HTMLs.
 
 ### Patrocinadores
-A seção de patrocinadores é montada pelo publicador (banco geral de logos) e entra sozinha antes do rodapé. **Não monte seção de patrocinadores no HTML.**
+A seção de patrocinadores é montada pelo publicador (banco geral de logos) e entra sozinha antes do rodapé, **só nas páginas internas**: a página do One page, a praça (no formato tapume + praça) e cada etapa (no formato com etapas). O tapume e a praça que lista etapas não têm. **Não monte seção de patrocinadores no HTML.**
 
 ### Rodapé
 O publicador tem um **rodapé padrão** (feito no passo Seções), e quem publica pode esconder o rodapé que vier no HTML. Por isso:

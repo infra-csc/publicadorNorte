@@ -1,7 +1,7 @@
 // Edição rápida pela aba Patrocínios: pôr um logo em páginas do evento, trocar a cota ou o tamanho dele
 // numa página, ou tirar o logo dali. Não publica: o evento fica com "atualização pendente".
 import type { BlocoPatrocinio, ComposicaoPatrocinio, Cota, Tamanho } from '@norte/motor';
-import { cotasDoEvento } from '@/lib/comum/montagem';
+import { cotasDoEvento, paginasComPatrocinio } from '@/lib/comum/montagem';
 import { servicos } from '@/lib/servidor/config';
 import { anotarPendencia } from '@/lib/servidor/pendencia';
 import { erro, responder } from '@/lib/servidor/rotas';
@@ -41,14 +41,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ slug: 
     const r = await armazenamento.atualizar(slug, (e) => {
       e.patrocinios ??= { porPagina: {} };
       const cotas = cotasDoEvento(e, banco);
-      const nomeDe = (pg: string) => (pg === 'tapume' ? 'Tapume' : (() => { const c = e.cidades.find((x) => x._id === pg); return c ? c.cidade || c.praca || c.nome || 'cidade' : 'cidade'; })());
+      const internas = paginasComPatrocinio(e);
+      const nomeDe = (pg: string) => internas.find((x) => x.id === pg)?.nome || pg;
 
       if (p.acao === 'adicionar') {
         const cota = cotas.find((c) => c.id === p.cota);
         if (!cota) return;
         const entrou: string[] = [];
         for (const pg of p.paginas!) {
-          if (pg !== 'tapume' && !e.cidades.some((c) => c._id === pg)) continue;
+          if (!internas.some((x) => x.id === pg)) continue;
           const comp = (e.patrocinios.porPagina[pg] ??= { blocos: [] });
           if (comp.blocos.some((b) => b.itens.some((i) => i.patrocinador === p.patrocinador))) continue;
           blocoDaCota(comp, cotas, cota.id).itens.push({ patrocinador: p.patrocinador });

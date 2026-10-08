@@ -7,7 +7,7 @@ import { enviarMidia, juntar } from '../enviarMidia';
 import { Cabecalho, NavPassos, useEditor, varsSincronizadas } from '../Editor';
 
 const DESC_PAG: Record<TipoPagina, string> = {
-  unica: 'O HTML é publicado como está, num index.html.',
+  unica: 'A página do site. Sai um index.html com os valores do cadastro.',
   tapume: 'A página home. Gera uma página só, o index.html.',
   praca: 'A página de cada cidade. Vira uma página para cada cidade cadastrada.',
   etapa: 'A página interna de cada etapa. Vira uma página para cada etapa de cada cidade.',

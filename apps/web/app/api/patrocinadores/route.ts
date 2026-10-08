@@ -1,4 +1,5 @@
 import type { Cota } from '@norte/motor';
+import { paginasComPatrocinio } from '@/lib/comum/montagem';
 import type { BancoPatrocinios, Evento } from '@/lib/comum/tipos';
 import { anotarPendencia } from '@/lib/servidor/pendencia';
 import { servicos } from '@/lib/servidor/config';
@@ -44,7 +45,7 @@ export async function PUT(req: Request) {
       if (e.versaoAtiva == null) return false;
       const motivos = new Set<string>();
       for (const [pg, comp] of Object.entries(e.patrocinios?.porPagina || {})) {
-        if (pg !== 'tapume' && !e.cidades.some((c) => c._id === pg)) continue;
+        if (!paginasComPatrocinio(e).some((x) => x.id === pg)) continue;
         for (const b of comp.blocos) {
           if (b.itens.length && cotasMudadas.has(b.cota)) motivos.add('as cotas mudaram');
           for (const it of b.itens) if (nomes.has(it.patrocinador)) motivos.add(`${nomes.get(it.patrocinador)} mudou no cadastro`);

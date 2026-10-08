@@ -4,7 +4,7 @@
 // Nada aqui publica: os eventos publicados afetados ficam com "atualização pendente".
 import { slug as limpar, TAMANHOS, type Cota, type Tamanho } from '@norte/motor';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { arquivosDoBanco, gerarEvento } from '@/lib/comum/montagem';
+import { arquivosDoBanco, gerarEvento, paginaDoPatrocinio, paginasComPatrocinio } from '@/lib/comum/montagem';
 import type { AplicacaoPatrocinador, ArquivoMidia, BancoPatrocinios, Evento, EventoPatrocinavel, PatrocinadorBanco, UsoPatrocinadores } from '@/lib/comum/tipos';
 import { api, ErroApi, json } from './api';
 import { ehImagemLogo, novoPatrocinador, porNome, subirLogo, urlLogo } from './patrocinadores';
@@ -205,7 +205,7 @@ function OndeAparece({ p, usos, eventos, recarregar, visualizar }: { p: Patrocin
             <b>{u.nome}</b>
             {u.publicado ? <span className="pill ok">no ar</span> : <span className="pill">rascunho</span>}
             {u.pendente && <span className="pill warn">atualização pendente</span>}
-            <button className="btn sm ghost" type="button" style={{ marginLeft: 'auto' }} onClick={() => visualizar(u.slug, u.nome, u.aplicacoes[0]?.pagina || 'tapume')}>Visualizar</button>
+            <button className="btn sm ghost" type="button" style={{ marginLeft: 'auto' }} onClick={() => visualizar(u.slug, u.nome, u.aplicacoes[0]?.pagina || '')}>Visualizar</button>
           </div>
           {u.aplicacoes.map((a) => {
             const ocupada = ocupado === u.slug + a.pagina;
@@ -229,7 +229,7 @@ function OndeAparece({ p, usos, eventos, recarregar, visualizar }: { p: Patrocin
 function Visualizar({ slug, nome, pagina: inicial, banco, fechar }: { slug: string; nome: string; pagina: string; banco: BancoPatrocinios; fechar: () => void }) {
   const [dados, setDados] = useState<{ evento: Evento; modelos: Partial<Record<string, string>>; arquivos: ArquivoMidia[] } | null>(null);
   const [erro, setErro] = useState('');
-  const [pagina, setPagina] = useState(inicial);
+  const [escolhida, setPagina] = useState(inicial);
   useEffect(() => { api<NonNullable<typeof dados>>(`/api/eventos/${slug}`).then(setDados, (e) => setErro(e.message)); }, [slug]);
   useEffect(() => {
     const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') fechar(); };
@@ -238,8 +238,9 @@ function Visualizar({ slug, nome, pagina: inicial, banco, fechar }: { slug: stri
   }, [fechar]);
   const resultado = useMemo(() => (dados ? gerarEvento(dados.evento, dados.modelos, dados.arquivos, banco) : null), [dados, banco]);
   const arquivos = useMemo(() => [...(dados?.arquivos || []), ...arquivosDoBanco(banco)], [dados, banco]);
-  const paginas: Opcao[] = dados ? [{ valor: 'tapume', rotulo: 'Tapume (home)' }, ...dados.evento.cidades.map((c, i) => ({ valor: c._id, rotulo: String(c.cidade || c.praca || c.nome || `Cidade ${i + 1}`) }))] : [];
-  const pag = resultado?.paginas.find((p) => (pagina === 'tapume' ? p.tipo === 'tapume' : p.tipo === 'praca' && p.cidadeId === pagina));
+  const paginas: Opcao[] = dados ? paginasComPatrocinio(dados.evento).map((p) => ({ valor: p.id, rotulo: p.nome })) : [];
+  const pagina = paginas.some((p) => p.valor === escolhida) ? escolhida : paginas[0]?.valor || '';
+  const pag = resultado ? paginaDoPatrocinio(resultado.paginas, pagina) : undefined;
   return (
     <div className="janela-fundo" onClick={(e) => { if (e.target === e.currentTarget) fechar(); }}>
       <div className="janela" role="dialog" aria-modal="true" aria-label={`Prévia de ${nome}`}>

@@ -77,31 +77,47 @@ describe('M. Patrocinadores', () => {
     expect(r.avisos.find((a) => a.codigo === 'patrocinador-fora')?.detalhe).toContain('Antigo');
   });
 
-  it('M6: cada cidade tem a sua; o tapume tem a dele; a etapa usa a da cidade; entra antes do rodapé', () => {
+  it('M6: patrocínios só nas internas (praça; etapa no formato com etapas; a página do One page); o tapume nunca tem; entra antes do rodapé', () => {
     const sp = linha({ cidade: 'SP' });
     const rj = linha({ cidade: 'RJ' });
     const pag = '<body><main>conteúdo</main><footer class="site">rodapé</footer></body>';
+    const master = { blocos: [{ id: '1', cota: 'master', ordem: 'alfabetica' as const, itens: [{ patrocinador: 'daycoval' }] }] };
+    const apoio = { blocos: [{ id: '2', cota: 'apoio', titulo: '', ordem: 'alfabetica' as const, itens: [{ patrocinador: 'rj', tamanho: 'GG' as const }] }] };
+    const rodape = { ativo: true, geral: { fonte: '', corFundo: '#000', corTexto: '#fff', corLinks: '#fff', descricao: 'padrão', links: [], redes: [] } };
+
+    // tapume + praça: cada praça tem a sua; o tapume não tem, mesmo com composição guardada
     const r = gerar({
-      formato: 'tapume_etapa_praca',
-      modelos: { tapume: pag, praca: pag.replace('conteúdo', '@cidade_1'), etapa: pag },
+      formato: 'tapume_praca',
+      modelos: { tapume: pag, praca: pag.replace('conteúdo', '@cidade_1') },
       cidades: [sp, rj],
-      etapas: [linha({ etapa: 'Outono', _cidade: rj._id })],
-      patrocinios: {
-        ...BANCO,
-        porPagina: {
-          tapume: { blocos: [{ id: '1', cota: 'master', ordem: 'alfabetica', itens: [{ patrocinador: 'daycoval' }] }] },
-          [rj._id]: { blocos: [{ id: '2', cota: 'apoio', titulo: '', ordem: 'alfabetica', itens: [{ patrocinador: 'rj', tamanho: 'GG' }] }] },
-        },
-      },
-      rodape: { ativo: true, geral: { fonte: '', corFundo: '#000', corTexto: '#fff', corLinks: '#fff', descricao: 'padrão', links: [], redes: [] } },
+      patrocinios: { ...BANCO, porPagina: { tapume: master, [rj._id]: apoio } },
+      rodape,
     });
-    const [tap, pSP, pRJ, eRJ] = r.paginas;
-    expect(nomes(tap.html)).toEqual(['Banco Daycoval']);
+    const [tap, pSP, pRJ] = r.paginas;
+    expect(tap.html).not.toContain('pub-patro');
     expect(pSP.html).not.toContain('pub-patro');
     expect(nomes(pRJ.html)).toEqual(['Governo do Estado RJ']);
-    expect(nomes(eRJ.html)).toEqual(['Governo do Estado RJ']);
     // ordem: conteúdo → patrocinadores → rodapé do HTML → rodapé padrão
     expect(pRJ.html).toMatch(/RJ<\/main><section class="pub-patro"[^]*<\/section><footer class="site">rodapé<\/footer><footer class="pub-rodape"/);
+
+    // com etapas: cada etapa tem a sua; a praça (seletor de etapas) não tem
+    const outono = linha({ etapa: 'Outono', _cidade: rj._id });
+    const inverno = linha({ etapa: 'Inverno', _cidade: rj._id });
+    const e = gerar({
+      formato: 'tapume_etapa_praca',
+      modelos: { tapume: pag, praca: pag, etapa: pag },
+      cidades: [rj],
+      etapas: [outono, inverno],
+      patrocinios: { ...BANCO, porPagina: { [rj._id]: master, [outono._id]: apoio } },
+    });
+    const porTipo = (t: string) => e.paginas.filter((p) => p.tipo === t);
+    expect(porTipo('praca')[0].html).not.toContain('pub-patro');
+    expect(nomes(porTipo('etapa')[0].html)).toEqual(['Governo do Estado RJ']);
+    expect(porTipo('etapa')[1].html).not.toContain('pub-patro');
+
+    // One page: a página tem a sua (chave "unica")
+    const u = gerar({ formato: 'unica', modelos: { unica: pag }, patrocinios: { ...BANCO, porPagina: { unica: master } } });
+    expect(nomes(u.paginas[0].html)).toEqual(['Banco Daycoval']);
   });
 
   it('M7: bloco com várias cotas tem nome opcional (acima da faixa); cota sem nome não tem título; bloco de uma cota ignora o nome do bloco', () => {

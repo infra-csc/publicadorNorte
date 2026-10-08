@@ -1,6 +1,6 @@
 'use client';
 import { FORMULAS_PADRAO, novaLinha, slugValor, sincronizarVars, type Linha, type TipoItem } from '@norte/motor';
-import { useDeferredValue, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { gerarEvento } from '@/lib/comum/montagem';
 import type { Evento } from '@/lib/comum/tipos';
 import { Cabecalho, NavPassos, useEditor } from '../Editor';
@@ -106,6 +106,8 @@ function Tabela({ tipo, foco, setFoco }: { tipo: TipoItem; foco: string | null; 
   const [msgCol, setMsgCol] = useState('');
   const [remover, setRemover] = useState<string | null>(null);
   const nomeTipo = tipo === 'etapa' ? 'etapa' : 'cidade';
+  // One page: uma linha só (a da página), sem somar, duplicar ou mudar de ordem
+  const unica = evento.formato === 'unica';
 
   function adicionar() {
     const id = novoId();
@@ -140,6 +142,7 @@ function Tabela({ tipo, foco, setFoco }: { tipo: TipoItem; foco: string | null; 
       const l = lista(e, tipo);
       let r = l.findIndex((x) => x._id === alvo.dataset.row);
       for (const celulas of grade) {
+        if (!l[r] && unica && r > 0) break;
         if (!l[r]) { const n: Linha = { _id: novoId() }; if (tipo === 'etapa' && e.cidades.length === 1) n._cidade = e.cidades[0]._id; l.push(n); r = l.length - 1; }
         celulas.forEach((v, k) => { const c = cols[c0 + k]; if (c) l[r][c] = v.trim(); });
         r++;
@@ -150,10 +153,10 @@ function Tabela({ tipo, foco, setFoco }: { tipo: TipoItem; foco: string | null; 
   return (
     <section className="stack">
       <div className="row between">
-        <h2 style={{ fontSize: 20 }}>{tipo === 'etapa' ? 'Etapas' : 'Cidades'} <span className="cnt">{linhas.length}</span></h2>
+        <h2 style={{ fontSize: 20 }}>{unica ? 'Da página' : <>{tipo === 'etapa' ? 'Etapas' : 'Cidades'} <span className="cnt">{linhas.length}</span></>}</h2>
         <span className="row" style={{ gap: 6 }}>
           <button className="btn sm ghost" type="button" onClick={() => { setNovaCol(''); setPainel(null); }}>+ Coluna</button>
-          <button className="btn sm pri" type="button" onClick={adicionar}>+ {tipo === 'etapa' ? 'Etapa' : 'Cidade'}</button>
+          {(!unica || !linhas.length) && <button className="btn sm pri" type="button" onClick={adicionar}>{unica ? 'Preencher' : `+ ${tipo === 'etapa' ? 'Etapa' : 'Cidade'}`}</button>}
         </span>
       </div>
       {novaCol !== null && (
@@ -179,7 +182,7 @@ function Tabela({ tipo, foco, setFoco }: { tipo: TipoItem; foco: string | null; 
                   </button>
                 </th>
               ))}
-              <th style={{ padding: '10px 12px' }}>Arquivo gerado</th>
+              {!unica && <th style={{ padding: '10px 12px' }}>Arquivo gerado</th>}
               <th className="act"></th>
             </tr>
           </thead>
@@ -196,7 +199,7 @@ function Tabela({ tipo, foco, setFoco }: { tipo: TipoItem; foco: string | null; 
                   </td>
                 )}
                 {cols.map((c) => <td key={c}><Celula tipo={tipo} linha={l} col={c} /></td>)}
-                <td className="arq"><input value={l._arquivo || ''} placeholder={cad.arquivo(tipo, l)} aria-label="Arquivo gerado" onChange={(e) => { const v = e.target.value; acao(l._id, (ls, k) => { ls[k]._arquivo = v; }); }} /></td>
+                {!unica && <td className="arq"><input value={l._arquivo || ''} placeholder={cad.arquivo(tipo, l)} aria-label="Arquivo gerado" onChange={(e) => { const v = e.target.value; acao(l._id, (ls, k) => { ls[k]._arquivo = v; }); }} /></td>}
                 <td className="act">
                   {remover === l._id ? (
                     <span className="row" style={{ gap: 4, flexWrap: 'nowrap' }}>
@@ -205,10 +208,12 @@ function Tabela({ tipo, foco, setFoco }: { tipo: TipoItem; foco: string | null; 
                     </span>
                   ) : (
                     <>
+                      {!unica && <>
                       <button className="iconbtn" type="button" title={`Duplicar ${nomeTipo}`} onClick={() => acao(l._id, (ls, k) => { const n = structuredClone(ls[k]); n._id = novoId(); delete n._arquivo; ls.splice(k + 1, 0, n); })}>⧉</button>
                       <button className="iconbtn" type="button" title="Subir" disabled={i === 0} onClick={() => acao(l._id, (ls, k) => { [ls[k - 1], ls[k]] = [ls[k], ls[k - 1]]; })}>↑</button>
                       <button className="iconbtn" type="button" title="Descer" disabled={i === linhas.length - 1} onClick={() => acao(l._id, (ls, k) => { [ls[k + 1], ls[k]] = [ls[k], ls[k + 1]]; })}>↓</button>
                       <button className="iconbtn" type="button" title={`Remover ${nomeTipo}`} onClick={() => setRemover(l._id)}>✕</button>
+                      </>}
                     </>
                   )}
                 </td>
@@ -227,6 +232,11 @@ export function PassoCadastro() {
   const { evento, modelos, arquivos, cad, alterar, banco } = useEditor();
   const [foco, setFoco] = useState<string | null>(null);
   const gerais = cad.colunas('geral');
+  const unica = evento.formato === 'unica';
+  // One page: a linha da página já vem criada
+  useEffect(() => {
+    if (unica && !evento.cidades.length) alterar((e) => { if (!e.cidades.length) e.cidades.push(novaLinha('cidade', null, cad.colunas('cidade'), novoId())); });
+  }, [unica, evento.cidades.length, alterar, cad]);
   const ev = useDeferredValue(evento);
   const resultado = useMemo(() => gerarEvento(ev, modelos, arquivos, banco), [ev, modelos, arquivos, banco]);
   const pagina =
@@ -236,12 +246,12 @@ export function PassoCadastro() {
 
   return (
     <>
-      <Cabecalho passo="cadastro" titulo="Cadastro">Preencha os valores. Cada linha vira uma página. Dá para colar linhas de uma planilha. A prévia mostra a linha em que você está.</Cabecalho>
+      <Cabecalho passo="cadastro" titulo="Cadastro">{unica ? 'Preencha os valores da página. A prévia mostra o resultado.' : 'Preencha os valores. Cada linha vira uma página. Dá para colar linhas de uma planilha. A prévia mostra a linha em que você está.'}</Cabecalho>
       <div className="split">
         <div className="stack" style={{ minWidth: 0 }}>
           {gerais.length > 0 && (
             <section className="card stack">
-              <h2 style={{ fontSize: 20 }}>Igual em todas as páginas</h2>
+              <h2 style={{ fontSize: 20 }}>{unica ? 'Gerais' : 'Igual em todas as páginas'}</h2>
               <div className="grid3">
                 {gerais.map((g) => (
                   <label key={g} className="f"><span className="v" style={{ alignSelf: 'start' }}>@{g}</span>

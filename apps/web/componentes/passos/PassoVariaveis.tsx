@@ -14,6 +14,12 @@ const GRUPOS: [Grupo, string, string][] = [
   ['excluida', 'Excluídas do cadastro', 'Saem em branco na página. Clique numa delas para trazer de volta.'],
   ['ignorar', 'Não são variáveis', 'Ficam na página do jeito que estão escritas.'],
 ];
+/** no One page não há cidades: "da página" no lugar de "muda em cada cidade" */
+const GRUPOS_UNICA: Partial<Record<Grupo, [string, string]>> = {
+  geral: ['Gerais', 'Você preenche uma vez, nos campos gerais do cadastro.'],
+  cidade: ['Da página', 'Cada uma vira um campo no cadastro da página.'],
+  img: ['Imagens e vídeos', 'Cada uma escolhe um arquivo da pasta da sua seção, no passo Mídia.'],
+};
 
 function ResumoBlocos() {
   const { evento, modelos } = useEditor();
@@ -47,6 +53,8 @@ export function PassoVariaveis() {
   const [aberto, setAberto] = useState<string | null>(null);
   const vars = cad.vars;
   const comEtapas = evento.formato === 'tapume_etapa_praca';
+  const unica = evento.formato === 'unica';
+  const grupos = GRUPOS.map(([g, t, s]): [Grupo, string, string] => (unica && GRUPOS_UNICA[g] ? [g, ...GRUPOS_UNICA[g]!] : [g, t, s]));
 
   useEffect(() => {
     const f = (e: MouseEvent) => { if (!(e.target as HTMLElement).closest('.chipw')) setAberto(null); };
@@ -81,7 +89,7 @@ export function PassoVariaveis() {
   const faltaHtml = FORMATOS[evento.formato].paginas.filter((k) => modelos[k] == null);
   const destinos = (g: Grupo): [Grupo | 'volta', string][] => {
     if (g === 'excluida') return [['volta', 'Trazer de volta para o cadastro']];
-    const l: [Grupo, string][] = [['geral', 'Igual em todas as páginas'], ['cidade', 'Muda em cada cidade'], ...(comEtapas ? [['etapa', 'Muda em cada etapa'] as [Grupo, string]] : []), ['ignorar', 'Não é variável']];
+    const l: [Grupo, string][] = [['geral', unica ? 'Gerais' : 'Igual em todas as páginas'], ['cidade', unica ? 'Da página' : 'Muda em cada cidade'], ...(comEtapas ? [['etapa', 'Muda em cada etapa'] as [Grupo, string]] : []), ['ignorar', 'Não é variável']];
     return l.filter(([k]) => k !== g);
   };
 
@@ -94,7 +102,7 @@ export function PassoVariaveis() {
       <ResumoBlocos />
       {todas.length ? (
         <div className="stack">
-          {GRUPOS.map(([g, titulo, sub]) => {
+          {grupos.map(([g, titulo, sub]) => {
             const lista = todas.filter((d) => vars[d.base] && grupoDe(d.base) === g).sort((a, b) => a.base.localeCompare(b.base));
             if (!lista.length && ['ignorar', 'auto', 'etapa', 'img', 'excluida'].includes(g)) return null;
             return (

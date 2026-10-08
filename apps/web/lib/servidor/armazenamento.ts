@@ -2,7 +2,7 @@
 // desta mesma interface (ex.: D1 + R2), sem mexer nas telas nem nas rotas.
 import type { TipoPagina } from '@norte/motor';
 import { COTAS_PADRAO, type Cota } from '@norte/motor';
-import { cotasDoEvento } from '../comum/montagem';
+import { cotasDoEvento, paginasComPatrocinio } from '../comum/montagem';
 import type { ArquivoMidia, BancoPatrocinios, Evento, EventoCompleto, EventoPatrocinavel, ResumoEvento, UsoPatrocinadores } from '../comum/tipos';
 import { ErroGitHub, type GitHub, type Mudancas } from './github';
 
@@ -242,16 +242,12 @@ export class ArmazenamentoGitHub implements Armazenamento {
       [...todos].filter(([p]) => p.startsWith(PASTA) && p.endsWith('/' + ARQ_EVENTO) && p.split('/').length === 3).map(async ([, a]) => {
         const e = JSON.parse(await this.gh.lerTexto(a.sha)) as Evento;
         const cotas: Cota[] = cotasDoEvento(e, banco);
-        const nomePagina = (pg: string) => {
-          if (pg === 'tapume') return 'Tapume';
-          const i = e.cidades.findIndex((c) => c._id === pg);
-          const c = e.cidades[i];
-          return (c && (c.cidade || c.praca || c.nome || c.local)) || 'Cidade ' + (i + 1);
-        };
-        if (e.formato !== 'unica') eventos.push({ slug: e.slug, nome: e.nome, publicado: e.versaoAtiva != null, pendente: !!e.pendencia?.motivos.length, cotas, paginas: ['tapume', ...e.cidades.map((c) => c._id)].map((id) => ({ id, nome: nomePagina(id) })) });
+        const internas = paginasComPatrocinio(e);
+        const nomePagina = (pg: string) => internas.find((x) => x.id === pg)?.nome || pg;
+        eventos.push({ slug: e.slug, nome: e.nome, publicado: e.versaoAtiva != null, pendente: !!e.pendencia?.motivos.length, cotas, paginas: internas });
         const porId = new Map<string, UsoPatrocinadores[string][number]>();
         for (const [pagina, comp] of Object.entries(e.patrocinios?.porPagina || {})) {
-          if (pagina !== 'tapume' && !e.cidades.some((c) => c._id === pagina)) continue;
+          if (!internas.some((x) => x.id === pagina)) continue;
           for (const b of comp.blocos) {
             const cota = cotas.find((c) => c.id === b.cota);
             for (const it of b.itens) {

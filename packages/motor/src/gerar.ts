@@ -202,11 +202,11 @@ export function gerar(e: EntradaGerar): ResultadoGerar {
       avisos.push({ codigo: 'falta-html', nivel: 'bloqueia', titulo: 'Falta o HTML da página ' + NOME_PAGINA[k], detalhe: 'Sem ele, nenhuma página desse tipo é gerada.', passo: 'paginas' });
     }
   }
-  if (e.formato === 'unica') {
-    if (e.modelos.unica != null) paginas.push({ tipo: 'unica', arquivo: 'index.html', titulo: 'Página', html: e.modelos.unica, nivel: 0, avisos: 0 });
-    return { paginas, avisos, bloqueado: avisos.some((a) => a.nivel === 'bloqueia'), deteccao: det, vars };
+  const unica = e.formato === 'unica';
+  if (unica && !cad.cidades.length) {
+    avisos.push({ codigo: 'sem-cidades', nivel: 'alerta', titulo: 'Cadastro da página vazio', detalhe: 'As variáveis da página saem do cadastro. Sem ele, ficam em branco.', passo: 'cadastro' });
   }
-  if (!cad.cidades.length) {
+  if (!unica && !cad.cidades.length) {
     avisos.push({ codigo: 'sem-cidades', nivel: 'bloqueia', titulo: 'Nenhuma cidade cadastrada', detalhe: 'As páginas de praça saem do cadastro de cidades.', passo: 'cadastro' });
   }
   if (comEtapas && !cad.etapas.length) {
@@ -230,18 +230,18 @@ export function gerar(e: EntradaGerar): ResultadoGerar {
       });
     }
     const R: Rastro = { faltas: [], fora: new Set(), faltaG };
-    const ocultas = ocultasDaPagina(kind, e.secoes, kind === 'tapume' || kind === 'unica' ? [] : [ctx.cidade?._id, ctx.etapa?._id]);
-    const linhasDaPagina = kind === 'tapume' || kind === 'unica' ? [] : [ctx.cidade?._id, ctx.etapa?._id];
+    const linhasDaPagina = kind === 'tapume' ? [] : [ctx.cidade?._id, ctx.etapa?._id];
+    const ocultas = ocultasDaPagina(kind, e.secoes, linhasDaPagina);
     const corpo = tirarMidiaOculta(removerSecoes(reordenarSecoes(montador.render(arv.raiz, { ...ctx, kind }, R), e.secoes?.ordem?.[kind]), ocultas));
-    // patrocinadores: o tapume tem a dele; praça e etapa usam a da cidade
-    const chavePatro = kind === 'tapume' ? 'tapume' : ctx.cidade?._id;
+    // patrocinadores só nas internas: a página do One page, a praça (sem etapas) e cada etapa; o tapume nunca
+    const chavePatro = kind === 'unica' ? 'unica' : kind === 'etapa' ? ctx.etapa?._id : kind === 'praca' && !comEtapas ? ctx.cidade?._id : undefined;
     const comPatro = e.patrocinios && chavePatro ? colocarPatrocinios(corpo, montarPatrocinios(e.patrocinios.porPagina[chavePatro], e.patrocinios)) : corpo;
     const html = ajustarTagsMidia(colocarRodape(comPatro, rodapeDaPagina(e.rodape, linhasDaPagina)));
     for (const f of R.faltas) {
       if (!vazios.has(f.chave)) vazios.set(f.chave, new Set());
       vazios.get(f.chave)!.add(f.quem ?? titulo);
     }
-    if (R.fora.size) {
+    if (R.fora.size && !(unica && !ctx.cidade)) {
       avisos.push({
         codigo: 'espacos-sobrando', nivel: 'alerta', pagina: titulo, passo: 'cadastro',
         titulo: titulo + ': a página tem mais espaços do que itens cadastrados',
@@ -254,8 +254,10 @@ export function gerar(e: EntradaGerar): ResultadoGerar {
     });
   };
 
+  // One page: uma página só, com a linha única do cadastro (se houver)
+  if (unica) add('unica', 'index.html', 'Página', cad.cidades[0] ? { cidade: cad.cidades[0] } : {}, 0);
   if (paginasDoFormato.includes('tapume')) add('tapume', 'index.html', 'Tapume', {}, 0);
-  for (const c of cad.cidades) {
+  for (const c of unica ? [] : cad.cidades) {
     const nc = cad.nomeItem('cidade', c);
     add('praca', cad.arquivo('cidade', c), nc, { cidade: c }, 0);
     if (comEtapas) for (const et of cad.etapasDa(c)) add('etapa', cad.arquivo('etapa', et), nc + ' · ' + cad.nomeItem('etapa', et), { cidade: c, etapa: et }, 1);

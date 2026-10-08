@@ -82,7 +82,8 @@ export function detectar(modelos: Modelos, formato: Formato): Deteccao {
   const opc: Record<string, Set<string>> = {};
   const erros: Deteccao['erros'] = {};
   const paginas = FORMATOS[formato].paginas;
-  for (const k of ['praca', 'etapa', 'tapume'] as TipoPagina[]) {
+  // a página do One page funciona como uma praça (com a linha única do cadastro)
+  for (const k of ['praca', 'unica', 'etapa', 'tapume'] as TipoPagina[]) {
     const html = modelos[k];
     if (!paginas.includes(k) || html == null) continue;
     erros[k] = lerBlocos(html).erros;

@@ -102,6 +102,7 @@ Modelo:
 | F5 | etapa "Outono" da cidade "São Paulo" | `sao-paulo-outono.html` |
 | F6 | `_arquivo = "sp.html"` | usa `sp.html` |
 | F7 | tapume com `@cidade_3` e 2 cidades | vazio + aviso "mais espaços do que itens" |
+| F8 | One page com `@evento` e `@cidade_1`, gerais e uma linha | um `index.html` com os valores; sem a linha: campos em branco e aviso (alerta) "Cadastro da página vazio" |
 
 ## G. Mídia
 
@@ -198,5 +199,5 @@ Os tapumes de cards fixos dos casos H1–H4 são fixtures sintéticos em `packag
 | M3 | bloco sem título com um GG e dois P (Lei de ICMS) | linha GG em cima, linha P embaixo, sem título |
 | M4 | ordem escolhida e ordem aleatória | escolhida respeita a ordem; aleatória marca a linha e põe o script |
 | M5 | só patrocinador desativado | seção não aparece; aviso |
-| M6 | tapume, duas cidades e uma etapa | cada página com a sua; etapa com a da cidade; antes do rodapé do HTML e do rodapé padrão |
+| M6 | tapume + praça, com etapas e One page | só internas: cada praça a sua (tapume nunca); com etapas, cada etapa a sua e a praça nenhuma; One page com a dela (chave `unica`); antes do rodapé do HTML e do rodapé padrão |
 | M7 | bloco com várias cotas lado a lado e nome do bloco; cota sem nome | nome do bloco acima da faixa; cota sem nome sem título; bloco de uma cota ignora o nome do bloco |

@@ -89,9 +89,17 @@ describe('F. Arquivos e URLs', () => {
   it('falta de HTML e formato One page', () => {
     const r = gerar({ formato: 'tapume_praca', modelos: { praca: '<p>@cidade_1</p>' }, cidades: [linha({ cidade: 'SP' })] });
     expect(r.avisos[0]).toMatchObject({ codigo: 'falta-html', nivel: 'bloqueia' });
-    const u = gerar({ formato: 'unica', modelos: { unica: '<p>@cidade e contato@norte.com</p>' } });
-    expect(u.paginas).toEqual([{ tipo: 'unica', arquivo: 'index.html', titulo: 'Página', html: '<p>@cidade e contato@norte.com</p>', nivel: 0, avisos: 0 }]);
+    // One page: uma página só (index.html), com os campos gerais e a linha única do cadastro
+    const pag = linha({ cidade: 'SP', local: 'Parque' });
+    const u = gerar({ formato: 'unica', modelos: { unica: '<p>@evento em @cidade_1 (@local_1) e contato@norte.com</p>' }, gerais: { evento: 'Makai' }, cidades: [pag] });
+    expect(u.paginas).toHaveLength(1);
+    expect(u.paginas[0]).toMatchObject({ tipo: 'unica', arquivo: 'index.html', cidadeId: pag._id, html: '<p>Makai em SP (Parque) e contato@norte.com</p>' });
     expect(u.bloqueado).toBe(false);
+    // sem a linha do cadastro, a página sai com os campos vazios e aviso (não bloqueia)
+    const v = gerar({ formato: 'unica', modelos: { unica: '<p>@cidade_1</p>' } });
+    expect(v.paginas[0].html).toBe('<p></p>');
+    expect(v.bloqueado).toBe(false);
+    expect(v.avisos.map((a) => [a.codigo, a.nivel])).toEqual([['sem-cidades', 'alerta']]);
   });
 
   it('gerais vazios e variável excluída', () => {
