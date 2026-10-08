@@ -6,7 +6,7 @@ Uso: equipe da Norte Marketing. Primeira entrega sem login. Prioridade absoluta:
 |---|---|---|
 | 0 | Motor extraído e testado | feito — goldens aguardando aprovação |
 | 1 | App básico + mídia hospedada + publicação em URL real | em teste no GitHub Pages (D2 provisório); destino: Cloudflare |
-| 2 | Rodapé padrão | mapeado |
+| 2 | Rodapé padrão | feito (por evento, com troca por cidade); falta o layout oficial da Norte (D4) |
 | 3 | Pós-evento (página e virada automática) | mapeado |
 | 4 | Login, convite e papéis | mapeado |
 | 5 | Patrocinadores (banco + seção padrão) | mapeado |

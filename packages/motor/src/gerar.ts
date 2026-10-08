@@ -7,6 +7,7 @@ import { abreviar, esc, slug, slugValor } from './texto';
 import { FORMATOS, NOME_PAGINA, type Aviso, type Formato, type Linha, type Modelos, type TipoItem, type TipoPagina, type Vars } from './tipos';
 import { ehMidia, trocarVars } from './variaveis';
 import { ocultasDaPagina, removerSecoes, reordenarSecoes, type EscolhaSecoes } from './secoes';
+import { colocarRodape, rodapeDaPagina, type EscolhaRodape } from './rodape';
 
 export interface EntradaGerar {
   formato: Formato;
@@ -25,6 +26,8 @@ export interface EntradaGerar {
   agora?: Date;
   /** seções escondidas (no evento todo e por cidade/etapa) */
   secoes?: EscolhaSecoes;
+  /** rodapé padrão do publicador (geral e por cidade/etapa) */
+  rodape?: EscolhaRodape;
 }
 
 export interface PaginaGerada {
@@ -225,7 +228,9 @@ export function gerar(e: EntradaGerar): ResultadoGerar {
     }
     const R: Rastro = { faltas: [], fora: new Set(), faltaG };
     const ocultas = ocultasDaPagina(kind, e.secoes, kind === 'tapume' || kind === 'unica' ? [] : [ctx.cidade?._id, ctx.etapa?._id]);
-    const html = ajustarTagsMidia(tirarMidiaOculta(removerSecoes(reordenarSecoes(montador.render(arv.raiz, { ...ctx, kind }, R), e.secoes?.ordem?.[kind]), ocultas)));
+    const linhasDaPagina = kind === 'tapume' || kind === 'unica' ? [] : [ctx.cidade?._id, ctx.etapa?._id];
+    const corpo = tirarMidiaOculta(removerSecoes(reordenarSecoes(montador.render(arv.raiz, { ...ctx, kind }, R), e.secoes?.ordem?.[kind]), ocultas));
+    const html = ajustarTagsMidia(colocarRodape(corpo, rodapeDaPagina(e.rodape, linhasDaPagina)));
     for (const f of R.faltas) {
       if (!vazios.has(f.chave)) vazios.set(f.chave, new Set());
       vazios.get(f.chave)!.add(f.quem ?? titulo);

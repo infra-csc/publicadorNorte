@@ -184,7 +184,7 @@ Contexto: página (tapume/praça/etapa), cidade e etapa da página, item atual d
 
 ### 6.4 Pós-processamento
 
-Em cada página gerada, nesta ordem: reordena as seções (6.5), tira as seções escondidas (6.5), tira a mídia escondida (7.5) e roda `ajustarTagsMidia` (seção 7.4).
+Em cada página gerada, nesta ordem: reordena as seções (6.5), tira as seções escondidas e o rodapé do HTML se escondido (6.5, 6.6), tira a mídia escondida (7.5), põe o rodapé padrão (6.6) e roda `ajustarTagsMidia` (seção 7.4).
 
 ### 6.5 Seções (esconder e mostrar)
 
@@ -195,6 +195,14 @@ Em cada página gerada, nesta ordem: reordena as seções (6.5), tira as seçõe
 - Esconder tira a seção inteira e os links `href="#id"`; item de menu (`<li>`) que só tem esse link sai junto.
 - Ordem: por tipo de página (vale para todas as páginas daquele tipo), guardada como lista de ids. As seções com id trocam de lugar entre si; o resto do HTML (e seções sem id) fica onde estava. Seção nova no HTML (fora da ordem salva) entra logo depois da que vinha antes dela. Os links do menu não mudam de ordem.
 - Tela: passo **Seções**, por página, com a lista arrastável (alça ⠿ ou setas ↑↓), Mostrar/Esconder para o evento todo e, com uma cidade escolhida, "igual ao evento / mostrar / esconder"; "Voltar à ordem do HTML" desfaz a ordem. Prévia ao lado.
+
+### 6.6 Rodapé
+
+- **Rodapé do HTML**: o `<footer>` que veio no HTML, fora das seções (o de dentro de uma seção não conta; o do publicador também não). No passo Seções aparece como uma linha fixa no fim da lista, com Mostrar/Esconder no evento todo e por cidade (chave `<tipo>#@rodape`).
+- **Rodapé padrão**: montado pelo publicador a partir de uma configuração: fonte do Google Fonts (ou a mesma da página), cores de fundo, texto e links, descrição (várias linhas), links (texto + endereço) e redes sociais com ícone de uma lista pronta (Instagram, Facebook, YouTube, TikTok, X, LinkedIn, WhatsApp, Spotify, site, e-mail, telefone). Os ícones têm a cor do texto.
+- Geral do evento (Mostrar/Esconder); por cidade, "igual ao evento / mostrar / esconder" e, se quiser, um rodapé próprio (começa como cópia do geral). Na página da etapa, a escolha da etapa vence a da cidade. O tapume usa o geral.
+- Entra antes de `</body>` (ou no fim), com a fonte no `<head>`. Estilo próprio isolado pela classe `.pub-rodape`.
+- Segurança: links só com `https://`, `http://`, `mailto:`, `tel:` ou `#` (os outros não aparecem); textos escapados; cor ou fonte inválida volta ao padrão.
 
 ---
 

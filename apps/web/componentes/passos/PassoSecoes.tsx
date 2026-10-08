@@ -1,12 +1,13 @@
 'use client';
 // Seções da página: ordem (arrastar muda a ordem na página gerada) e mostrar/esconder, no evento todo e por cidade.
-import { FORMATOS, NOME_PAGINA, ordemFinal, secoesDe, type TipoPagina } from '@norte/motor';
+import { FORMATOS, NOME_PAGINA, ordemFinal, RODAPE_HTML, secoesDe, temRodapeHtml, type TipoPagina } from '@norte/motor';
 import { useDeferredValue, useMemo, useState } from 'react';
 import { gerarEvento } from '@/lib/comum/montagem';
 import type { Evento } from '@/lib/comum/tipos';
 import { Cabecalho, NavPassos, useEditor } from '../Editor';
 import { Previa } from '../Previa';
 import { Alca, mover, useReordenar } from '../Reordenar';
+import { EditorRodape } from './EditorRodape';
 
 const garantir = (e: Evento) => (e.secoes ??= { ocultas: [], porLinha: {}, ordem: {} });
 
@@ -55,6 +56,7 @@ export function PassoSecoes() {
     });
   const { alca, alvo } = useReordenar(reordenar);
   const mudouOrdem = secoes.some((s, i) => s.id !== detectadas[i]?.id);
+  const temRodape = useMemo(() => html != null && temRodapeHtml(html), [html]);
 
   const ev = useDeferredValue(evento);
   const resultado = useMemo(() => gerarEvento(ev, modelos, arquivos), [ev, modelos, arquivos]);
@@ -113,6 +115,34 @@ export function PassoSecoes() {
               })}
             </div>
           )}
+          {temRodape && (() => {
+            const geralVisivel = !ocultaGeral(RODAPE_HTML);
+            const exc = excecao(RODAPE_HTML);
+            const aqui = porCidade && cidade ? exc ?? geralVisivel : geralVisivel;
+            return (
+              <div className={'secao-item' + (aqui ? '' : ' escondida')}>
+                <span className="alca-w" aria-hidden="true" style={{ width: 66 }} />
+                <div className="secao-nome"><b>Rodapé do HTML</b><span className="small muted">o &lt;footer&gt; que veio no HTML (fica sempre no fim)</span></div>
+                <div className="secao-controles">
+                  <span className="small muted">Evento todo</span>
+                  <span className="seg" role="group" aria-label="Rodapé do HTML no evento todo">
+                    <button type="button" aria-pressed={geralVisivel} onClick={() => setGeral(RODAPE_HTML, true)}>Mostrar</button>
+                    <button type="button" aria-pressed={!geralVisivel} onClick={() => setGeral(RODAPE_HTML, false)}>Esconder</button>
+                  </span>
+                  {porCidade && cidade && (
+                    <select className="inp" style={{ width: 'auto', padding: '6px 10px' }} aria-label={`Rodapé do HTML em ${cad.nomeItem('cidade', cidade)}`}
+                      value={exc === undefined ? 'igual' : exc ? 'mostrar' : 'esconder'}
+                      onChange={(e) => setCidade(RODAPE_HTML, e.target.value as 'igual' | 'mostrar' | 'esconder')}>
+                      <option value="igual">Em {cad.nomeItem('cidade', cidade)}: igual ao evento</option>
+                      <option value="mostrar">Em {cad.nomeItem('cidade', cidade)}: mostrar</option>
+                      <option value="esconder">Em {cad.nomeItem('cidade', cidade)}: esconder</option>
+                    </select>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+          <EditorRodape linhaId={linhaId} porCidade={porCidade} />
           <p className="small muted">A ordem vale para todas as páginas deste tipo ({NOME_PAGINA[pag].toLowerCase()}). Os links do menu não mudam de ordem.</p>
         </div>
         <div className="lado"><Previa html={pagina?.html ?? null} titulo={pagina ? `${pagina.titulo} · ${pagina.arquivo}` : 'Prévia'} altura={560} /></div>

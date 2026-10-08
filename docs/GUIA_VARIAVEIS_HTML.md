@@ -320,6 +320,11 @@ Escreva sempre uma tag `<img>` com a variável `@media_`. Se for escolhido um v�
 - No passo **Mídia**, escolha a página, veja as seções e clique na imagem ou no vídeo de cada lugar. A prévia atualiza na hora.
 - O `.zip` sai com os arquivos usados na mesma estrutura `_media/...`, prontos para subir junto dos HTMLs.
 
+### Rodapé
+O publicador tem um **rodapé padrão** (feito no passo Seções), e quem publica pode esconder o rodapé que vier no HTML. Por isso:
+- Se o HTML tiver rodapé, ele fica num `<footer>` **fora** das seções, no fim do `<body>`.
+- Não ponha conteúdo essencial do evento só no rodapé: ele pode ser escondido e trocado pelo padrão.
+
 ### Seções que podem ser escondidas ou mudar de ordem
 No passo **Seções**, quem publica pode esconder partes da página (no evento todo ou só numa cidade) e mudar a ordem delas. Para isso funcionar:
 - Cada parte da página fica numa `<section id="nome">` **de primeiro nível** (não dentro de outra `<section>`). Ex.: `<section id="kit">`, `<section id="faq">`.

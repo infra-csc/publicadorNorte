@@ -21,10 +21,10 @@ export interface EscolhaSecoes {
 
 interface Bloco { id: string | null; abre: string; ini: number; fim: number; miolo: string }
 
-/** <section> de primeiro nível (fora de comentários, scripts e estilos) */
-function blocos(src: string): Bloco[] {
+/** elementos <tag> de primeiro nível (fora de comentários, scripts e estilos) */
+function blocos(src: string, tag = 'section'): Bloco[] {
   const ignorar = faixas(src, /<!--[\s\S]*?-->|<script\b[\s\S]*?<\/script>|<style\b[\s\S]*?<\/style>/gi);
-  const rx = /<section\b[^>]*>|<\/section\s*>/gi;
+  const rx = new RegExp(`<${tag}\\b[^>]*>|<\\/${tag}\\s*>`, 'gi');
   const out: Bloco[] = [];
   let nivel = 0;
   let aberto: { ini: number; abre: string; fimAbre: number } | null = null;
@@ -63,9 +63,26 @@ export function secoesDe(html: string): Secao[] {
     });
 }
 
+/** id especial: o rodapé que veio no HTML (<footer> fora das seções) */
+export const RODAPE_HTML = '@rodape';
+
+/** <footer> do HTML-modelo: os que não estão dentro de uma seção e não são o rodapé padrão do publicador */
+function rodapesHtml(html: string): Bloco[] {
+  const secoes = blocos(html);
+  return blocos(html, 'footer').filter((f) => !/data-pub-rodape/.test(f.abre) && !secoes.some((s) => f.ini > s.ini && f.fim <= s.fim));
+}
+
+/** o HTML tem rodapé próprio? */
+export const temRodapeHtml = (html: string): boolean => rodapesHtml(html).length > 0;
+
 /** Tira da página as seções escondidas e os links que levam a elas. */
 export function removerSecoes(html: string, ids: Set<string>): string {
   if (!ids.size) return html;
+  if (ids.has(RODAPE_HTML)) {
+    for (const f of rodapesHtml(html).reverse()) html = html.slice(0, f.ini) + html.slice(f.fim);
+    ids = new Set([...ids].filter((x) => x !== RODAPE_HTML));
+    if (!ids.size) return html;
+  }
   const tirar = blocos(html).filter((b) => b.id && ids.has(b.id));
   for (const b of tirar.reverse()) html = html.slice(0, b.ini) + html.slice(b.fim);
   for (const id of ids) {

@@ -1,5 +1,5 @@
 // Tipos compartilhados entre o navegador e o servidor.
-import type { EscolhaSecoes, Formato, Linha, TipoItem, TipoPagina, Vars } from '@norte/motor';
+import type { EscolhaRodape, EscolhaSecoes, Formato, Linha, TipoItem, TipoPagina, Vars } from '@norte/motor';
 
 export interface RegistroPagina {
   arquivo: string;
@@ -34,6 +34,8 @@ export interface Evento {
   baseUrl: string;
   /** seções escondidas (no evento todo e por cidade). Eventos antigos não têm. */
   secoes?: EscolhaSecoes;
+  /** rodapé padrão do publicador */
+  rodape?: EscolhaRodape;
   /** ordem dos blocos de mídia na tela do publicador, por página (não muda o site) */
   ordemMidia?: Partial<Record<TipoPagina, string[]>>;
   publicacoes: Publicacao[];

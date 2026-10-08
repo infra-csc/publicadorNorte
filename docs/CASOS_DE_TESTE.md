@@ -176,3 +176,14 @@ Os tapumes de cards fixos dos casos H1–H4 são fixtures sintéticos em `packag
 | K7 | ordem [c, a, b] com texto e seção sem id entre as seções | as seções com id trocam de lugar; o resto fica onde estava |
 | K8 | seção nova no HTML fora da ordem salva | entra logo depois da que vinha antes dela |
 | K9 | ordem e seção escondida juntas, só na praça | tapume na ordem do HTML; praça reordenada e sem a escondida |
+
+## L. Rodapé
+
+| # | Entrada | Esperado |
+|---|---|---|
+| L1 | `praca#@rodape` escondido; HTML com `<footer>` solto e outro dentro de uma seção | some o solto, fica o de dentro da seção; tapume intacto |
+| L2 | rodapé padrão com fonte, cores, descrição com `<`, link `javascript:` e redes | fonte e cores no estilo, texto escapado, link inseguro descartado, ícones com a cor do texto |
+| L3 | rodapé padrão ligado no evento | entra antes de `</body>` em todas as páginas, fonte no `<head>` |
+| L4 | escondido em SP, rodapé próprio no RJ | SP sem rodapé; RJ com o próprio; tapume com o geral |
+| L5 | desligado no evento, ligado numa cidade | só aquela cidade tem |
+| L6 | cor ou fonte inválida (tentando quebrar o CSS) | volta ao padrão |
