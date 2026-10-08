@@ -12,6 +12,7 @@ export function gerarEvento(evento: Evento, modelos: Partial<Record<string, stri
     etapas: evento.etapas,
     ordem: evento.ordem,
     imagens: evento.imagens,
+    secoes: evento.secoes,
     arquivos: arquivos.map((a) => a.caminho),
   });
 }

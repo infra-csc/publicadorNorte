@@ -183,7 +183,16 @@ Contexto: página (tapume/praça/etapa), cidade e etapa da página, item atual d
 
 ### 6.4 Pós-processamento
 
-`ajustarTagsMidia` (seção 7.4) roda em cada página gerada.
+Em cada página gerada, nesta ordem: tira as seções escondidas (6.5) e roda `ajustarTagsMidia` (seção 7.4).
+
+### 6.5 Seções (esconder e mostrar)
+
+- Seção = cada `<section id="…">` de primeiro nível do HTML-modelo (fora de comentários, scripts e estilos). Seções dentro de outra seção não aparecem.
+- Nome na tela: `aria-label` da seção; senão o texto do primeiro título (`h1`–`h6`), se tiver texto além de variáveis; senão o `id`.
+- Escolha guardada no evento por chave `<tipo de página>#<id>` (ex.: `praca#kit`): escondidas no evento todo e exceções por linha (cidade ou etapa; `true` = mostrar, `false` = esconder).
+- Página de cidade: geral, depois a exceção da cidade. Página de etapa: geral, exceção da cidade, exceção da etapa. Tapume: só o geral.
+- Esconder tira a seção inteira e os links `href="#id"`; item de menu (`<li>`) que só tem esse link sai junto.
+- Tela: passo Mídia ("Mídia e seções"), por página, com Mostrar/Esconder para o evento todo e, com uma cidade escolhida, "Igual ao evento / Mostrar / Esconder".
 
 ---
 

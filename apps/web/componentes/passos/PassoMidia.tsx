@@ -5,6 +5,7 @@ import { gerarEvento } from '@/lib/comum/montagem';
 import { urlArquivo } from '../api';
 import { Cabecalho, NavPassos, useEditor } from '../Editor';
 import { Previa } from '../Previa';
+import { PainelSecoes } from './PainelSecoes';
 
 const ehVideo = (c: string) => /\.(mp4|webm)$/i.test(c);
 
@@ -59,7 +60,7 @@ export function PassoMidia() {
 
   return (
     <>
-      <Cabecalho passo="midia" titulo="Mídia">Escolha a imagem ou o vídeo de cada lugar. Cada lugar só mostra os arquivos da pasta da sua seção.</Cabecalho>
+      <Cabecalho passo="midia" titulo="Mídia e seções">Escolha a imagem ou o vídeo de cada lugar e quais seções aparecem. Escolha a cidade no topo para fazer diferente numa cidade.</Cabecalho>
       <div className="row">
         <div className="seg" role="group" aria-label="Página">
           {paginas.map((k) => <button key={k} type="button" aria-pressed={pag === k} onClick={() => setPag(k)}>{NOME_PAGINA[k]}</button>)}
@@ -74,6 +75,7 @@ export function PassoMidia() {
       </div>
       <div className="split">
         <div className="stack" style={{ minWidth: 0 }}>
+          <PainelSecoes pag={pag} linhaId={linhaId} />
           {!arquivos.length && <div className="w-item warn"><span className="ic">!</span><div><b>Nenhum arquivo enviado</b>Envie a pasta _media no passo Páginas.</div></div>}
           {!secoes.length && <div className="card empty">Esta página não tem imagens ou vídeos trocáveis (variáveis @img_, @video_ ou @media_).</div>}
           {secoes.map(([s, bases]) => (

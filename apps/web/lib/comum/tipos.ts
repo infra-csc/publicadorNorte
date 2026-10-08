@@ -1,5 +1,5 @@
 // Tipos compartilhados entre o navegador e o servidor.
-import type { Formato, Linha, TipoItem, TipoPagina, Vars } from '@norte/motor';
+import type { EscolhaSecoes, Formato, Linha, TipoItem, TipoPagina, Vars } from '@norte/motor';
 
 export interface RegistroPagina {
   arquivo: string;
@@ -32,6 +32,8 @@ export interface Evento {
   /** escolha das mídias de dono geral */
   imagens: Record<string, string>;
   baseUrl: string;
+  /** seções escondidas (no evento todo e por cidade). Eventos antigos não têm. */
+  secoes?: EscolhaSecoes;
   publicacoes: Publicacao[];
   /** versão no ar (null = nenhuma) */
   versaoAtiva: number | null;

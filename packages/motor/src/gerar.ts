@@ -6,6 +6,7 @@ import { ajustarTagsMidia, opcoesMidia, pastasMidia } from './midia';
 import { abreviar, esc, slug, slugValor } from './texto';
 import { FORMATOS, NOME_PAGINA, type Aviso, type Formato, type Linha, type Modelos, type TipoItem, type TipoPagina, type Vars } from './tipos';
 import { ehMidia, trocarVars } from './variaveis';
+import { ocultasDaPagina, removerSecoes, type EscolhaSecoes } from './secoes';
 
 export interface EntradaGerar {
   formato: Formato;
@@ -22,6 +23,8 @@ export interface EntradaGerar {
   arquivos?: Iterable<string>;
   /** data/hora de referência (o motor não lê o relógio). Reservado para o pós-evento (fase 3). */
   agora?: Date;
+  /** seções escondidas (no evento todo e por cidade/etapa) */
+  secoes?: EscolhaSecoes;
 }
 
 export interface PaginaGerada {
@@ -221,7 +224,8 @@ export function gerar(e: EntradaGerar): ResultadoGerar {
       });
     }
     const R: Rastro = { faltas: [], fora: new Set(), faltaG };
-    const html = ajustarTagsMidia(montador.render(arv.raiz, { ...ctx, kind }, R));
+    const ocultas = ocultasDaPagina(kind, e.secoes, kind === 'tapume' || kind === 'unica' ? [] : [ctx.cidade?._id, ctx.etapa?._id]);
+    const html = ajustarTagsMidia(removerSecoes(montador.render(arv.raiz, { ...ctx, kind }, R), ocultas));
     for (const f of R.faltas) {
       if (!vazios.has(f.chave)) vazios.set(f.chave, new Set());
       vazios.get(f.chave)!.add(f.quem ?? titulo);

@@ -161,3 +161,14 @@ Os tapumes de cards fixos dos casos H1–H4 são fixtures sintéticos em `packag
 | J10 | `<div data-gratuito="@gratuito_1">` | problema: decisão guardada em atributo |
 | J11 | `<img src="assets/foto.webp">` | problema: mídia fora de `_media/` |
 | J12 | `@total_categorias_1`, `<!-- @se gratuito_1 == "sim" -->` | problemas: `total_` próprio; sintaxe do `@se` |
+
+## K. Seções (esconder e mostrar)
+
+| # | Entrada | Esperado |
+|---|---|---|
+| K1 | HTML com `<section id>` aninhadas, comentadas e sem id | lista só as de primeiro nível com id; nome = `aria-label`, senão o título (se não for só variável), senão o id |
+| K2 | `kit` escondida, menu com `<li><a href="#kit">` e botão `href="#kit"` | seção, item de menu e botão saem; o resto fica |
+| K3 | `praca#kit` escondida no evento, mostrada em SP; `praca#faq` escondida só em SP | SP: kit sim, faq não. RJ: kit não, faq sim |
+| K4 | tapume com seção escondida | vale a escolha geral |
+| K5 | página de etapa com exceção da cidade (esconder) e da etapa (mostrar) | a da etapa vence |
+| K6 | mesmo id no tapume e na praça | escolhas independentes por tipo de página |

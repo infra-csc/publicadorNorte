@@ -13,7 +13,7 @@ export const PASSOS = [
   ['paginas', 'Páginas', 'Subir os HTMLs e a mídia'],
   ['variaveis', 'Variáveis', 'O que muda em cada página'],
   ['cadastro', 'Cadastro', 'Valores de cada cidade'],
-  ['midia', 'Mídia', 'Trocar imagens e vídeos'],
+  ['midia', 'Mídia', 'Imagens, vídeos e seções'],
   ['conferir', 'Conferir', 'Prévia e avisos'],
   ['publicar', 'Publicar', 'Colocar o site no ar'],
 ] as const;

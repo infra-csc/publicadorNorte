@@ -21,4 +21,5 @@ export { gerar, type EntradaGerar, type PaginaGerada, type ResultadoGerar } from
 export { temCardsFixos } from './cards-fixos';
 export type { ResultadoConversao, CardPreenchido } from './conversor';
 // converterCardsFixos usa um parser de HTML (linkedom): importe de '@norte/motor/conversor'
+export { secoesDe, removerSecoes, ocultasDaPagina, type Secao, type EscolhaSecoes } from './secoes';
 export { verificarHtml, SINONIMOS, type Problema, type CodigoProblema } from './verificador';

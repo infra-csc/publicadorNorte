@@ -320,6 +320,13 @@ Escreva sempre uma tag `<img>` com a variável `@media_`. Se for escolhido um v�
 - No passo **Mídia**, escolha a página, veja as seções e clique na imagem ou no vídeo de cada lugar. A prévia atualiza na hora.
 - O `.zip` sai com os arquivos usados na mesma estrutura `_media/...`, prontos para subir junto dos HTMLs.
 
+### Seções que podem ser escondidas
+No passo **Mídia e seções**, quem publica pode esconder partes da página (no evento todo ou só numa cidade). Para isso funcionar:
+- Cada parte da página fica numa `<section id="nome">` **de primeiro nível** (não dentro de outra `<section>`). Ex.: `<section id="kit">`, `<section id="faq">`.
+- Dê um nome claro: `aria-label="Kit do atleta"` na `<section>`, ou um título (`<h2>`) dentro dela. Sem isso, aparece o `id`.
+- Links para a seção usam `href="#nome"`. Quando a seção é escondida, o publicador tira esses links junto (o item do menu inteiro, se ele só tiver o link).
+- O layout em volta precisa continuar bonito sem a seção (sem espaço sobrando).
+
 ---
 
 ## 10. Bloco de documentação (obrigatório no fim de cada HTML)
