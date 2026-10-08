@@ -73,7 +73,8 @@ apps/web/           Next.js 16 (App Router). Ler node_modules/next/dist/docs ant
 
 - Repositório `RenanPrates/publicadorNorte` (público). Código em `main`; dados dos eventos no branch `dados` (`eventos/<slug>/evento.json`, `modelos/`, `arquivos/`); sites publicados no branch `gh-pages` (`<slug>/…`, com `.nojekyll`), servidos pelo GitHub Pages em `https://renanprates.github.io/publicadorNorte/<slug>/`.
 - Cada publicação é um commit em `gh-pages` + tag `<slug>-v<N>`; "voltar para esta versão" restaura a pasta daquela versão num commit novo.
-- O publicador roda no **Render** (render.yaml, plano gratuito: dorme após 15 min sem uso). A Cloudflare (wrangler.jsonc, open-next.config.ts, `pnpm cf:build`) fica pronta para quando estiver disponível; o CI já monta o build dela.
+- Publicador no ar: https://publicador-norte.infraestrutura-685.workers.dev (senha da equipe).
+- O publicador roda na **Cloudflare** a partir de uma cópia deste repositório na organização infra-csc: a cada push na main, `.github/workflows/avisar-cloudflare.yml` avisa a cópia (segredo DISPARO_CLOUDFLARE) e o deploy sai na hora. A configuração do Worker está em apps/web/wrangler.jsonc e open-next.config.ts (`pnpm cf:build`); o CI monta esse build a cada push.
 - O destino final é a Cloudflare: tudo que é do GitHub fica atrás de `Armazenamento` e `DestinoPublicacao`. O app não pode usar APIs só de Node (roda em Workers via OpenNext).
 - Imports do motor sem extensão `.js` (o Turbopack não resolve `.js` → `.ts`).
 

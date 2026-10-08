@@ -1,0 +1,15 @@
+# Avisa a cópia da infra-csc (Cloudflare) a cada push na main, para o deploy sair na hora.
+name: Avisar a Cloudflare
+on:
+  push:
+    branches: [main]
+jobs:
+  avisar:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          curl -fsS -X POST \
+            -H "Authorization: Bearer ${{ secrets.DISPARO_CLOUDFLARE }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/infra-csc/publicadorNorte/actions/workflows/sincronizar-com-renan.yml/dispatches \
+            -d '{"ref":"main"}'
