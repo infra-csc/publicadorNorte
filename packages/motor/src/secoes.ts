@@ -15,6 +15,8 @@ export interface EscolhaSecoes {
   ocultas?: string[];
   /** exceções por cidade/etapa (_id da linha): true = mostrar, false = esconder */
   porLinha?: Record<string, Record<string, boolean>>;
+  /** ordem das seções por tipo de página (ids). Muda a ordem na página gerada. */
+  ordem?: Partial<Record<string, string[]>>;
 }
 
 interface Bloco { id: string | null; abre: string; ini: number; fim: number; miolo: string }
@@ -73,6 +75,34 @@ export function removerSecoes(html: string, ids: Set<string>): string {
     html = html.replace(new RegExp(`<a\\b[^>]*${href}[^>]*>[\\s\\S]*?<\\/a>`, 'gi'), '');
   }
   return html;
+}
+
+/** Ordem final dos ids: a salva, e cada seção nova (fora da ordem salva) logo depois da que vinha antes dela no HTML. */
+export function ordemFinal(ids: string[], salva: string[] | undefined): string[] {
+  const out = (salva || []).filter((id, i, l) => ids.includes(id) && l.indexOf(id) === i);
+  ids.forEach((id, i) => {
+    if (out.includes(id)) return;
+    const antes = ids.slice(0, i).reverse().find((x) => out.includes(x));
+    out.splice(antes ? out.indexOf(antes) + 1 : 0, 0, id);
+  });
+  return out;
+}
+
+/** Troca as seções (com id, de primeiro nível) de lugar conforme a ordem. O resto do HTML fica onde estava. */
+export function reordenarSecoes(html: string, ordem: string[] | undefined): string {
+  if (!ordem?.length) return html;
+  const bs = blocos(html).filter((b) => b.id);
+  const final = ordemFinal(bs.map((b) => b.id!), ordem);
+  if (final.every((id, i) => id === bs[i].id)) return html;
+  const porId = new Map(bs.map((b) => [b.id!, b]));
+  let out = '';
+  let ult = 0;
+  bs.forEach((b, i) => {
+    const novo = porId.get(final[i])!;
+    out += html.slice(ult, b.ini) + html.slice(novo.ini, novo.fim);
+    ult = b.fim;
+  });
+  return out + html.slice(ult);
 }
 
 /** ids escondidos numa página: o geral, depois a exceção da cidade, depois a da etapa */

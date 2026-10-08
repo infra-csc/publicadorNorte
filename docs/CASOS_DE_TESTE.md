@@ -173,3 +173,6 @@ Os tapumes de cards fixos dos casos H1–H4 são fixtures sintéticos em `packag
 | K4 | tapume com seção escondida | vale a escolha geral |
 | K5 | página de etapa com exceção da cidade (esconder) e da etapa (mostrar) | a da etapa vence |
 | K6 | mesmo id no tapume e na praça | escolhas independentes por tipo de página |
+| K7 | ordem [c, a, b] com texto e seção sem id entre as seções | as seções com id trocam de lugar; o resto fica onde estava |
+| K8 | seção nova no HTML fora da ordem salva | entra logo depois da que vinha antes dela |
+| K9 | ordem e seção escondida juntas, só na praça | tapume na ordem do HTML; praça reordenada e sem a escondida |

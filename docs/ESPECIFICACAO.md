@@ -40,11 +40,12 @@ No formato com etapas, cada etapa pertence a uma cidade (campo interno `_cidade`
 2. **Páginas**: envio de um HTML por tipo de página e envio da pasta `_media` (ou da pasta do site que a contém). Mostra quantas referências de arquivo o HTML tem e quais faltam. Se o tapume tiver cards fixos numerados, oferece "Transformar em card que se repete" (seção 9) e "Baixar HTML convertido".
 3. **Variáveis**: as variáveis encontradas em chips agrupados: *Igual em todas as páginas*, *Muda em cada cidade*, *Muda em cada etapa*, *Imagens e vídeos*, *Preenchidas sozinhas*, *Excluídas do cadastro*, *Não são variáveis*. Clicar num chip abre um menu para mover de grupo. Mostra também um resumo dos blocos encontrados.
 4. **Cadastro**: campos gerais + tabela de cidades (+ tabela de etapas). Prévia ao vivo ao lado.
-5. **Mídia**: por página e por seção, miniaturas das opções de cada variável de mídia; clicar escolhe. Prévia ao lado.
-6. **Conferir**: lista de páginas que serão geradas, avisos (seção 10) e prévia celular/desktop.
-7. **Publicar**: hoje gera um `.zip`. No programa novo, publica numa URL real (ROADMAP, fase 1).
+5. **Mídia**: por página e por seção, miniaturas das opções de cada variável de mídia; clicar escolhe. Prévia ao lado. Os blocos podem ser arrastados para outra ordem (só na tela; o site não muda).
+6. **Seções**: por página, as seções do HTML com Mostrar/Esconder (no evento todo e por cidade) e arrastar para mudar a ordem **na página gerada**. Prévia ao lado.
+7. **Conferir**: lista de páginas que serão geradas, avisos (seção 10) e prévia celular/desktop.
+8. **Publicar**: hoje gera um `.zip`. No programa novo, publica numa URL real (ROADMAP, fase 1).
 
-Os passos Variáveis, Cadastro e Mídia não aparecem no formato One page. A barra lateral mostra os passos com check quando concluídos. Lista inicial de eventos com abrir e excluir (com confirmação).
+Os passos Variáveis, Cadastro, Mídia e Seções não aparecem no formato One page. A barra lateral mostra os passos com check quando concluídos. Lista inicial de eventos com abrir e excluir (com confirmação).
 
 ---
 
@@ -183,7 +184,7 @@ Contexto: página (tapume/praça/etapa), cidade e etapa da página, item atual d
 
 ### 6.4 Pós-processamento
 
-Em cada página gerada, nesta ordem: tira as seções escondidas (6.5) e roda `ajustarTagsMidia` (seção 7.4).
+Em cada página gerada, nesta ordem: reordena as seções (6.5), tira as seções escondidas (6.5), tira a mídia escondida (7.5) e roda `ajustarTagsMidia` (seção 7.4).
 
 ### 6.5 Seções (esconder e mostrar)
 
@@ -192,7 +193,8 @@ Em cada página gerada, nesta ordem: tira as seções escondidas (6.5) e roda `a
 - Escolha guardada no evento por chave `<tipo de página>#<id>` (ex.: `praca#kit`): escondidas no evento todo e exceções por linha (cidade ou etapa; `true` = mostrar, `false` = esconder).
 - Página de cidade: geral, depois a exceção da cidade. Página de etapa: geral, exceção da cidade, exceção da etapa. Tapume: só o geral.
 - Esconder tira a seção inteira e os links `href="#id"`; item de menu (`<li>`) que só tem esse link sai junto.
-- Tela: passo Mídia ("Mídia e seções"), por página, com Mostrar/Esconder para o evento todo e, com uma cidade escolhida, "Igual ao evento / Mostrar / Esconder".
+- Ordem: por tipo de página (vale para todas as páginas daquele tipo), guardada como lista de ids. As seções com id trocam de lugar entre si; o resto do HTML (e seções sem id) fica onde estava. Seção nova no HTML (fora da ordem salva) entra logo depois da que vinha antes dela. Os links do menu não mudam de ordem.
+- Tela: passo **Seções**, por página, com a lista arrastável (alça ⠿ ou setas ↑↓), Mostrar/Esconder para o evento todo e, com uma cidade escolhida, "igual ao evento / mostrar / esconder"; "Voltar à ordem do HTML" desfaz a ordem. Prévia ao lado.
 
 ---
 

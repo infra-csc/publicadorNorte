@@ -1,12 +1,12 @@
 'use client';
-import { arquivoDaEscolha, ehMidia, FORMATOS, midiaEscondida, NOME_PAGINA, OCULTA, opcoesMidia, pastasMidia, secaoMidia, sincronizarVars, slotMidia, type OpcaoMidia, type TipoPagina } from '@norte/motor';
+import { arquivoDaEscolha, ehMidia, FORMATOS, ordemFinal, midiaEscondida, NOME_PAGINA, OCULTA, opcoesMidia, pastasMidia, secaoMidia, sincronizarVars, slotMidia, type OpcaoMidia, type TipoPagina } from '@norte/motor';
 import { useDeferredValue, useMemo, useState } from 'react';
 import { gerarEvento } from '@/lib/comum/montagem';
 import { api, json, urlArquivo } from '../api';
 import { Cabecalho, NavPassos, useEditor } from '../Editor';
 import { enviarMidia, juntar, nomeLivre } from '../enviarMidia';
 import { Previa } from '../Previa';
-import { PainelSecoes } from './PainelSecoes';
+import { Alca, mover, useReordenar } from '../Reordenar';
 
 const ehVideo = (c: string) => /\.(mp4|webm)$/i.test(c);
 const ehImagem = (c: string) => /\.(webp|png|jpe?g|gif|avif|svg)$/i.test(c);
@@ -41,8 +41,14 @@ export function PassoMidia() {
       const s = secaoMidia(d.base);
       m.set(s, [...(m.get(s) || []), d.base]);
     }
-    return [...m].sort((a, b) => a[0].localeCompare(b[0]));
-  }, [det, pag, cad.vars]);
+    // na ordem arrumada na tela (só no publicador; o site não muda)
+    const nomes = ordemFinal([...m.keys()].sort((a, b) => a.localeCompare(b)), evento.ordemMidia?.[pag]);
+    return nomes.map((s) => [s, m.get(s)!] as const);
+  }, [det, pag, cad.vars, evento.ordemMidia]);
+
+  const reordenar = (de: number, para: number) =>
+    alterar((e) => { e.ordemMidia = { ...(e.ordemMidia || {}), [pag]: mover(secoes.map(([s]) => s), de, para) }; });
+  const { alca, alvo } = useReordenar(reordenar);
 
   const tipoLinha = (b: string) => (cad.vars[b]?.dono === 'etapa' ? 'etapa' : 'cidade');
   const linhaDe = (b: string) => (tipoLinha(b) === 'etapa' ? evento.etapas.find((e) => e._cidade === linhaId) || evento.etapas[0] : evento.cidades.find((c) => c._id === linhaId));
@@ -172,7 +178,7 @@ export function PassoMidia() {
 
   return (
     <>
-      <Cabecalho passo="midia" titulo="Mídia e seções">Escolha a imagem ou o vídeo de cada lugar e quais seções aparecem. Arraste arquivos do computador para uma seção ou direto para um lugar. Escolha a cidade no topo para fazer diferente numa cidade.</Cabecalho>
+      <Cabecalho passo="midia" titulo="Mídia">Escolha a imagem ou o vídeo de cada lugar. Arraste arquivos do computador para um bloco ou direto para um lugar. Arraste a alça ⠿ para arrumar os blocos na tela (o site não muda).</Cabecalho>
       <div className="row">
         <div className="seg" role="group" aria-label="Página">
           {paginas.map((k) => <button key={k} type="button" aria-pressed={pag === k} onClick={() => setPag(k)}>{NOME_PAGINA[k]}</button>)}
@@ -188,12 +194,11 @@ export function PassoMidia() {
       {msg('geral')}
       <div className="split">
         <div className="stack" style={{ minWidth: 0 }}>
-          <PainelSecoes pag={pag} linhaId={linhaId} />
           {!secoes.length && <div className="card empty">Esta página não tem imagens ou vídeos trocáveis (variáveis @img_, @video_ ou @media_).</div>}
-          {secoes.map(([s, bases]) => (
-            <section key={s} className={'img-sec' + (arrastando === 'secao:' + s ? ' drop-on' : '')} {...alvoDrop('secao:' + s, s, null)}>
+          {secoes.map(([s, bases], i) => (
+            <section key={s} className={'img-sec' + (arrastando === 'secao:' + s ? ' drop-on' : '')} {...juntarAlvos(alvo(i), alvoDrop('secao:' + s, s, null))}>
               <div className="row between">
-                <h2 style={{ fontSize: 16 }}>{s} <span className="mono small muted">_media/{PASTA_PAG[pag]}/{s}/</span></h2>
+                <h2 style={{ fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}><Alca i={i} total={secoes.length} alca={alca} mover={reordenar} rotulo={s} />{s} <span className="mono small muted">_media/{PASTA_PAG[pag]}/{s}/</span></h2>
                 <label className="btn sm ghost">+ Adicionar à pasta
                   <input type="file" multiple accept="image/*,video/*" className="sr" onChange={(e) => { receber(e.target.files, s, null); e.target.value = ''; }} />
                 </label>
@@ -262,4 +267,16 @@ function IconeOlhoFechado() {
 }
 function IconeLixeira() {
   return <svg {...svg}><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M6 6l1 14h10l1-14" /><path d="M10 11v6M14 11v6" /></svg>;
+}
+
+type Alvo = Record<string, unknown>;
+/** junta dois conjuntos de propriedades de arrastar: cada handler só age no seu tipo de arrasto */
+function juntarAlvos(a: Alvo, b: Alvo): Alvo {
+  const out: Alvo = { ...b, ...a };
+  for (const k of ['onDragOver', 'onDragLeave', 'onDrop']) {
+    const fa = a[k] as ((e: React.DragEvent) => void) | undefined;
+    const fb = b[k] as ((e: React.DragEvent) => void) | undefined;
+    if (fa && fb) out[k] = (e: React.DragEvent) => { fa(e); if (!e.defaultPrevented || k === 'onDragLeave') fb(e); };
+  }
+  return out;
 }

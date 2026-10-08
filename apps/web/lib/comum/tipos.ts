@@ -34,6 +34,8 @@ export interface Evento {
   baseUrl: string;
   /** seções escondidas (no evento todo e por cidade). Eventos antigos não têm. */
   secoes?: EscolhaSecoes;
+  /** ordem dos blocos de mídia na tela do publicador, por página (não muda o site) */
+  ordemMidia?: Partial<Record<TipoPagina, string[]>>;
   publicacoes: Publicacao[];
   /** versão no ar (null = nenhuma) */
   versaoAtiva: number | null;

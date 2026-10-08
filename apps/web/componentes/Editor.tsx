@@ -13,13 +13,14 @@ export const PASSOS = [
   ['paginas', 'Páginas', 'Subir os HTMLs e a mídia'],
   ['variaveis', 'Variáveis', 'O que muda em cada página'],
   ['cadastro', 'Cadastro', 'Valores de cada cidade'],
-  ['midia', 'Mídia', 'Imagens, vídeos e seções'],
+  ['midia', 'Mídia', 'Trocar imagens e vídeos'],
+  ['secoes', 'Seções', 'Ordem e o que aparece'],
   ['conferir', 'Conferir', 'Prévia e avisos'],
   ['publicar', 'Publicar', 'Colocar o site no ar'],
 ] as const;
 export type Passo = (typeof PASSOS)[number][0];
 
-export const passosDo = (e: Evento) => PASSOS.filter(([k]) => e.formato !== 'unica' || !['variaveis', 'cadastro', 'midia'].includes(k));
+export const passosDo = (e: Evento) => PASSOS.filter(([k]) => e.formato !== 'unica' || !['variaveis', 'cadastro', 'midia', 'secoes'].includes(k));
 
 type EstadoSalvar = 'ok' | 'pend' | 'salvando' | 'erro' | 'conflito';
 
@@ -137,6 +138,7 @@ export function Editor({ slug, children }: { slug: string; children: React.React
     variaveis: det.variaveis.size > 0,
     cadastro: ev.cidades.length > 0,
     midia: dados.arquivos.length > 0,
+    secoes: !!(ev.secoes?.ocultas?.length || Object.keys(ev.secoes?.ordem || {}).length),
     conferir: false,
     publicar: ev.versaoAtiva != null,
   };

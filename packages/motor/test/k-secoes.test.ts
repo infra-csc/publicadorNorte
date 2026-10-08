@@ -1,6 +1,6 @@
 // K. Seções (esconder e mostrar)
 import { describe, expect, it } from 'vitest';
-import { gerar, removerSecoes, secoesDe } from '../src/index';
+import { gerar, removerSecoes, reordenarSecoes, secoesDe } from '../src/index';
 import { linha } from './ajuda';
 
 const PRACA = [
@@ -77,5 +77,30 @@ describe('K. Seções', () => {
       secoes: { ocultas: ['praca#kit'] },
     });
     expect(r.paginas.map((p) => p.html)).toEqual(['<section id="kit">t</section>', '']);
+  });
+});
+
+describe('K. Seções — ordem', () => {
+  const HTML = '<nav>menu</nav><section id="a">A</section><p>entre</p><section id="b">B</section><section>sem id</section><section id="c">C</section><footer>fim</footer>';
+
+  it('K7: a ordem escolhida troca as seções de lugar na página; o resto (e seção sem id) fica onde estava', () => {
+    expect(reordenarSecoes(HTML, ['c', 'a', 'b'])).toBe('<nav>menu</nav><section id="c">C</section><p>entre</p><section id="a">A</section><section>sem id</section><section id="b">B</section><footer>fim</footer>');
+  });
+
+  it('K8: seção nova no HTML (fora da ordem salva) entra logo depois da que vinha antes dela', () => {
+    const novo = HTML.replace('<section id="b">B</section>', '<section id="b">B</section><section id="n">N</section>');
+    expect(secoesDe(reordenarSecoes(novo, ['c', 'a', 'b'])).map((s) => s.id)).toEqual(['c', 'a', 'b', 'n']);
+    expect(secoesDe(reordenarSecoes(novo, ['b', 'c', 'a'])).map((s) => s.id)).toEqual(['b', 'n', 'c', 'a']);
+  });
+
+  it('K9: ordem e seção escondida juntas, por tipo de página', () => {
+    const r = gerar({
+      formato: 'tapume_praca',
+      modelos: { tapume: HTML, praca: HTML },
+      cidades: [linha({ cidade: 'SP' })],
+      secoes: { ordem: { praca: ['b', 'a', 'c'] }, ocultas: ['praca#c'] },
+    });
+    expect(secoesDe(r.paginas[0].html).map((s) => s.id)).toEqual(['a', 'b', 'c']);
+    expect(secoesDe(r.paginas[1].html).map((s) => s.id)).toEqual(['b', 'a']);
   });
 });
