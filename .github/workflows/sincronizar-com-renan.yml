@@ -1,0 +1,37 @@
+# Cópia da infra-csc: traz para a main daqui o que o Renan publicar na main dele (RenanPrates/publicadorNorte).
+# Cada atualização trazida dispara o deploy na Cloudflare (Workers Builds conectado a este repositório).
+# Se um dia falhar (conflito, ou mudança em .github/workflows que o token do Actions não pode gravar),
+# use o botão "Sync fork" na página do repositório.
+name: Sincronizar com o repositório do Renan
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sincronizar
+  cancel-in-progress: false
+
+jobs:
+  sincronizar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Trazer a main do Renan
+        run: |
+          git config user.name "sincronizador"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch --no-tags https://github.com/RenanPrates/publicadorNorte.git main
+          if git merge-base --is-ancestor FETCH_HEAD HEAD; then
+            echo "Nada novo no repositório do Renan."
+            exit 0
+          fi
+          git merge --no-edit -m "Traz as atualizações do Renan ($(git rev-parse --short FETCH_HEAD))" FETCH_HEAD
+          git push origin HEAD:main
