@@ -34,6 +34,10 @@ No formato com etapas, cada etapa pertence a uma cidade (campo interno `_cidade`
 
 ---
 
+`@a_confirmar` é um texto geral com valor padrão "A confirmar" (sempre geral, mesmo dentro de `@repetir`): é o que a página mostra quando um dado ainda não existe, e dá para trocar no Cadastro ou na prévia.
+
+---
+
 ## 3. Fluxo de telas (passos)
 
 1. **Evento**: nome e formato (cards de formato na ordem tapume → cidade → etapa, com descrição curta).

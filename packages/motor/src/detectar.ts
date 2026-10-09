@@ -113,8 +113,12 @@ export function detectar(modelos: Modelos, formato: Formato): Deteccao {
   return { formato, variaveis: mapa, opcoes, erros };
 }
 
+/** textos gerais com valor padrão (editáveis no cadastro e na prévia): valem para o site todo, mesmo dentro de @repetir */
+export const TEXTOS_PADRAO: Record<string, string> = { a_confirmar: 'A confirmar' };
+
 export function inferirDono(d: VarDetectada, det: Deteccao): Dono {
   if (d.base === 'url' || ehContagem(d.base, det.opcoes) || raizAbrev(d.base, (b) => det.variaveis.has(b))) return 'auto';
+  if (d.base in TEXTOS_PADRAO) return 'geral';
   // One page: tudo é geral; só o que está dentro de @repetir cidades é coluna da lista de cidades
   if (det.formato === 'unica') return d.laco ? 'cidade' : 'geral';
   const etapas = det.formato === 'tapume_etapa_praca';

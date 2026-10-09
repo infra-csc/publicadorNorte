@@ -13,6 +13,7 @@ export {
 } from './detectar';
 export { avaliar, nomesFormula } from './formulas';
 export { Cadastro, novaLinha, COLUNAS_NOME, type DadosCadastro } from './cadastro';
+export { TEXTOS_PADRAO } from './detectar';
 export { converterMarcas, MARCA_INI, MARCA_MEIO, MARCA_FIM } from './edicao';
 export {
   ajustarTagsMidia, refsDeArquivo, acharArquivo, normRef, opcoesMidia, padraoMidia, valorMidia, pastasMidia,

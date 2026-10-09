@@ -1,4 +1,4 @@
-import { colunas, type Deteccao } from './detectar';
+import { colunas, type Deteccao, TEXTOS_PADRAO } from './detectar';
 import { avaliar, nomesFormula } from './formulas';
 import { MARCA_OCULTA, midiaEscondida, valorMidia } from './midia';
 import { fmtBR, numBR, slug } from './texto';
@@ -85,6 +85,7 @@ export class Cadastro {
       }
       return t;
     }
+    if (base in TEXTOS_PADRAO && (v?.dono === 'geral' || !it)) return TEXTOS_PADRAO[base];
     if (base === 'status' && it && this.det.opcoes.status) return 'breve'; // sem status = em breve
     if (!v?.formula) return '';
     const s = new Set(vistos || []);
@@ -96,7 +97,7 @@ export class Cadastro {
   /** o que a fórmula daria (para mostrar como placeholder e no botão ↺) */
   calculado(it: Linha | null, base: string): string {
     const v = this.vars[base];
-    if (!v?.formula) return '';
+    if (!v?.formula) return base in TEXTOS_PADRAO ? TEXTOS_PADRAO[base] : '';
     const r = avaliar(v.formula, (n) => numBR(this.valorDe(this.linhaDaColuna(it, n), n, new Set([base]))));
     return r == null ? '' : fmtBR(r);
   }

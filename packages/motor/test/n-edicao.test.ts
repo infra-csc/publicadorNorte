@@ -36,4 +36,18 @@ describe('N. Edição na prévia', () => {
     expect(p).not.toContain('data-v="total_cidades"');
     expect(p).not.toMatch(/[-]/);
   });
+
+  it('N3: @a_confirmar é sempre geral (até dentro de @repetir), sai "A confirmar" por padrão e é editável', () => {
+    const tpl = '<ul><!-- @repetir cidades --><li><!-- @se local -->@local<!-- @senao -->@a_confirmar<!-- @fim --></li><!-- @fim --></ul>';
+    const sp = linha({ cidade: 'SP', local: 'Parque' });
+    const rj = linha({ cidade: 'RJ' });
+    const r = gerar({ formato: 'unica', modelos: { unica: tpl }, cidades: [sp, rj], marcarEdicao: true });
+    expect(r.vars.a_confirmar.dono).toBe('geral');
+    expect(r.paginas[0].html).toBe(
+      `<ul><li><pub-v data-v="local" data-l="${sp._id}">Parque</pub-v></li><li><pub-v data-v="a_confirmar" data-l="">A confirmar</pub-v></li></ul>`,
+    );
+    // o texto digitado no cadastro vale para todos os lugares
+    const r2 = gerar({ formato: 'unica', modelos: { unica: tpl }, cidades: [rj], gerais: { a_confirmar: 'Em breve' } });
+    expect(r2.paginas[0].html).toBe('<ul><li>Em breve</li></ul>');
+  });
 });
