@@ -124,8 +124,6 @@ function scriptPrevia() {
       if (d.y) scrollTo(0, d.y);
       editar(d.editar);
       if (d.foco) focar(d.foco.v, d.foco.l || '');
-      // pronto para aparecer (o publicador troca o quadro só depois de desenhar, sem piscar branco)
-      requestAnimationFrame(function () { requestAnimationFrame(function () { envia({ tipo: 'pub-visivel' }); }); });
     } else if (d.tipo === 'pub-atualizar') {
       var novo = new DOMParser().parseFromString(d.html, 'text/html');
       var ok = false;
@@ -137,6 +135,8 @@ function scriptPrevia() {
       }
       envia({ tipo: 'pub-resultado', ok: ok, y: scrollY });
     } else if (d.tipo === 'pub-modo') editar(d.editar);
+    // altura desenhada (0 = o navegador ainda não desenhou este quadro)
+    else if (d.tipo === 'pub-medir') envia({ tipo: 'pub-medida', h: document.documentElement.getBoundingClientRect().height });
   });
   addEventListener('scroll', function () {
     clearTimeout(timerRolagem);
@@ -176,7 +176,10 @@ function scriptPrevia() {
     });
     envia({ tipo: 'pub-editar', v: alvo.dataset.v, l: alvo.dataset.l, valor: valor });
   }, true);
-  document.addEventListener('DOMContentLoaded', function () { envia({ tipo: 'pub-pronto' }); });
+  document.addEventListener('DOMContentLoaded', function () {
+    var m = document.querySelector('meta[name="pub-carga"]');
+    envia({ tipo: 'pub-pronto', carga: m ? m.getAttribute('content') : '' });
+  });
 }
 
 export const SCRIPT_PREVIA = '(' + scriptPrevia.toString() + ')();';

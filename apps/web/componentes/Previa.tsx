@@ -1,8 +1,7 @@
 'use client';
 // Prévia da página gerada: celular (390×780) ou desktop (1280×800), escalada para caber no painel.
 // Os arquivos da _media vêm do armazenamento (não precisa publicar para ver).
-// Mudanças entram sem recarregar (o script de dentro troca só o que mudou); se não der, recarrega na mesma rolagem
-// num segundo quadro, por trás, que só aparece quando estiver pronto.
+// Mudanças entram sem recarregar (o script de dentro troca só o que mudou); se não der, recarrega na mesma rolagem.
 import { useEffect, useRef, useState } from 'react';
 import { comArquivosDaPrevia } from '@/lib/comum/montagem';
 import type { ArquivoMidia } from '@/lib/comum/tipos';
@@ -47,23 +46,18 @@ export function Previa(props: Props) {
 /** fora do editor (ex.: aba Patrocínios): recebe os arquivos */
 export function PreviaSolta({ html, titulo, altura = 640, arquivos, baseUrl, editar = false, aoEditar, extra }: Props & { arquivos: ArquivoMidia[]; baseUrl?: string }) {
   const [tela, setTela] = useState<keyof typeof TELAS>('cel');
-  // dois quadros: um aparece enquanto o outro carrega por trás (recarregar não pisca branco)
-  const [docs, setDocs] = useState<[string, string]>(['', '']);
-  const [ativo, setAtivo] = useState(0);
+  // um quadro só: um quadro escondido (carregando por trás) não é desenhado pelo navegador e aparecia em branco
+  const [srcDoc, setSrcDoc] = useState('');
   const caixa = useRef<HTMLDivElement>(null);
-  const quadro0 = useRef<HTMLIFrameElement>(null);
-  const quadro1 = useRef<HTMLIFrameElement>(null);
-  const quadros = [quadro0, quadro1];
+  const iframe = useRef<HTMLIFrameElement>(null);
   const [largura, setLargura] = useState(360);
-  // a última página pedida, o quadro que aparece, o que está carregando, onde estava rolado e qual página é
+  // o que o quadro tem, qual carga é a atual (avisos de cargas antigas são ignorados), se ela já respondeu,
+  // onde estava rolado e qual página é
   const atual = useRef('');
-  const ativoRef = useRef(0);
-  const temAtivo = useRef(false);
-  const carregando = useRef<number | null>(null);
-  const doQuadro = useRef<{ html: string; y: number }[]>([{ html: '', y: 0 }, { html: '', y: 0 }]);
-  const recargas = useRef(0);
-  const trocaTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const carga = useRef(0);
+  const pronto = useRef(false);
   const rolagem = useRef(0);
+  const yInicial = useRef(0);
   const pagina = useRef(titulo);
   const editarRef = useRef(editar);
   const aoEditarRef = useRef(aoEditar);
@@ -71,46 +65,58 @@ export function PreviaSolta({ html, titulo, altura = 640, arquivos, baseUrl, edi
   const ultimoCampo = useRef<{ v: string; l: string; t: number } | null>(null);
   aoEditarRef.current = aoEditar;
 
-  const janela = (i: number) => quadros[i].current?.contentWindow || null;
-
-  /** carrega a página no quadro de trás; ele só aparece quando estiver desenhado */
-  const recarregar = (h: string, y: number) => {
-    const i = temAtivo.current ? 1 - ativoRef.current : ativoRef.current;
-    atual.current = h;
-    carregando.current = i;
-    doQuadro.current[i] = { html: h, y };
-    // o comentário muda a cada vez: o quadro recarrega mesmo se a página for igual à que ele já teve
-    const doc = h + `<!-- ${++recargas.current} -->`;
-    setDocs((d) => (i ? [d[0], doc] : [doc, d[1]]));
+  // vigia: às vezes o navegador não desenha o quadro que acabou de carregar (fica branco até algo mudar no layout).
+  // Depois de cada carga, pergunta a altura da página; se não respondeu ou veio 0, esconde e mostra o quadro.
+  const vigia = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const desenhada = useRef(false);
+  const acordar = () => {
+    const f = iframe.current;
+    if (!f) return;
+    f.style.display = 'none';
+    void f.offsetWidth;
+    requestAnimationFrame(() => { f.style.display = ''; });
+  };
+  // e se a página nem começou a carregar (o quadro não respondeu "pronto"), carrega de novo (até 3 vezes)
+  const tentativas = useRef(0);
+  const vigiar = () => {
+    vigia.current.forEach(clearTimeout);
+    desenhada.current = false;
+    vigia.current = [900, 2000, 3500, 6000, 10000].map((ms) => setTimeout(() => {
+      if (desenhada.current) return;
+      if (!pronto.current) {
+        if (ms < 3500 || tentativas.current >= 3) return;
+        tentativas.current++;
+        return recarregar(atual.current, yInicial.current);
+      }
+      acordar();
+      setTimeout(() => iframe.current?.contentWindow?.postMessage({ tipo: 'pub-medir' }, '*'), 150);
+    }, ms));
   };
 
-  const mostrar = (i: number) => {
-    clearTimeout(trocaTimer.current);
-    if (carregando.current !== i) return;
-    carregando.current = null;
-    temAtivo.current = true;
-    if (ativoRef.current !== i) {
-      ativoRef.current = i;
-      setAtivo(i);
-      // o quadro de antes para de rodar (vídeos, animações)
-      setDocs((d) => (i ? ['', d[1]] : [d[0], '']));
-    }
+  const recarregar = (h: string, y: number) => {
+    pronto.current = false;
+    vigiar();
+    atual.current = h;
+    yInicial.current = y;
+    const n = ++carga.current;
+    // o número da carga vai junto: o script de dentro devolve no "pronto"
+    setSrcDoc(h.replace(/<head([^>]*)>/i, `<head$1><meta name="pub-carga" content="${n}">`));
   };
 
   useEffect(() => {
     const t = setTimeout(() => {
-      if (html == null) { atual.current = ''; temAtivo.current = false; carregando.current = null; setDocs(['', '']); return; }
+      if (html == null) { atual.current = ''; pronto.current = false; setSrcDoc(''); return; }
       let h = comArquivosDaPrevia(html, arquivos, (a) => location.origin + urlArquivo(a.sha, a.caminho));
       if (baseUrl && !/<base\s/i.test(h)) h = h.replace(/<head([^>]*)>/i, `<head$1><base href="${baseUrl.replace(/"/g, '')}">`);
       h = semEsperarCss(h);
       const script = `<script>${SCRIPT_PREVIA}</script>`;
-      h = /<head[^>]*>/i.test(h) ? h.replace(/<head([^>]*)>/i, `<head$1>${script}`) : script + h;
+      h = /<head[^>]*>/i.test(h) ? h.replace(/<head([^>]*)>/i, `<head$1>${script}`) : `<head>${script}</head>` + h;
       if (h === atual.current) return;
       const outraPagina = pagina.current !== titulo;
       pagina.current = titulo;
-      if (!temAtivo.current || outraPagina || carregando.current != null) return recarregar(h, outraPagina ? 0 : rolagem.current);
+      if (!atual.current || outraPagina || !pronto.current) return recarregar(h, outraPagina ? 0 : rolagem.current);
       atual.current = h;
-      janela(ativoRef.current)?.postMessage({ tipo: 'pub-atualizar', html: h }, '*');
+      iframe.current?.contentWindow?.postMessage({ tipo: 'pub-atualizar', html: h }, '*');
     }, atual.current ? 120 : 0);
     return () => clearTimeout(t);
   }, [html, arquivos, baseUrl, titulo]);
@@ -118,23 +124,23 @@ export function PreviaSolta({ html, titulo, altura = 640, arquivos, baseUrl, edi
   // conversa com o script de dentro da prévia
   useEffect(() => {
     const f = (e: MessageEvent) => {
-      const i = [0, 1].find((k) => e.source && e.source === janela(k));
-      if (i == null) return;
-      const w = janela(i)!;
+      const w = iframe.current?.contentWindow;
+      if (!w || e.source !== w) return;
       const d = e.data || {};
       if (d.tipo === 'pub-pronto') {
-        if (carregando.current !== i) return;
+        if (Number(d.carga) !== carga.current) return;
+        pronto.current = true;
+        tentativas.current = 0;
         const u = ultimoCampo.current;
         const foco = u && Date.now() - u.t < 4000 ? { v: u.v, l: u.l } : null;
-        w.postMessage({ tipo: 'pub-base', html: doQuadro.current[i].html, y: doQuadro.current[i].y, editar: editarRef.current, foco }, '*');
-        // se o quadro não avisar, aparece assim mesmo
-        clearTimeout(trocaTimer.current);
-        trocaTimer.current = setTimeout(() => mostrar(i), 1500);
-      } else if (d.tipo === 'pub-visivel') mostrar(i);
-      else if (d.tipo === 'pub-editar' && typeof d.v === 'string') {
+        w.postMessage({ tipo: 'pub-base', html: atual.current, y: yInicial.current, editar: editarRef.current, foco }, '*');
+        w.postMessage({ tipo: 'pub-medir' }, '*');
+      } else if (d.tipo === 'pub-medida') {
+        if (d.h > 0) desenhada.current = true;
+      } else if (d.tipo === 'pub-editar' && typeof d.v === 'string') {
         ultimoCampo.current = { v: d.v, l: d.l || '', t: Date.now() };
         aoEditarRef.current?.(d.v, d.l || '', String(d.valor ?? ''));
-      } else if (i !== ativoRef.current || carregando.current != null) return;
+      } else if (!pronto.current) return;
       else if (d.tipo === 'pub-rolagem') rolagem.current = d.y;
       else if (d.tipo === 'pub-resultado') {
         rolagem.current = d.y;
@@ -142,12 +148,12 @@ export function PreviaSolta({ html, titulo, altura = 640, arquivos, baseUrl, edi
       }
     };
     addEventListener('message', f);
-    return () => { removeEventListener('message', f); clearTimeout(trocaTimer.current); };
+    return () => { removeEventListener('message', f); vigia.current.forEach(clearTimeout); };
   }, []);
 
   useEffect(() => {
     editarRef.current = editar;
-    for (const i of [0, 1]) janela(i)?.postMessage({ tipo: 'pub-modo', editar }, '*');
+    iframe.current?.contentWindow?.postMessage({ tipo: 'pub-modo', editar }, '*');
   }, [editar]);
 
   useEffect(() => {
@@ -176,19 +182,7 @@ export function PreviaSolta({ html, titulo, altura = 640, arquivos, baseUrl, edi
         {html == null ? (
           <p className="empty">Nada para mostrar ainda.</p>
         ) : (
-          [0, 1].map((i) => (
-            <iframe
-              key={i}
-              ref={quadros[i]}
-              title={i === ativo ? titulo || 'Prévia' : undefined}
-              aria-hidden={i !== ativo || undefined}
-              tabIndex={i === ativo ? undefined : -1}
-              className={i === ativo ? undefined : 'atras'}
-              sandbox="allow-scripts"
-              srcDoc={docs[i]}
-              style={{ width: w, height: h, transform: `scale(${escala})` }}
-            />
-          ))
+          <iframe ref={iframe} title={titulo || 'Prévia'} sandbox="allow-scripts" srcDoc={srcDoc} style={{ width: w, height: h, transform: `scale(${escala})` }} />
         )}
       </div>
     </div>
