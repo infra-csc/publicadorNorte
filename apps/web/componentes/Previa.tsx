@@ -23,6 +23,21 @@ type Props = {
   extra?: React.ReactNode;
 };
 
+/**
+ * CSS de fora (ex.: Google Fonts) não segura o desenho da prévia: o quadro isolado não aproveita o cache
+ * e baixa de novo a cada carga; se a resposta demorar, a página ficava em branco até chegar.
+ * O CSS entra quando chegar (media="print" e, no load, a media original).
+ */
+export function semEsperarCss(html: string): string {
+  return html.replace(/<link\b[^>]*>/gi, (tag) => {
+    if (!/\brel\s*=\s*["']?stylesheet\b/i.test(tag) || !/\bhref\s*=\s*["']?(?:https?:)?\/\//i.test(tag) || /\bonload\s*=/i.test(tag)) return tag;
+    const media = tag.match(/\bmedia\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
+    const orig = (media?.[1] ?? media?.[2] ?? media?.[3] ?? 'all').replace(/"/g, '');
+    const sem = media ? tag.replace(media[0], '') : tag;
+    return sem.replace(/\s*\/?>$/, ` media="print" data-pub-media="${orig}" onload="this.media=this.dataset.pubMedia" onerror="this.media=this.dataset.pubMedia">`);
+  });
+}
+
 /** dentro do editor: arquivos e endereço vêm do evento aberto */
 export function Previa(props: Props) {
   const { arquivosPrevia, evento } = useEditor();
@@ -87,6 +102,7 @@ export function PreviaSolta({ html, titulo, altura = 640, arquivos, baseUrl, edi
       if (html == null) { atual.current = ''; temAtivo.current = false; carregando.current = null; setDocs(['', '']); return; }
       let h = comArquivosDaPrevia(html, arquivos, (a) => location.origin + urlArquivo(a.sha, a.caminho));
       if (baseUrl && !/<base\s/i.test(h)) h = h.replace(/<head([^>]*)>/i, `<head$1><base href="${baseUrl.replace(/"/g, '')}">`);
+      h = semEsperarCss(h);
       const script = `<script>${SCRIPT_PREVIA}</script>`;
       h = /<head[^>]*>/i.test(h) ? h.replace(/<head([^>]*)>/i, `<head$1>${script}`) : script + h;
       if (h === atual.current) return;
