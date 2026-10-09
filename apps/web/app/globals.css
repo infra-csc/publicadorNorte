@@ -330,3 +330,8 @@ tr:last-child td { border-bottom: 0; }
 .cota-linha { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 8px; }
 .cota-item { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; border: 1px dashed var(--line); border-radius: 10px; }
 .cota-item .inp { flex: 1 1 140px; min-width: 120px; padding: 7px 10px; }
+
+/* cadastro: tabela em tela cheia */
+.tabela-cheia { position: fixed; inset: 0; z-index: 40; overflow: auto; padding: 20px clamp(16px, 3vw, 40px); background: var(--paper); }
+.tabela-cheia .tw { max-height: calc(100vh - 110px); overflow: auto; }
+.tabela-cheia thead th { position: sticky; top: 0; z-index: 1; background: var(--panel); }

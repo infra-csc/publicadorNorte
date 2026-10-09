@@ -106,6 +106,15 @@ function Tabela({ tipo, foco, setFoco }: { tipo: TipoItem; foco: string | null; 
   const [novaCol, setNovaCol] = useState<string | null>(null);
   const [msgCol, setMsgCol] = useState('');
   const [remover, setRemover] = useState<string | null>(null);
+  // tela cheia: a mesma tabela, ocupando a tela toda (Esc fecha)
+  const [cheia, setCheia] = useState(false);
+  useEffect(() => {
+    if (!cheia) return;
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape' && !(e.target instanceof HTMLInputElement && e.target.closest('.colpanel'))) setCheia(false); };
+    document.addEventListener('keydown', esc);
+    document.body.style.overflow = 'hidden';
+    return () => { document.removeEventListener('keydown', esc); document.body.style.overflow = ''; };
+  }, [cheia]);
   const nomeTipo = tipo === 'etapa' ? 'etapa' : 'cidade';
   // One page: uma linha só (a da página), sem somar, duplicar ou mudar de ordem
   const unica = evento.formato === 'unica';
@@ -152,10 +161,16 @@ function Tabela({ tipo, foco, setFoco }: { tipo: TipoItem; foco: string | null; 
   }
 
   return (
-    <section className="stack">
+    <section className={'stack' + (cheia ? ' tabela-cheia' : '')} role={cheia ? 'dialog' : undefined} aria-modal={cheia || undefined} aria-label={cheia ? (unica ? 'Da página' : tipo === 'etapa' ? 'Etapas' : 'Cidades') : undefined}>
       <div className="row between">
         <h2 style={{ fontSize: 20 }}>{unica ? 'Da página' : <>{tipo === 'etapa' ? 'Etapas' : 'Cidades'} <span className="cnt">{linhas.length}</span></>}</h2>
         <span className="row" style={{ gap: 6 }}>
+          <button className="btn sm ghost" type="button" onClick={() => setCheia(!cheia)} title={cheia ? 'Voltar ao tamanho normal (Esc)' : 'Abrir a tabela na tela toda'} aria-pressed={cheia}>
+            <svg width="13" height="13" viewBox="0 0 14 14" aria-hidden="true" style={{ verticalAlign: '-2px', marginRight: 5 }}>
+              <path d={cheia ? 'M5 1v4H1M9 1v4h4M5 13V9H1M9 13V9h4' : 'M1 5V1h4M13 5V1H9M1 9v4h4M13 9v4H9'} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            {cheia ? 'Sair da tela cheia' : 'Tela cheia'}
+          </button>
           <button className="btn sm ghost" type="button" onClick={() => { setNovaCol(''); setPainel(null); }}>+ Coluna</button>
           {(!unica || !linhas.length) && <button className="btn sm pri" type="button" onClick={adicionar}>{unica ? 'Preencher' : `+ ${tipo === 'etapa' ? 'Etapa' : 'Cidade'}`}</button>}
         </span>
