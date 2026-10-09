@@ -67,11 +67,13 @@ export function AdicionarModulo({ pag }: { pag: TipoPagina }) {
       const s = (e.secoes ??= { ocultas: [], porLinha: {}, ordem: {} });
       s.modulos = { ...(s.modulos || {}), [pag]: [...(s.modulos?.[pag] || []), { id, largura: 60, espaco: 'm', fundo: '', ...dados }] };
     });
+    // mostra o módulo novo na lista (ele entra no fim)
+    setTimeout(() => document.getElementById('secao-' + id)?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300);
   }
   return (
-    <div className="row" style={{ gap: 10 }}>
-      <Escolher rotulo="+ Módulo de imagem" classe="btn sm" aoEscolher={escolher} ocupado={ocupado} />
-      <span className="small muted">PNG, JPG ou SVG. Entra no fim da página; arraste para o lugar.</span>
+    <div className="row" style={{ gap: 10, flexWrap: 'wrap', minWidth: 0 }}>
+       <Escolher rotulo="+ Módulo de imagem" classe="btn sm pri" aoEscolher={escolher} ocupado={ocupado} />
+      <span className="small muted">PNG, JPG ou SVG. Entra no fim da lista; arraste para o lugar.</span>
       {erro && <span className="small" style={{ color: 'var(--bad)' }}>{erro}</span>}
     </div>
   );

@@ -85,7 +85,7 @@ function Secoes() {
   return (
     <>
       <Cabecalho passo="secoes" titulo="Seções da página">Arraste para mudar a ordem das seções na página. Esconda o que não deve aparecer, no evento todo ou só numa cidade. Dá para pôr módulos de imagem entre as seções. A prévia mostra o resultado.</Cabecalho>
-      <div className="row">
+      <div className="row" style={{ flexWrap: 'wrap' }}>
         <div className="seg" role="group" aria-label="Página">
           {paginas.map((k) => <button key={k} type="button" aria-pressed={pag === k} onClick={() => setPag(k)}>{NOME_PAGINA[k]}</button>)}
         </div>
@@ -96,6 +96,7 @@ function Secoes() {
             </select>
           </label>
         )}
+        <AdicionarModulo pag={pag} />
         {mudouOrdem && (
           <button className="btn sm ghost" type="button" onClick={() => alterar((e) => { const s = garantir(e); const o = { ...(s.ordem || {}) }; delete o[pag]; s.ordem = o; })}>Voltar à ordem do HTML</button>
         )}
@@ -111,7 +112,7 @@ function Secoes() {
                 const exc = excecao(s.id);
                 const aqui = porCidade && cidade ? exc ?? geralVisivel : geralVisivel;
                 return (
-                  <div key={s.id} className={'secao-item' + (aqui ? '' : ' escondida')} {...alvo(i)}>
+                  <div key={s.id} id={'secao-' + s.id} className={'secao-item' + (aqui ? '' : ' escondida')} {...alvo(i)}>
                     <Alca i={i} total={secoes.length} alca={alca} mover={reordenar} rotulo={s.nome} />
                     <div className="secao-nome"><b>{s.nome}</b>{ehModulo(s.id) ? <span className="small muted">módulo de imagem</span> : <span className="mono small muted">#{s.id}</span>}</div>
                     <div className="secao-controles">
@@ -136,7 +137,6 @@ function Secoes() {
               })}
             </div>
           )}
-          <AdicionarModulo pag={pag} />
           {temRodape && (() => {
             const geralVisivel = !ocultaGeral(RODAPE_HTML);
             const exc = excecao(RODAPE_HTML);
