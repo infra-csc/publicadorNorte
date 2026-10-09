@@ -1,6 +1,6 @@
 'use client';
 import { FORMULAS_PADRAO, novaLinha, slugValor, sincronizarVars, type Linha, type TipoItem } from '@norte/motor';
-import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { gerarEvento } from '@/lib/comum/montagem';
 import type { Evento } from '@/lib/comum/tipos';
 import { Cabecalho, NavPassos, useEditor } from '../Editor';
@@ -98,7 +98,7 @@ function PainelColuna({ tipo, col, cols, fechar }: { tipo: TipoItem; col: string
   );
 }
 
-function Tabela({ tipo, foco, setFoco }: { tipo: TipoItem; foco: string | null; setFoco: (id: string) => void }) {
+function Tabela({ tipo, foco, setFoco, busca }: { tipo: TipoItem; foco: string | null; setFoco: (id: string) => void; busca: string }) {
   const { evento, cad, det, alterar } = useEditor();
   const cols = cad.colunas(tipo);
   const linhas = lista(evento, tipo);
@@ -116,8 +116,9 @@ function Tabela({ tipo, foco, setFoco }: { tipo: TipoItem; foco: string | null; 
     return () => { document.removeEventListener('keydown', esc); document.body.style.overflow = ''; };
   }, [cheia]);
   const nomeTipo = tipo === 'etapa' ? 'etapa' : 'cidade';
-  // One page: uma linha só (a da página), sem somar, duplicar ou mudar de ordem
+  // One page: a lista de cidades só alimenta trechos @repetir cidades (não gera página por cidade)
   const unica = evento.formato === 'unica';
+  const mostradas = linhas.filter((l) => bate(busca, ...cols.map((c) => String(l[c] ?? ''))));
 
   function adicionar() {
     const id = novoId();
@@ -152,7 +153,6 @@ function Tabela({ tipo, foco, setFoco }: { tipo: TipoItem; foco: string | null; 
       const l = lista(e, tipo);
       let r = l.findIndex((x) => x._id === alvo.dataset.row);
       for (const celulas of grade) {
-        if (!l[r] && unica && r > 0) break;
         if (!l[r]) { const n: Linha = { _id: novoId() }; if (tipo === 'etapa' && e.cidades.length === 1) n._cidade = e.cidades[0]._id; l.push(n); r = l.length - 1; }
         celulas.forEach((v, k) => { const c = cols[c0 + k]; if (c) l[r][c] = v.trim(); });
         r++;
@@ -161,9 +161,9 @@ function Tabela({ tipo, foco, setFoco }: { tipo: TipoItem; foco: string | null; 
   }
 
   return (
-    <section className={'stack' + (cheia ? ' tabela-cheia' : '')} role={cheia ? 'dialog' : undefined} aria-modal={cheia || undefined} aria-label={cheia ? (unica ? 'Da página' : tipo === 'etapa' ? 'Etapas' : 'Cidades') : undefined}>
+    <section className={'stack' + (cheia ? ' tabela-cheia' : '')} role={cheia ? 'dialog' : undefined} aria-modal={cheia || undefined} aria-label={cheia ? (tipo === 'etapa' ? 'Etapas' : 'Cidades') : undefined}>
       <div className="row between">
-        <h2 style={{ fontSize: 20 }}>{unica ? 'Da página' : <>{tipo === 'etapa' ? 'Etapas' : 'Cidades'} <span className="cnt">{linhas.length}</span></>}</h2>
+        <h2 style={{ fontSize: 20 }}>{tipo === 'etapa' ? 'Etapas' : 'Cidades'} <span className="cnt">{busca ? `${mostradas.length} de ${linhas.length}` : linhas.length}</span>{unica && <small className="muted" style={{ fontSize: 13, fontWeight: 400, marginLeft: 8 }}>lista da página (@repetir cidades)</small>}</h2>
         <span className="row" style={{ gap: 6 }}>
           <button className="btn sm ghost" type="button" onClick={() => setCheia(!cheia)} title={cheia ? 'Voltar ao tamanho normal (Esc)' : 'Abrir a tabela na tela toda'} aria-pressed={cheia}>
             <svg width="13" height="13" viewBox="0 0 14 14" aria-hidden="true" style={{ verticalAlign: '-2px', marginRight: 5 }}>
@@ -172,7 +172,7 @@ function Tabela({ tipo, foco, setFoco }: { tipo: TipoItem; foco: string | null; 
             {cheia ? 'Sair da tela cheia' : 'Tela cheia'}
           </button>
           <button className="btn sm ghost" type="button" onClick={() => { setNovaCol(''); setPainel(null); }}>+ Coluna</button>
-          {(!unica || !linhas.length) && <button className="btn sm pri" type="button" onClick={adicionar}>{unica ? 'Preencher' : `+ ${tipo === 'etapa' ? 'Etapa' : 'Cidade'}`}</button>}
+          <button className="btn sm pri" type="button" onClick={adicionar}>+ {tipo === 'etapa' ? 'Etapa' : 'Cidade'}</button>
         </span>
       </div>
       {novaCol !== null && (
@@ -203,7 +203,7 @@ function Tabela({ tipo, foco, setFoco }: { tipo: TipoItem; foco: string | null; 
             </tr>
           </thead>
           <tbody onPaste={colar}>
-            {linhas.map((l, i) => (
+            {mostradas.map((l) => { const i = linhas.indexOf(l); return (
               <tr key={l._id} className={foco === l._id ? 'foco' : ''} onFocus={() => setFoco(l._id)}>
                 <td className="idx">{i + 1}</td>
                 {tipo === 'etapa' && (
@@ -224,17 +224,15 @@ function Tabela({ tipo, foco, setFoco }: { tipo: TipoItem; foco: string | null; 
                     </span>
                   ) : (
                     <>
-                      {!unica && <>
                       <button className="iconbtn" type="button" title={`Duplicar ${nomeTipo}`} onClick={() => acao(l._id, (ls, k) => { const n = structuredClone(ls[k]); n._id = novoId(); delete n._arquivo; ls.splice(k + 1, 0, n); })}>⧉</button>
                       <button className="iconbtn" type="button" title="Subir" disabled={i === 0} onClick={() => acao(l._id, (ls, k) => { [ls[k - 1], ls[k]] = [ls[k], ls[k - 1]]; })}>↑</button>
                       <button className="iconbtn" type="button" title="Descer" disabled={i === linhas.length - 1} onClick={() => acao(l._id, (ls, k) => { [ls[k + 1], ls[k]] = [ls[k], ls[k + 1]]; })}>↓</button>
                       <button className="iconbtn" type="button" title={`Remover ${nomeTipo}`} onClick={() => setRemover(l._id)}>✕</button>
-                      </>}
                     </>
                   )}
                 </td>
               </tr>
-            ))}
+            ); })}
           </tbody>
         </table>
         {!linhas.length && <p className="empty">Nenhuma {nomeTipo} ainda. Clique em “+ {tipo === 'etapa' ? 'Etapa' : 'Cidade'}” ou cole as linhas de uma planilha.</p>}
@@ -305,15 +303,160 @@ function Planilha() {
   );
 }
 
-export function PassoCadastro() {
-  const { evento, modelos, arquivos, cad, alterar, banco } = useEditor();
-  const [foco, setFoco] = useState<string | null>(null);
+/** caixa de texto que cresce com o conteúdo (uma linha quando cabe) */
+function CampoTexto({ valor, placeholder, rotulo, mudar }: { valor: string; placeholder?: string; rotulo: string; mudar: (v: string) => void }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 2 + 'px';
+  }, [valor]);
+  return <textarea ref={ref} className="inp campo-auto" rows={1} value={valor} placeholder={placeholder} aria-label={rotulo} onChange={(e) => mudar(e.target.value)} />;
+}
+
+const semAcento = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+const bate = (busca: string, ...textos: string[]) => !busca || textos.some((t) => semAcento(t).includes(semAcento(busca)));
+
+/**
+ * Variáveis gerais numeradas viram blocos: tema1_titulo, tema1_texto, tema2_titulo… → bloco "tema" com itens 1, 2…
+ * O número tem que estar colado num pedaço do nome (tema1, faq10, patrocinio2).
+ */
+type Serie = { raiz: string; campos: string[]; itens: Map<number, Map<string, string>> };
+function separarSeries(gerais: string[]): { soltas: string[]; series: Serie[] } {
+  const porRaiz = new Map<string, Serie>();
+  const de = new Map<string, { raiz: string; n: number; campo: string }>();
+  for (const g of gerais) {
+    const partes = g.split('_');
+    const i = partes.findIndex((p) => /^[a-z]+\d+$/.test(p));
+    if (i < 0) continue;
+    const [, raiz, num] = /^([a-z]+)(\d+)$/.exec(partes[i])!;
+    const campo = [...partes.slice(0, i), raiz + '#', ...partes.slice(i + 1)].join('_');
+    de.set(g, { raiz, n: Number(num), campo });
+  }
+  for (const [g, { raiz, n, campo }] of de) {
+    const s: Serie = porRaiz.get(raiz) || { raiz, campos: [], itens: new Map() };
+    porRaiz.set(raiz, s);
+    if (!s.campos.includes(campo)) s.campos.push(campo);
+    if (!s.itens.has(n)) s.itens.set(n, new Map());
+    s.itens.get(n)!.set(campo, g);
+  }
+  // só é bloco se tiver pelo menos dois números
+  const series = [...porRaiz.values()].filter((s) => s.itens.size > 1);
+  const naSerie = new Set(series.flatMap((s) => [...s.itens.values()].flatMap((m) => [...m.values()])));
+  for (const s of series) s.itens = new Map([...s.itens].sort((a, b) => a[0] - b[0]));
+  return { soltas: gerais.filter((g) => !naSerie.has(g)), series };
+}
+const nomeRaiz = (r: string) => r.charAt(0).toUpperCase() + r.slice(1);
+const nomeCampo = (c: string, raiz: string) => c.replace(new RegExp(`_?${raiz}#_?`), ' ').replace(/_/g, ' ').trim() || raiz;
+
+function BlocoSerie({ s, busca }: { s: Serie; busca: string }) {
+  const { evento, cad, alterar } = useEditor();
+  const valor = (g: string) => evento.gerais[g] ?? '';
+  const nums = [...s.itens.keys()];
+  const temValor = (n: number) => [...s.itens.get(n)!.values()].some((g) => String(valor(g)).trim());
+  // visíveis: os preenchidos, os que a pessoa abriu e, com busca, os que batem
+  const [abertos, setAbertos] = useState<Set<number>>(new Set());
+  const visiveis = nums.filter((n) => (busca ? bate(busca, s.raiz + ' ' + n, ...[...s.itens.get(n)!.entries()].flatMap(([c, g]) => [c, g, String(valor(g))])) : temValor(n) || abertos.has(n)));
+  if (busca && !visiveis.length) return null;
+  const proximo = nums.find((n) => !temValor(n) && !abertos.has(n));
+
+  /** tira o bloco n: os de baixo sobem uma posição (o site não fica com buraco) */
+  function remover(n: number) {
+    alterar((e) => {
+      const seguintes = nums.filter((x) => x >= n);
+      for (let k = 0; k < seguintes.length; k++) {
+        const atual = s.itens.get(seguintes[k])!;
+        const prox = s.itens.get(seguintes[k + 1]);
+        for (const [campo, g] of atual) {
+          const g2 = prox?.get(campo);
+          if (g2 && String(e.gerais[g2] ?? '').trim()) e.gerais[g] = e.gerais[g2];
+          else delete e.gerais[g];
+        }
+      }
+    });
+    setAbertos((a) => { const b = new Set<number>(); for (const x of a) if (x < n) b.add(x); else if (x > n) b.add(x - 1); return b; });
+  }
+
+  return (
+    <div className="serie">
+      <div className="row between">
+        <b>{nomeRaiz(s.raiz)}{s.campos.length === 1 && <span className="muted" style={{ fontWeight: 400 }}> · {nomeCampo(s.campos[0], s.raiz)}</span>} <span className="cnt">{nums.filter(temValor).length} de {nums.length}</span></b>
+        {!busca && (
+          <button className="btn sm ghost" type="button" disabled={proximo == null} onClick={() => proximo != null && setAbertos((a) => new Set(a).add(proximo))}
+            title={proximo == null ? `O HTML tem ${nums.length} espaço(s) para ${s.raiz}` : `Mostrar o ${s.raiz} ${proximo}`}>
+            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" style={{ marginRight: 4, verticalAlign: '-1px' }}><path d="M6 1.5v9M1.5 6h9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
+            Adicionar
+          </button>
+        )}
+      </div>
+      {visiveis.map((n) => (
+        s.campos.length === 1 ? (
+          // um campo por item: uma linha com número, texto e lixeira
+          <div key={n} className="serie-linha">
+            <span className="small muted serie-n">{n}</span>
+            {[...s.itens.get(n)!.entries()].map(([, g]) => (
+              <CampoTexto key={g} valor={valor(g)} placeholder={cad.calculado(null, g)} rotulo={g} mudar={(v) => alterar((x) => { x.gerais[g] = v; })} />
+            ))}
+            <button className="iconbtn" type="button" title={`Tirar o ${s.raiz} ${n} (os de baixo sobem; dá para desfazer)`} aria-label={`Tirar ${s.raiz} ${n}`} onClick={() => remover(n)}>
+              <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M2.5 4h9M5.5 4V2.5h3V4M3.5 4l.6 8h5.8l.6-8" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            </button>
+          </div>
+        ) : (
+        <div key={n} className="serie-item">
+          <div className="row between">
+            <span className="small muted">{nomeRaiz(s.raiz)} {n}</span>
+            <button className="iconbtn" type="button" title={`Tirar o ${s.raiz} ${n} (os de baixo sobem; dá para desfazer)`} aria-label={`Tirar ${s.raiz} ${n}`} onClick={() => remover(n)}>
+              <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M2.5 4h9M5.5 4V2.5h3V4M3.5 4l.6 8h5.8l.6-8" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            </button>
+          </div>
+          <div className="grid3">
+            {[...s.itens.get(n)!.entries()].map(([campo, g]) => (
+              <label key={g} className="f"><span className="v" style={{ alignSelf: 'start' }} title={'@' + g}>{nomeCampo(campo, s.raiz)}</span>
+                <CampoTexto valor={valor(g)} placeholder={cad.calculado(null, g)} rotulo={g} mudar={(v) => alterar((x) => { x.gerais[g] = v; })} />
+              </label>
+            ))}
+          </div>
+        </div>
+        )
+      ))}
+      {!visiveis.length && <p className="small muted" style={{ margin: 0 }}>Nenhum {s.raiz} ainda. Use “Adicionar”.</p>}
+    </div>
+  );
+}
+
+function Gerais({ busca }: { busca: string }) {
+  const { evento, cad, alterar } = useEditor();
   const gerais = cad.colunas('geral');
+  const { soltas, series } = useMemo(() => separarSeries(gerais), [gerais.join('|')]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!gerais.length) return null;
+  const visiveis = soltas.filter((g) => bate(busca, g, String(evento.gerais[g] ?? '')));
   const unica = evento.formato === 'unica';
-  // One page: a linha da página já vem criada
-  useEffect(() => {
-    if (unica && !evento.cidades.length) alterar((e) => { if (!e.cidades.length) e.cidades.push(novaLinha('cidade', null, cad.colunas('cidade'), novoId())); });
-  }, [unica, evento.cidades.length, alterar, cad]);
+  if (busca && !visiveis.length && !series.length) return null;
+  return (
+    <section className="card stack">
+      <h2 style={{ fontSize: 20 }}>{unica ? 'Gerais' : 'Igual em todas as páginas'}</h2>
+      {visiveis.length > 0 && (
+        <div className="grid3">
+          {visiveis.map((g) => (
+            <label key={g} className="f"><span className="v" style={{ alignSelf: 'start' }}>@{g}</span>
+              <CampoTexto valor={evento.gerais[g] ?? ''} placeholder={cad.calculado(null, g)} rotulo={g} mudar={(v) => alterar((x) => { x.gerais[g] = v; })} />
+            </label>
+          ))}
+        </div>
+      )}
+      {series.map((s) => <BlocoSerie key={s.raiz} s={s} busca={busca} />)}
+    </section>
+  );
+}
+
+export function PassoCadastro() {
+  const { evento, modelos, arquivos, cad, banco } = useEditor();
+  const [foco, setFoco] = useState<string | null>(null);
+  const unica = evento.formato === 'unica';
+  const [busca, setBusca] = useState('');
+  // One page sem @repetir cidades no HTML: não mostra a lista
+  const temLista = !unica || cad.colunas('cidade').length > 0 || evento.cidades.length > 0;
   const ev = useDeferredValue(evento);
   const resultado = useMemo(() => gerarEvento(ev, modelos, arquivos, banco), [ev, modelos, arquivos, banco]);
   const pagina =
@@ -323,24 +466,16 @@ export function PassoCadastro() {
 
   return (
     <>
-      <Cabecalho passo="cadastro" titulo="Cadastro">{unica ? 'Preencha os valores da página. A prévia mostra o resultado.' : 'Preencha os valores. Cada linha vira uma página. Dá para colar linhas de uma planilha. A prévia mostra a linha em que você está.'}</Cabecalho>
+      <Cabecalho passo="cadastro" titulo="Cadastro">{unica ? 'Preencha os valores da página. A lista de cidades (se houver) alimenta os trechos que se repetem, como agenda e acordeão.' : 'Preencha os valores. Cada linha vira uma página. Dá para colar linhas de uma planilha. A prévia mostra a linha em que você está.'}</Cabecalho>
       <div className="split">
         <div className="stack" style={{ minWidth: 0 }}>
-          <Planilha />
-          {gerais.length > 0 && (
-            <section className="card stack">
-              <h2 style={{ fontSize: 20 }}>{unica ? 'Gerais' : 'Igual em todas as páginas'}</h2>
-              <div className="grid3">
-                {gerais.map((g) => (
-                  <label key={g} className="f"><span className="v" style={{ alignSelf: 'start' }}>@{g}</span>
-                    <input className="inp" value={evento.gerais[g] ?? ''} placeholder={cad.calculado(null, g)} onChange={(e) => { const v = e.target.value; alterar((x) => { x.gerais[g] = v; }); }} />
-                  </label>
-                ))}
-              </div>
-            </section>
-          )}
-          <Tabela tipo="cidade" foco={foco} setFoco={setFoco} />
-          {evento.formato === 'tapume_etapa_praca' && <Tabela tipo="etapa" foco={foco} setFoco={setFoco} />}
+          <div className="row between" style={{ gap: 8 }}>
+            <Planilha />
+            <input className="inp busca-cad" type="search" placeholder="Buscar campo ou valor…" aria-label="Buscar no cadastro" value={busca} onChange={(e) => setBusca(e.target.value)} />
+          </div>
+          <Gerais busca={busca} />
+          {temLista && <Tabela tipo="cidade" foco={foco} setFoco={setFoco} busca={busca} />}
+          {evento.formato === 'tapume_etapa_praca' && <Tabela tipo="etapa" foco={foco} setFoco={setFoco} busca={busca} />}
         </div>
         <div className="lado">
           <Previa html={pagina?.html ?? null} titulo={pagina ? `${pagina.titulo} · ${pagina.arquivo}` : 'Prévia'} altura={560} />

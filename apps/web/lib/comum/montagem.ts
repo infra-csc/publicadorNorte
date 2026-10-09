@@ -1,5 +1,5 @@
 // Junta o motor com os dados guardados: gera as páginas e descobre quais arquivos cada página usa.
-import { acharArquivo, COTAS_PADRAO, gerar, normRef, PASTA_LOGOS, refsDeArquivo, type Cota, type ResultadoGerar } from '@norte/motor';
+import { acharArquivo, COTAS_PADRAO, detectar, gerar, sincronizarVars, normRef, PASTA_LOGOS, refsDeArquivo, type Cota, type ResultadoGerar } from '@norte/motor';
 import type { ArquivoMidia, BancoPatrocinios, Evento } from './tipos';
 
 /** logos do banco de patrocinadores, como arquivos do site (_patrocinadores/…) */
@@ -34,6 +34,25 @@ export function paginasComPatrocinio(evento: Pick<Evento, 'formato' | 'cidades' 
 /** página gerada que corresponde a uma página com patrocínio (para a prévia) */
 export const paginaDoPatrocinio = (paginas: ResultadoGerar['paginas'], id: string) =>
   paginas.find((p) => (id === 'unica' ? p.tipo === 'unica' : p.etapaId === id || (p.tipo === 'praca' && !p.etapaId && p.cidadeId === id)));
+
+/**
+ * One page: tudo é geral (só o que está em @repetir cidades é da lista de cidades).
+ * Eventos feitos antes guardavam esses valores na "linha da página": leva para os gerais, sem perder nada.
+ * Devolve true se mudou algo.
+ */
+export function migrarOnePage(e: Evento, modelos: Partial<Record<string, string>>): boolean {
+  if (e.formato !== 'unica' || !e.cidades.length) return false;
+  const vars = sincronizarVars(detectar(modelos, 'unica'), e.vars);
+  let mudou = false;
+  for (const [k, v] of Object.entries(vars)) {
+    if (v.dono !== 'geral' || !e.cidades.some((c) => k in c)) continue;
+    const comValor = e.cidades.find((c) => String(c[k] ?? '').trim());
+    if (comValor && !String(e.gerais[k] ?? '').trim()) e.gerais[k] = String(comValor[k]);
+    for (const c of e.cidades) delete c[k];
+    mudou = true;
+  }
+  return mudou;
+}
 
 export function gerarEvento(evento: Evento, modelos: Partial<Record<string, string>>, arquivos: ArquivoMidia[], banco?: BancoPatrocinios | null): ResultadoGerar {
   return gerar({

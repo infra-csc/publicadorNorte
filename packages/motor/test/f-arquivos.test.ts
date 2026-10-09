@@ -89,17 +89,21 @@ describe('F. Arquivos e URLs', () => {
   it('falta de HTML e formato One page', () => {
     const r = gerar({ formato: 'tapume_praca', modelos: { praca: '<p>@cidade_1</p>' }, cidades: [linha({ cidade: 'SP' })] });
     expect(r.avisos[0]).toMatchObject({ codigo: 'falta-html', nivel: 'bloqueia' });
-    // One page: uma página só (index.html), com os campos gerais e a linha única do cadastro
-    const pag = linha({ cidade: 'SP', local: 'Parque' });
-    const u = gerar({ formato: 'unica', modelos: { unica: '<p>@evento em @cidade_1 (@local_1) e contato@norte.com</p>' }, gerais: { evento: 'Makai' }, cidades: [pag] });
+    // One page: uma página só (index.html); tudo é geral, até o que aparece em @se ou tem número no nome;
+    // só o que está dentro de @repetir cidades vira coluna da lista de cidades
+    const html = '<h1>@evento</h1><!-- @se tema1_titulo --><h2>@tema1_titulo</h2><!-- @fim --><!-- @se tema2_titulo --><h2>@tema2_titulo</h2><!-- @fim -->' +
+      '<p>@total_cidades cidades</p><ul><!-- @repetir cidades --><li>@cidade — @local</li><!-- @fim --></ul>';
+    const u = gerar({ formato: 'unica', modelos: { unica: html }, gerais: { evento: 'Cuidar', tema1_titulo: 'Sedentarismo' }, cidades: [linha({ cidade: 'Cotia', local: 'Praça' }), linha({ cidade: 'Ibiúna', local: 'Ginásio' })] });
     expect(u.paginas).toHaveLength(1);
-    expect(u.paginas[0]).toMatchObject({ tipo: 'unica', arquivo: 'index.html', cidadeId: pag._id, html: '<p>Makai em SP (Parque) e contato@norte.com</p>' });
+    expect(u.paginas[0]).toMatchObject({ tipo: 'unica', arquivo: 'index.html' });
+    expect(u.paginas[0].html).toBe('<h1>Cuidar</h1><h2>Sedentarismo</h2><p>2 cidades</p><ul><li>Cotia — Praça</li><li>Ibiúna — Ginásio</li></ul>');
+    expect(u.vars.tema1_titulo.dono).toBe('geral');
+    expect(u.vars.cidade.dono).toBe('cidade');
     expect(u.bloqueado).toBe(false);
-    // sem a linha do cadastro, a página sai com os campos vazios e aviso (não bloqueia)
-    const v = gerar({ formato: 'unica', modelos: { unica: '<p>@cidade_1</p>' } });
-    expect(v.paginas[0].html).toBe('<p></p>');
+    // sem cidades: a lista sai vazia e não bloqueia
+    const v = gerar({ formato: 'unica', modelos: { unica: html }, gerais: { evento: 'Cuidar' } });
+    expect(v.paginas[0].html).toBe('<h1>Cuidar</h1><p>0 cidades</p><ul></ul>');
     expect(v.bloqueado).toBe(false);
-    expect(v.avisos.map((a) => [a.codigo, a.nivel])).toEqual([['sem-cidades', 'alerta']]);
   });
 
   it('gerais vazios e variável excluída', () => {

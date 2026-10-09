@@ -213,9 +213,10 @@ O publicador lê qualquer `@nome` como variável e cria a coluna sozinho. També
 
 ### One page (página única, sem tapume)
 
-- Escreva o HTML **igual a uma página de cidade**: o que muda vem com `_1` (`@cidade_1`, `@local_1`, `@media_hero_desktop`…) e o que é geral vai sem número (`@evento`).
-- O cadastro do One page tem os campos gerais e **uma linha só**. Sai um `index.html`.
-- Mídia, patrocinadores, seções e rodapé funcionam como na página de cidade. As imagens ficam em `_media/pagina/`.
+- No One page **todo o cadastro é geral**: cada variável vira um campo único (`@evento`, `@hero_texto`, `@tema1_titulo`, `@faq3_pergunta`…). Não use `_1` no fim para "página": escreva o nome sem número.
+- Lista de cidades na página (agenda, acordeão, mapa): use `@repetir cidades` com um item só, como no tapume (seção 7). As variáveis dentro dele (`@cidade`, `@uf`, `@local`, `@data_inicio`…) viram colunas da tabela de cidades, uma linha por cidade.
+- Blocos numerados que podem sobrar (temas, salas, equipe, perguntas do FAQ): `@tema1_titulo`, `@tema2_titulo`… cada um dentro do seu `<!-- @se tema1_titulo -->…<!-- @fim -->`. Vazio, o bloco some. No publicador eles aparecem agrupados, com + e − para mostrar ou tirar um bloco.
+- Sai um `index.html`. Mídia, patrocinadores, seções e rodapé funcionam como na página de cidade. As imagens ficam em `_media/pagina/`.
 
 ---
 

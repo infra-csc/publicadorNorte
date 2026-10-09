@@ -26,7 +26,7 @@ Público: designers e atendimento da Norte Marketing. Ninguém que usa a ferrame
 
 | Chave | Nome na tela | Páginas | Saída |
 |---|---|---|---|
-| `unica` | One page | página única | `index.html`, com variáveis, mídia, patrocínios, seções e rodapé como uma praça; o cadastro tem os campos gerais e uma linha só |
+| `unica` | One page | página única | `index.html`, com variáveis, mídia, patrocínios, seções e rodapé; todo o cadastro é geral, e a tabela de cidades só alimenta listas `@repetir cidades` da página |
 | `tapume_praca` | Tapume + praça | tapume, praça | `index.html` + `<cidade>.html` |
 | `tapume_etapa_praca` | Tapume + praça + etapa | tapume, praça, etapa | `index.html` + `<cidade>.html` + `<cidade>-<etapa>.html` |
 
@@ -46,7 +46,7 @@ No formato com etapas, cada etapa pertence a uma cidade (campo interno `_cidade`
 8. **Conferir**: lista de páginas que serão geradas, avisos (seção 10) e prévia celular/desktop.
 9. **Publicar**: hoje gera um `.zip`. No programa novo, publica numa URL real (ROADMAP, fase 1).
 
-O formato One page tem todos os passos; o cadastro dele é a linha única da página (sem tabela de cidades). A barra lateral mostra os passos com check quando concluídos. Lista inicial de eventos com abrir e excluir (com confirmação).
+O formato One page tem todos os passos; o cadastro dele é geral, mais a lista de cidades se o HTML tiver `@repetir cidades`. A barra lateral mostra os passos com check quando concluídos. Lista inicial de eventos com abrir e excluir (com confirmação).
 
 ---
 

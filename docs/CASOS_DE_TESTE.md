@@ -102,7 +102,7 @@ Modelo:
 | F5 | etapa "Outono" da cidade "São Paulo" | `sao-paulo-outono.html` |
 | F6 | `_arquivo = "sp.html"` | usa `sp.html` |
 | F7 | tapume com `@cidade_3` e 2 cidades | vazio + aviso "mais espaços do que itens" |
-| F8 | One page com `@evento` e `@cidade_1`, gerais e uma linha | um `index.html` com os valores; sem a linha: campos em branco e aviso (alerta) "Cadastro da página vazio" |
+| F8 | One page com `@evento`, `@se tema1_titulo` e `@repetir cidades` | um `index.html`; tudo é geral (inclusive `tema1_titulo`); só o que está em `@repetir cidades` vira coluna da lista; sem cidades a lista sai vazia e não bloqueia |
 
 ## G. Mídia
 

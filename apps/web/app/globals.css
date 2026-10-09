@@ -335,3 +335,13 @@ tr:last-child td { border-bottom: 0; }
 .tabela-cheia { position: fixed; inset: 0; z-index: 40; overflow: auto; padding: 20px clamp(16px, 3vw, 40px); background: var(--paper); }
 .tabela-cheia .tw { max-height: calc(100vh - 110px); overflow: auto; }
 .tabela-cheia thead th { position: sticky; top: 0; z-index: 1; background: var(--panel); }
+.desfazer + .save { margin-left: 10px; }
+
+/* cadastro: campos que crescem, blocos numerados, busca */
+.campo-auto { resize: none; overflow: hidden; line-height: 1.45; min-height: 42px; font: inherit; }
+.serie { display: flex; flex-direction: column; gap: 10px; padding-top: 14px; border-top: 1px solid var(--line); }
+.serie-item { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
+.busca-cad { width: 260px; max-width: 100%; padding: 7px 12px; }
+.serie-linha { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 8px; align-items: start; }
+.serie-linha .serie-n { padding-top: 11px; text-align: right; }
+.serie-linha .iconbtn { margin-top: 6px; }

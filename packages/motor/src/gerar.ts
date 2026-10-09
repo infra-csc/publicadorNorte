@@ -203,9 +203,6 @@ export function gerar(e: EntradaGerar): ResultadoGerar {
     }
   }
   const unica = e.formato === 'unica';
-  if (unica && !cad.cidades.length) {
-    avisos.push({ codigo: 'sem-cidades', nivel: 'alerta', titulo: 'Cadastro da página vazio', detalhe: 'As variáveis da página saem do cadastro. Sem ele, ficam em branco.', passo: 'cadastro' });
-  }
   if (!unica && !cad.cidades.length) {
     avisos.push({ codigo: 'sem-cidades', nivel: 'bloqueia', titulo: 'Nenhuma cidade cadastrada', detalhe: 'As páginas de praça saem do cadastro de cidades.', passo: 'cadastro' });
   }
@@ -241,7 +238,7 @@ export function gerar(e: EntradaGerar): ResultadoGerar {
       if (!vazios.has(f.chave)) vazios.set(f.chave, new Set());
       vazios.get(f.chave)!.add(f.quem ?? titulo);
     }
-    if (R.fora.size && !(unica && !ctx.cidade)) {
+    if (R.fora.size) {
       avisos.push({
         codigo: 'espacos-sobrando', nivel: 'alerta', pagina: titulo, passo: 'cadastro',
         titulo: titulo + ': a página tem mais espaços do que itens cadastrados',
@@ -254,8 +251,8 @@ export function gerar(e: EntradaGerar): ResultadoGerar {
     });
   };
 
-  // One page: uma página só, com a linha única do cadastro (se houver)
-  if (unica) add('unica', 'index.html', 'Página', cad.cidades[0] ? { cidade: cad.cidades[0] } : {}, 0);
+  // One page: uma página só; as cidades (se houver) são só a lista de @repetir cidades
+  if (unica) add('unica', 'index.html', 'Página', {}, 0);
   if (paginasDoFormato.includes('tapume')) add('tapume', 'index.html', 'Tapume', {}, 0);
   for (const c of unica ? [] : cad.cidades) {
     const nc = cad.nomeItem('cidade', c);
