@@ -43,6 +43,8 @@ export function PreviaSolta({ html, titulo, altura = 640, arquivos, baseUrl, edi
   const pagina = useRef(titulo);
   const editarRef = useRef(editar);
   const aoEditarRef = useRef(aoEditar);
+  // último campo digitado na prévia (para voltar o cursor nele se precisar recarregar)
+  const ultimoCampo = useRef<{ v: string; l: string; t: number } | null>(null);
   aoEditarRef.current = aoEditar;
 
   const recarregar = (h: string, y: number) => {
@@ -77,12 +79,17 @@ export function PreviaSolta({ html, titulo, altura = 640, arquivos, baseUrl, edi
       const d = e.data || {};
       if (d.tipo === 'pub-pronto') {
         pronto.current = true;
-        w.postMessage({ tipo: 'pub-base', html: atual.current, y: yInicial.current, editar: editarRef.current }, '*');
+        const u = ultimoCampo.current;
+        const foco = u && Date.now() - u.t < 4000 ? { v: u.v, l: u.l } : null;
+        w.postMessage({ tipo: 'pub-base', html: atual.current, y: yInicial.current, editar: editarRef.current, foco }, '*');
       } else if (d.tipo === 'pub-rolagem') rolagem.current = d.y;
       else if (d.tipo === 'pub-resultado') {
         rolagem.current = d.y;
         if (!d.ok) recarregar(atual.current, d.y);
-      } else if (d.tipo === 'pub-editar' && typeof d.v === 'string') aoEditarRef.current?.(d.v, d.l || '', String(d.valor ?? ''));
+      } else if (d.tipo === 'pub-editar' && typeof d.v === 'string') {
+        ultimoCampo.current = { v: d.v, l: d.l || '', t: Date.now() };
+        aoEditarRef.current?.(d.v, d.l || '', String(d.valor ?? ''));
+      }
     };
     addEventListener('message', f);
     return () => removeEventListener('message', f);

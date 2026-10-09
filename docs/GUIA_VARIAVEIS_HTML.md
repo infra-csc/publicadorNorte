@@ -47,7 +47,6 @@ Sempre que o dado existir no evento, use **exatamente** estes nomes. É o que ma
 |---|---|
 | `@evento` | Nome do evento |
 | `@ano` | Ano da edição |
-| `@a_confirmar` | Texto de dado ainda não definido. Já vem "A confirmar"; dá para trocar no Cadastro (seção 4) |
 
 ### Da cidade
 | Variável | O que é | Valor digitado |
@@ -86,7 +85,7 @@ Se o briefing não diz que o evento é parcelado, ele é **à vista**: não crie
 
 O publicador aceita qualquer forma: digite o preço à vista, ou as parcelas, ou os dois. O que faltar e der para calcular, ele calcula.
 
-**Nunca escreva o preço como texto fixo** ("A confirmar", "R$ 150"). O preço é sempre variável. O "a confirmar" só aparece no HTML como `@a_confirmar`, no caso de preço vazio, dentro do padrão da seção 4.
+**Nunca escreva o preço como texto fixo** ("A confirmar", "R$ 150"). O preço é sempre variável. "A confirmar" só aparece no HTML como o caso de preço vazio, dentro do padrão da seção 4.
 
 ### Módulo O2 Prime (só se o evento tiver)
 | Variável | O que é | Preenchimento |
@@ -117,7 +116,7 @@ Evento sem O2 Prime: simplesmente não use estas variáveis.
 <!-- @senao --><!-- @se preco_vista -->
   <b>R$@preco_vista_1</b>
 <!-- @senao -->
-  <b>@a_confirmar</b>
+  <b>A confirmar</b>
 <!-- @fim --><!-- @fim -->
 ```
 
@@ -133,12 +132,12 @@ Evento sem O2 Prime: simplesmente não use estas variáveis.
     <b>R$@preco_vista_1</b>
   <!-- @fim -->
 <!-- @senao -->
-  <b>@a_confirmar</b>
+  <b>A confirmar</b>
 <!-- @fim --><!-- @fim -->
 ```
 - "Evento gratuito" sai sem "R$". Nas cidades gratuitas, deixe os campos de preço vazios.
 - Cidade sem parcelamento cadastrado mostra só o preço à vista, sem "x" e sem parcela vazia.
-- Cidade ainda sem preço mostra o texto de `@a_confirmar` ("A confirmar"). Assim que o preço for cadastrado, ele aparece.
+- Cidade ainda sem preço mostra "A confirmar". Assim que o preço for cadastrado, ele aparece.
 - Use **o mesmo padrão** em todo lugar onde o preço aparece (card do kit, barra fixa, FAQ, card do tapume).
 - Se tirar a linha `@se gratuito`, tire também o `@fim` correspondente (o último).
 
@@ -183,19 +182,20 @@ Combo<!-- @se valor_adicional_prime --> + R$@valor_adicional_prime_1<!-- @fim --
 Sem valor, some o "+" e o "R$" junto.
 
 ### Valor ainda não definido ("A confirmar")
-Quando um dado ainda não existe (local, horário, endereço, preço…), a página mostra "A confirmar" no lugar dele. Regras:
+Quando um dado ainda não existe (local, horário, endereço, contato, preço…), a página mostra "A confirmar" no lugar dele. Cada "A confirmar" pertence a **um dado específico**: ele fica no `@senao` do `@se` daquele dado.
 
-- **O texto vem sempre da variável `@a_confirmar`**, nunca escrito fixo. Ela é geral (vale para o site todo, até dentro de `@repetir cidades`) e já sai "A confirmar" sem ninguém preencher. Por ser variável, o texto é **editável** no publicador (no Cadastro e direto na prévia) e muda em todo o site de uma vez.
+```html
+<dd><!-- @se horario -->@horario_1<!-- @senao -->A confirmar<!-- @fim --></dd>
+```
+Dentro de `@repetir cidades` (tapume, One page), o mesmo sem `_1`: `<!-- @se horario -->@horario<!-- @senao -->A confirmar<!-- @fim -->`.
+
+- **Um `@se` por dado**, com o nome do próprio dado (`@se horario`, `@se contato`). Assim, no publicador, clicar no "A confirmar" (edição na prévia) **preenche aquele dado**, daquela cidade; quando ele tem valor, o "A confirmar" some sozinho.
 - **É só texto**, com o mesmo estilo do valor que ele substitui. Proibido:
   - borda, contorno ou traçado/tracejado em volta;
   - bolinha, ponto, ícone ou símbolo antes ou depois;
   - selo/badge, fundo colorido, colchetes (`[A CONFIRMAR]`) ou caixa alta forçada só para ele.
-- Padrão:
-```html
-<dd><!-- @se local -->@local_1<!-- @senao -->@a_confirmar<!-- @fim --></dd>
-```
-Dentro de `@repetir cidades` (tapume, One page), o mesmo sem `_1`: `<!-- @se local -->@local<!-- @senao -->@a_confirmar<!-- @fim -->`.
 - Se precisar de uma classe para isso, ela não pode mudar a aparência além de, no máximo, uma cor de texto mais suave (ex.: `.tbc{color:inherit;opacity:.7}`).
+- Não use uma variável única para todos os "A confirmar" (como `@a_confirmar`): cada um é de um dado.
 
 ### Link de inscrição
 ```html
@@ -276,7 +276,7 @@ Dentro do card, as variáveis **não têm número** (o card já é de uma cidade
     <a class="card aberta" href="@url">
       <h3>@cidade <span>@uf</span></h3>
       <p>@periodo · @local</p>
-      <p><!-- @se gratuito = sim -->Evento gratuito<!-- @senao --><!-- @se preco_vista -->R$@preco_vista<!-- @senao -->@a_confirmar<!-- @fim --><!-- @fim --></p>
+      <p><!-- @se gratuito = sim -->Evento gratuito<!-- @senao --><!-- @se preco_vista -->R$@preco_vista<!-- @senao -->A confirmar<!-- @fim --><!-- @fim --></p>
       <span class="tag">inscrições abertas</span>
     </a>
 <!-- @senao -->
@@ -438,7 +438,7 @@ No passo **Seções**, quem publica pode esconder partes da página (no evento t
 - [ ] Datas pelas variações do nome (`@periodo`, `@data_inicio_dia`, `@data_inicio_mes_abrev`…), nunca formatadas por JavaScript (seção 4)
 - [ ] Tapume com **um card só** entre `@repetir cidades` e `@fim`, com versão aberta e em breve
 - [ ] Todo `@se`, `@repetir` e `@agrupar` tem o seu `@fim`
-- [ ] Todo "A confirmar" é `@a_confirmar`, como texto simples: sem borda, tracejado, bolinha, ícone ou selo (seção 4)
+- [ ] Todo "A confirmar" está no `@senao` do `@se` do próprio dado, como texto simples: sem borda, tracejado, bolinha, ícone ou selo (seção 4)
 - [ ] CSS de partes opcionais usa `:only-of-type` / `:nth-of-type` (nunca `:only-child` / `:nth-child`); a página fica bonita com e sem cada parte opcional (seção 4)
 - [ ] Imagens e vídeos em `_media/<pagina>/<secao>/`, sem base64 e sem pastas soltas (`video/`, `assets/`)
 - [ ] Lugares que podem ter foto ou vídeo com `@media_<secao>_<nome>` numa tag `<img>`; desktop e mobile em duas tags com `_desktop` / `_mobile` no fim da variável; um arquivo padrão com o mesmo nome
@@ -472,12 +472,12 @@ Os blocos são comentários HTML. O publicador lê esses comentários **antes** 
 
 ### 12.2 Preço com gratuito: copie exatamente
 
-**Ordem obrigatória: primeiro o gratuito, depois o preço, por último `@a_confirmar`.**
+**Ordem obrigatória: primeiro o gratuito, depois o preço, por último "A confirmar".**
 
 #### Valor (onde aparece o preço)
 
 ```html
-<!-- @se gratuito = sim -->Evento gratuito<!-- @senao --><!-- @se preco_vista -->R$@preco_vista_1<!-- @senao -->@a_confirmar<!-- @fim --><!-- @fim -->
+<!-- @se gratuito = sim -->Evento gratuito<!-- @senao --><!-- @se preco_vista -->R$@preco_vista_1<!-- @senao -->A confirmar<!-- @fim --><!-- @fim -->
 ```
 
 #### Frase de apoio (abaixo do preço)
@@ -499,7 +499,7 @@ Você pode mudar os **textos** livremente ("À vista, com o kit do atleta inclus
 Troque só o miolo do preço. O gratuito continua vindo antes:
 
 ```html
-<!-- @se gratuito = sim -->Evento gratuito<!-- @senao --><!-- @se valor_parcelado -->@{parcelamento_1}x R$@valor_parcelado_1<!-- @senao -->@a_confirmar<!-- @fim --><!-- @fim -->
+<!-- @se gratuito = sim -->Evento gratuito<!-- @senao --><!-- @se valor_parcelado -->@{parcelamento_1}x R$@valor_parcelado_1<!-- @senao -->A confirmar<!-- @fim --><!-- @fim -->
 ```
 
 
@@ -534,7 +534,7 @@ Não use `@total_` para outra coisa. Para o número de categorias, use um nome s
 | Montar preço, gratuito ou status em JavaScript (`if (gratuito === 'sim')`, `textContent = 'A confirmar'`) | O publicador não roda JS. A página fica sempre igual |
 | Guardar a decisão em atributo (`data-gratuito="@gratuito_1"`) e esconder com CSS ou JS | Mesmo motivo. Use `@se` |
 | Escrever "A confirmar", "R$ 150" ou "Gratuito" fixo fora dos blocos | Não muda por cidade |
-| Escrever "A confirmar" fixo (mesmo dentro de `@senao`), "[A CONFIRMAR]", ou enfeitar com borda, tracejado, bolinha, ícone ou selo | Use `@a_confirmar` como texto simples (seção 4) |
+| "A confirmar" fora do `@senao` do `@se` do próprio dado, "[A CONFIRMAR]", ou enfeitado com borda, tracejado, bolinha, ícone ou selo | Texto simples no `@senao` do dado (seção 4) |
 | `@se gratuito_1`, `@se @gratuito`, `@se gratuito == "sim"` | Escreva `@se gratuito = sim` |
 | Colocar `@se` dentro de string JS, `<template>` ou atributo | Só vale como comentário HTML normal no corpo da página |
 | Usar outro nome (`gratis`, `evento_gratuito`, `free`, `valor`, `preco`) | Os nomes são `gratuito` e `preco_vista` (ou `parcelamento` e `valor_parcelado`) |
@@ -548,7 +548,7 @@ Procure no arquivo e confirme cada item:
 - [ ] Toda ocorrência de `@preco_vista_1` ou `@valor_parcelado_1` está dentro de um `<!-- @se gratuito = sim -->…<!-- @senao -->`
 - [ ] Nenhum `<!-- @se preco_vista -->` aparece antes do `<!-- @se gratuito = sim -->` do mesmo trecho
 - [ ] A palavra `gratuito` não aparece em nenhum `<script>`
-- [ ] `@a_confirmar` só aparece depois de um `<!-- @senao -->`, e "A confirmar" não está escrito fixo em lugar nenhum
+- [ ] "A confirmar" só aparece depois de um `<!-- @senao -->`
 - [ ] Número de `<!-- @se` + `<!-- @repetir` + `<!-- @agrupar` = número de `<!-- @fim`
 - [ ] O status é testado como `<!-- @se status = aberta -->`
 - [ ] Nenhuma variável própria começa com `total_`

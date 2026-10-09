@@ -2,12 +2,13 @@
 // (variável e linha do cadastro). Depois de montar a página, as marcas viram <pub-v> onde o texto aparece
 // na tela; dentro de tags (atributos) e de <title>, <style>, <script> e <textarea> ficam só o valor.
 
-export const MARCA_INI = '';
-export const MARCA_MEIO = '';
-export const MARCA_FIM = '';
+export const MARCA_INI = '\uE000';
+export const MARCA_MEIO = '\uE001';
+export const MARCA_FIM = '\uE002';
 
-/** valor marcado: variável | linha (vazia = geral) */
-export const marcar = (variavel: string, linha: string, valor: string) => MARCA_INI + variavel + '|' + linha + MARCA_MEIO + valor + MARCA_FIM;
+/** valor marcado: variável | linha (vazia = geral) | vazio (o que aparece é o texto de "a confirmar", não o valor) */
+export const marcar = (variavel: string, linha: string, valor: string, vazio = false) =>
+  MARCA_INI + variavel + '|' + linha + (vazio ? '|1' : '') + MARCA_MEIO + valor + MARCA_FIM;
 
 const CRU = ['script', 'style', 'title', 'textarea'];
 const atr = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
@@ -26,9 +27,9 @@ export function converterMarcas(html: string): string {
       const m = html.indexOf(MARCA_MEIO, i);
       const f = html.indexOf(MARCA_FIM, m);
       if (m < 0 || f < 0) continue;
-      const [variavel, linha = ''] = html.slice(i + 1, m).split('|');
+      const [variavel, linha = '', vazio] = html.slice(i + 1, m).split('|');
       const valor = html.slice(m + 1, f);
-      out += emTag || cru ? valor : `<pub-v data-v="${atr(variavel)}" data-l="${atr(linha)}">${valor}</pub-v>`;
+      out += emTag || cru ? valor : `<pub-v data-v="${atr(variavel)}" data-l="${atr(linha)}"${vazio ? ' data-ph="1"' : ''}>${valor}</pub-v>`;
       i = f;
       continue;
     }

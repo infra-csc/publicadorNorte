@@ -36,7 +36,7 @@ No formato com etapas, cada etapa pertence a uma cidade (campo interno `_cidade`
 
 **Datas:** variável chamada `data` ou `data_…` é campo de data com calendário no Cadastro (guarda dd/mm/aaaa). O HTML escolhe o formato pelo fim do nome (`_dia`, `_mes`, `_mes_abrev`, `_mes_nome`, `_ano`, `_curta`, `_semana`, `_semana_abrev`, `_extenso`) e `@periodo` / `@periodo_extenso` juntam início e fim (guia, seção 4). Usar uma variação já cria a coluna da data.
 
-`@a_confirmar` é um texto geral com valor padrão "A confirmar" (sempre geral, mesmo dentro de `@repetir`): é o que a página mostra quando um dado ainda não existe, e dá para trocar no Cadastro ou na prévia.
+Na prévia editável, o "A confirmar" no `@senao` de um `@se campo` vazio vira o campo daquele dado: digitar por cima preenche o dado (daquela cidade). `@a_confirmar` ainda funciona (texto geral, padrão "A confirmar"), mas o guia não recomenda.
 
 ---
 

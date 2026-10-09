@@ -1,9 +1,9 @@
 import { lerBlocos, type No } from './blocos';
 import { ehPeriodo, formatarData, formatoDeData, periodo } from './datas';
-import { converterMarcas, marcar } from './edicao';
+import { converterMarcas, MARCA_INI, marcar } from './edicao';
 import { Cadastro } from './cadastro';
 import { temCardsFixos } from './cards-fixos';
-import { detectar, ehContagem, sincronizarVars, type Deteccao } from './detectar';
+import { detectar, ehContagem, sincronizarVars, TEXTOS_PADRAO, type Deteccao } from './detectar';
 import { ajustarTagsMidia, opcoesMidia, pastasMidia, tirarMidiaOculta } from './midia';
 import { abreviar, esc, slug, slugValor } from './texto';
 import { FORMATOS, NOME_PAGINA, type Aviso, type Formato, type Linha, type Modelos, type TipoItem, type TipoPagina, type Vars } from './tipos';
@@ -114,7 +114,25 @@ class Montador {
     const v = this.valorCol(n.col, ctx);
     let ok = n.op ? slugValor(v) === slugValor(n.val) : !!String(v || '').trim() && !['nao', 'no', 'false', '0'].includes(slug(v));
     if (n.op === '!=') ok = !ok;
-    return this.render(ok ? n.filhos : n.senao, ctx, R);
+    const saida = this.render(ok ? n.filhos : n.senao, ctx, R);
+    // prévia editável: o "a confirmar" de um @se campo vazio vira o campo desse dado (digitar por cima preenche ele)
+    if (this.marcarEdicao && !ok && !n.op && saida.trim()) {
+      // @a_confirmar dentro do @senao é só o texto de exemplo: o campo é o do @se
+      const exemplo = saida.replace(RX_TEXTO_PADRAO_MARCADO, '$1');
+      const linha = exemplo.includes(MARCA_INI) ? null : this.linhaDaColuna(n.col, ctx);
+      if (linha != null) return marcar(n.col, linha, exemplo, true);
+    }
+    return saida;
+  }
+
+  /** linha do cadastro que guarda a coluna nesta página ('' = geral; null = não editável) */
+  private linhaDaColuna(col: string, ctx: Ctx): string | null {
+    const v = this.cad.vars[col];
+    if (!v || v.ignorar || v.excluida || v.dono === 'auto' || ehMidia(col)) return null;
+    if (v.dono === 'geral') return '';
+    const tipo: TipoItem = v.dono === 'etapa' ? 'etapa' : 'cidade';
+    const it = ctx.item && ctx.tipoItem === tipo ? ctx.item : tipo === 'etapa' ? ctx.etapa : ctx.cidade;
+    return it?._id ?? null;
   }
 
   /** valor de uma coluna testada em @se */
@@ -206,6 +224,9 @@ class Montador {
     return val || '';
   }
 }
+
+/** texto padrão (ex.: @a_confirmar) já marcado: sobra só o valor */
+const RX_TEXTO_PADRAO_MARCADO = new RegExp('\\uE000(?:' + Object.keys(TEXTOS_PADRAO).join('|') + ')\\|[^\\uE001]*\\uE001([^\\uE002]*)\\uE002', 'g');
 
 /** Monta as páginas do evento: HTML-modelo + cadastro + mídia → páginas + avisos. Não altera a entrada. */
 export function gerar(e: EntradaGerar): ResultadoGerar {

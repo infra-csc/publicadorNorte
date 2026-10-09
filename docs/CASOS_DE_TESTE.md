@@ -208,7 +208,8 @@ Os tapumes de cards fixos dos casos H1–H4 são fixtures sintéticos em `packag
 |---|---|---|
 | N1 | página gerada sem `marcarEdicao` | nenhuma marca nem `<pub-v>` (o site publicado nunca tem) |
 | N2 | com `marcarEdicao`: variável em texto, atributo, `<title>`, `<style>`, `<script>` e em `@repetir cidades`; contagem | texto visível vira `<pub-v data-v="variável" data-l="linha">` (linha vazia = geral, id da cidade na lista); atributos, title, style e script ficam com o valor puro; contagens não são marcadas |
-| N3 | `@a_confirmar` no `@senao` de `@se local`, dentro de `@repetir cidades` | é sempre geral; sem valor sai "A confirmar" (marcado e editável na prévia); o texto digitado vale para todos os lugares |
+| N3 | `@a_confirmar` no `@senao` de `@se local`, dentro de `@repetir cidades` | é geral e sai "A confirmar" por padrão; na prévia, o campo editável é o `local` daquela cidade |
+| N4 | `@se horario` vazio com "A confirmar" (texto, `<span>` ou `@a_confirmar`) no `@senao`; `@se gratuito = sim` | na prévia vira `<pub-v data-v="horario" data-l="linha" data-ph="1">` (digitar por cima preenche o horário); @se com comparação não vira campo; site publicado igual |
 
 ## O. Datas
 

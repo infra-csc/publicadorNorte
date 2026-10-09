@@ -25,6 +25,7 @@ function scriptPrevia() {
   };
   var focado = function (n: Node) { var a = document.activeElement; return !!a && a !== document.body && a.contains(n); };
   var morph = function (vivo: Node, velho: Node, novo: Node): boolean {
+    if (vivo.nodeType === 1 && (vivo as Element).tagName === 'PUB-V' && focado(vivo)) return true;
     if (novo.nodeType === 3) {
       if (velho.nodeValue === novo.nodeValue || focado(vivo)) return true;
       // o JS da página reescreveu este texto (ex.: formatou uma data): recarrega para ele refazer
@@ -75,12 +76,25 @@ function scriptPrevia() {
     });
   };
 
+  // volta o cursor para o fim do campo (depois de recarregar no meio da digitação)
+  var focar = function (v: string, l: string) {
+    var alvo = Array.prototype.find.call(document.querySelectorAll('pub-v'), function (o: HTMLElement) { return o.dataset.v === v && (o.dataset.l || '') === l; }) as HTMLElement | undefined;
+    if (!alvo) return;
+    alvo.focus();
+    var r = document.createRange();
+    r.selectNodeContents(alvo);
+    r.collapse(false);
+    var s = getSelection();
+    if (s) { s.removeAllRanges(); s.addRange(r); }
+  };
+
   addEventListener('message', function (e: MessageEvent) {
     var d = e.data || {};
     if (d.tipo === 'pub-base') {
       base = new DOMParser().parseFromString(d.html, 'text/html');
       if (d.y) scrollTo(0, d.y);
       editar(d.editar);
+      if (d.foco) focar(d.foco.v, d.foco.l || '');
     } else if (d.tipo === 'pub-atualizar') {
       var novo = new DOMParser().parseFromString(d.html, 'text/html');
       var ok = false;
@@ -105,6 +119,14 @@ function scriptPrevia() {
     if (t && t.closest && t.closest('pub-v')) { e.preventDefault(); e.stopPropagation(); }
     else if (t && t.closest) { var a = t.closest('a[href]'); if (a && !/^#/.test(a.getAttribute('href') || '')) e.preventDefault(); }
   }, true);
+  document.addEventListener('focusin', function (e) {
+    var t = e.target as HTMLElement;
+    if (!editando || !t || t.tagName !== 'PUB-V' || t.dataset.ph !== '1') return;
+    var r = document.createRange();
+    r.selectNodeContents(t);
+    var s = getSelection();
+    if (s) { s.removeAllRanges(); s.addRange(r); }
+  });
   document.addEventListener('keydown', function (e) {
     var el = e.target as HTMLElement;
     if (editando && e.key === 'Enter' && el && el.closest && el.closest('pub-v')) { e.preventDefault(); el.blur(); }
@@ -114,6 +136,7 @@ function scriptPrevia() {
     var el = t && t.closest ? (t.closest('pub-v') as HTMLElement | null) : null;
     if (!el) return;
     var alvo: HTMLElement = el;
+    if (alvo.dataset.ph === '1') delete alvo.dataset.ph;
     var valor = alvo.textContent || '';
     // o mesmo campo em outros lugares da página muda junto
     document.querySelectorAll('pub-v').forEach(function (o) {
