@@ -17,7 +17,7 @@ const GRUPOS: [Grupo, string, string][] = [
 /** no One page não há cidades: "da página" no lugar de "muda em cada cidade" */
 const GRUPOS_UNICA: Partial<Record<Grupo, [string, string]>> = {
   geral: ['Gerais', 'Você preenche uma vez, nos campos gerais do cadastro.'],
-  cidade: ['Da página', 'Cada uma vira um campo no cadastro da página.'],
+  cidade: ['Lista de cidades', 'As que estão dentro de @repetir cidades. Cada cidade da lista vira um bloco no cadastro, com estes campos.'],
   img: ['Imagens e vídeos', 'Cada uma escolhe um arquivo da pasta da sua seção, no passo Mídia.'],
 };
 
@@ -89,7 +89,7 @@ export function PassoVariaveis() {
   const faltaHtml = FORMATOS[evento.formato].paginas.filter((k) => modelos[k] == null);
   const destinos = (g: Grupo): [Grupo | 'volta', string][] => {
     if (g === 'excluida') return [['volta', 'Trazer de volta para o cadastro']];
-    const l: [Grupo, string][] = [['geral', unica ? 'Gerais' : 'Igual em todas as páginas'], ['cidade', unica ? 'Da página' : 'Muda em cada cidade'], ...(comEtapas ? [['etapa', 'Muda em cada etapa'] as [Grupo, string]] : []), ['ignorar', 'Não é variável']];
+    const l: [Grupo, string][] = [['geral', unica ? 'Gerais' : 'Igual em todas as páginas'], ['cidade', unica ? 'Lista de cidades' : 'Muda em cada cidade'], ...(comEtapas ? [['etapa', 'Muda em cada etapa'] as [Grupo, string]] : []), ['ignorar', 'Não é variável']];
     return l.filter(([k]) => k !== g);
   };
 

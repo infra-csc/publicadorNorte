@@ -45,10 +45,11 @@ export function migrarOnePage(e: Evento, modelos: Partial<Record<string, string>
   const vars = sincronizarVars(detectar(modelos, 'unica'), e.vars);
   let mudou = false;
   for (const [k, v] of Object.entries(vars)) {
-    if (v.dono !== 'geral' || !e.cidades.some((c) => k in c)) continue;
+    if (v.dono !== 'geral' || String(e.gerais[k] ?? '').trim()) continue;
+    // só copia para o geral vazio; o valor na linha fica onde está (nunca apaga)
     const comValor = e.cidades.find((c) => String(c[k] ?? '').trim());
-    if (comValor && !String(e.gerais[k] ?? '').trim()) e.gerais[k] = String(comValor[k]);
-    for (const c of e.cidades) delete c[k];
+    if (!comValor) continue;
+    e.gerais[k] = String(comValor[k]);
     mudou = true;
   }
   return mudou;

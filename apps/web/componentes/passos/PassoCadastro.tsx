@@ -450,6 +450,82 @@ function Gerais({ busca }: { busca: string }) {
   );
 }
 
+/** One page: a lista de cidades (@repetir cidades) em blocos, no mesmo formato dos outros blocos numerados */
+function ListaEmBlocos({ busca }: { busca: string }) {
+  const { evento, cad, det, alterar } = useEditor();
+  const cols = cad.colunas('cidade');
+  const linhas = evento.cidades;
+  const [tirar, setTirar] = useState<string | null>(null);
+  const mostradas = linhas.filter((l) => bate(busca, ...cols.map((c) => String(l[c] ?? ''))));
+  if (busca && !mostradas.length) return null;
+  const mudar = (id: string, col: string, v: string) => alterar((e) => { const l = e.cidades.find((x) => x._id === id); if (l) l[col] = v; });
+  const acao = (id: string, fn: (l: Linha[], i: number) => void) => alterar((e) => { const i = e.cidades.findIndex((x) => x._id === id); if (i >= 0) fn(e.cidades, i); });
+
+  function adicionar() {
+    alterar((e) => { e.cidades.push(novaLinha('cidade', e.cidades[e.cidades.length - 1] || null, cols, novoId())); });
+  }
+
+  return (
+    <section className="card stack">
+      <div className="serie" style={{ borderTop: 0, paddingTop: 0 }}>
+        <div className="row between">
+          <b>Cidades <span className="cnt">{busca ? `${mostradas.length} de ${linhas.length}` : linhas.length}</span> <small className="muted" style={{ fontWeight: 400 }}>lista da página (@repetir cidades)</small></b>
+          {!busca && (
+            <button className="btn sm ghost" type="button" onClick={adicionar}>
+              <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" style={{ marginRight: 4, verticalAlign: '-1px' }}><path d="M6 1.5v9M1.5 6h9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
+              Adicionar
+            </button>
+          )}
+        </div>
+        {mostradas.map((l) => {
+          const i = linhas.indexOf(l);
+          return (
+            <div key={l._id} className="serie-item">
+              <div className="row between">
+                <span className="small muted">Cidade {i + 1}{l.cidade ? ` · ${l.cidade}` : ''}</span>
+                {tirar === l._id ? (
+                  <span className="row" style={{ gap: 4 }}>
+                    <button className="btn sm danger-fill" type="button" onClick={() => { acao(l._id, (ls, k) => { ls.splice(k, 1); }); setTirar(null); }}>Tirar</button>
+                    <button className="btn sm ghost" type="button" onClick={() => setTirar(null)}>Não</button>
+                  </span>
+                ) : (
+                  <span className="row" style={{ gap: 2 }}>
+                    <button className="iconbtn" type="button" title="Subir" disabled={i === 0} onClick={() => acao(l._id, (ls, k) => { [ls[k - 1], ls[k]] = [ls[k], ls[k - 1]]; })}>↑</button>
+                    <button className="iconbtn" type="button" title="Descer" disabled={i === linhas.length - 1} onClick={() => acao(l._id, (ls, k) => { [ls[k + 1], ls[k]] = [ls[k], ls[k + 1]]; })}>↓</button>
+                    <button className="iconbtn" type="button" title={`Tirar a cidade ${i + 1}`} aria-label={`Tirar a cidade ${i + 1}`} onClick={() => setTirar(l._id)}>
+                      <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M2.5 4h9M5.5 4V2.5h3V4M3.5 4l.6 8h5.8l.6-8" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    </button>
+                  </span>
+                )}
+              </div>
+              <div className="grid3">
+                {cols.map((c) => {
+                  const ops = c === 'status' ? det.opcoes.status || ['em breve', 'aberta'] : det.opcoes[c];
+                  const valor = String(l[c] ?? '');
+                  return (
+                    <label key={c} className="f"><span className="v" style={{ alignSelf: 'start' }}>@{c}</span>
+                      {ops ? (
+                        <select className="inp" value={c === 'status' && slugValor(valor) === 'breve' ? '' : valor} onChange={(e) => mudar(l._id, c, e.target.value)}>
+                          {c !== 'status' && <option value="">—</option>}
+                          {ops.map((o) => <option key={o} value={c === 'status' && slugValor(o) === 'breve' ? '' : o}>{rotulo(o)}</option>)}
+                          {valor && !ops.some((o) => slugValor(o) === slugValor(valor)) && <option value={valor}>{valor} (o HTML não conhece)</option>}
+                        </select>
+                      ) : (
+                        <CampoTexto valor={valor} placeholder={cad.calculado(l, c)} rotulo={c} mudar={(v) => mudar(l._id, c, v)} />
+                      )}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+        {!linhas.length && <p className="small muted" style={{ margin: 0 }}>Nenhuma cidade ainda. Use “Adicionar”.</p>}
+      </div>
+    </section>
+  );
+}
+
 export function PassoCadastro() {
   const { evento, modelos, arquivos, cad, banco, alterar } = useEditor();
   const [foco, setFoco] = useState<string | null>(null);
@@ -506,7 +582,7 @@ export function PassoCadastro() {
             <input className="inp busca-cad" type="search" placeholder="Buscar campo ou valor…" aria-label="Buscar no cadastro" value={busca} onChange={(e) => setBusca(e.target.value)} />
           </div>
           <Gerais busca={busca} />
-          {temLista && <Tabela tipo="cidade" foco={foco} setFoco={setFoco} busca={busca} />}
+          {unica ? temLista && <ListaEmBlocos busca={busca} /> : <Tabela tipo="cidade" foco={foco} setFoco={setFoco} busca={busca} />}
           {evento.formato === 'tapume_etapa_praca' && <Tabela tipo="etapa" foco={foco} setFoco={setFoco} busca={busca} />}
         </div>
         <div className="lado">

@@ -8,7 +8,7 @@ const COL_CIDADE = 'cidade da etapa';
 const novoId = () => crypto.randomUUID().slice(0, 8);
 const limpo = (s: string) => s.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/^@/, '');
 
-const nomeAba = (evento: Pick<Evento, 'formato'>, tipo: TipoItem) => (tipo === 'etapa' ? 'Etapas' : evento.formato === 'unica' ? 'Página' : 'Cidades');
+const nomeAba = (_evento: Pick<Evento, 'formato'>, tipo: TipoItem) => (tipo === 'etapa' ? 'Etapas' : 'Cidades');
 
 export async function baixarPlanilha(evento: Evento, cad: Cadastro) {
   const { default: escrever } = await import('write-excel-file/browser');
@@ -91,7 +91,6 @@ export async function lerPlanilha(arquivo: File, evento: Evento, cad: Cadastro):
   } else {
     throw new Error('Envie a planilha em .xlsx (Excel) ou .csv.');
   }
-  const unica = evento.formato === 'unica';
   const comEtapas = evento.formato === 'tapume_etapa_praca';
   const avisos: string[] = [];
   const resumo: Proposta['resumo'] = [];
@@ -140,8 +139,6 @@ export async function lerPlanilha(arquivo: File, evento: Evento, cad: Cadastro):
       if (!r.some((x) => x?.trim())) continue;
       const v = (campo: string) => { const i = mapa.indexOf(campo); return i >= 0 ? (r[i] ?? '').trim() : ''; };
       let base = achar(v('_id'), colNome ? v(colNome) : '');
-      // One page: a linha da página é sempre a mesma
-      if (!base && unica && atuais[0] && !usadas.has(atuais[0]._id)) base = atuais[0];
       const l: Linha = base ? structuredClone(base) : { _id: novoId() };
       if (base) { usadas.add(base._id); atualizadas++; } else novas++;
       mapa.forEach((c, i) => { if (c && c !== '_id' && c !== '_cidade') l[c] = (r[i] ?? '').trim(); });
@@ -153,9 +150,7 @@ export async function lerPlanilha(arquivo: File, evento: Evento, cad: Cadastro):
         if (!l._cidade && cidadesNovas.length === 1) l._cidade = cidadesNovas[0]._id;
       }
       out.push(l);
-      if (unica) break;
     }
-    if (unica && tab.slice(2).some((r) => r.some((x) => x?.trim()))) avisos.push('Página: o One page tem uma linha só; as outras foram ignoradas.');
     const removidas = atuais.filter((x) => !usadas.has(x._id)).map((x) => cad.nomeItem(tipo, x));
     resumo.push({ aba, novas, atualizadas, removidas });
     return out;
