@@ -101,11 +101,11 @@ export function PassoPublicar() {
         <section className="card stack">
           <b>Falta ligar o site no GitHub (só uma vez)</b>
           <ol className="passos-num">
-            <li>Abra o repositório no GitHub e clique em <b>Settings</b>.</li>
-            <li>No menu da esquerda, clique em <b>Pages</b>.</li>
-            <li>Em <b>Build and deployment → Source</b>, deixe <b>Deploy from a branch</b>.</li>
-            <li>Em <b>Branch</b>, escolha <b>gh-pages</b> e a pasta <b>/ (root)</b>. Clique em <b>Save</b>.</li>
-            <li>Espere 1 ou 2 minutos e clique em “Conferir de novo”.</li>
+            <li><span>Abra o repositório no GitHub e clique em <b>Settings</b>.</span></li>
+            <li><span>No menu da esquerda, clique em <b>Pages</b>.</span></li>
+            <li><span>Em <b>Build and deployment → Source</b>, deixe <b>Deploy from a branch</b>.</span></li>
+            <li><span>Em <b>Branch</b>, escolha <b>gh-pages</b> e a pasta <b>/ (root)</b>. Clique em <b>Save</b>.</span></li>
+            <li><span>Espere 1 ou 2 minutos e clique em “Conferir de novo”.</span></li>
           </ol>
           <div><button className="btn sm" type="button" onClick={lerSite}>Conferir de novo</button></div>
         </section>
@@ -283,10 +283,10 @@ function SecaoProducao({ ocupadoFora }: { ocupadoFora: boolean }) {
             <>
               <b>Ligar o domínio na Cloudflare (uma vez por domínio)</b>
               <ol className="passos-num" style={{ margin: '6px 0 0' }}>
-                <li>O domínio precisa estar na conta da Cloudflare da Norte (<b>Add a domain</b>, se ainda não estiver).</li>
-                <li>Abra <b>Workers &amp; Pages</b> → <b>publicador-norte</b> → <b>Settings</b> → <b>Domains &amp; Routes</b>.</li>
-                <li>Clique em <b>Add</b> → <b>Custom domain</b> e digite {dominios.map((d, i) => <span key={d}>{i ? ' e ' : ''}<b>{d}</b></span>)}, um de cada vez.</li>
-                <li>A Cloudflare cria o DNS e o certificado sozinha. Em alguns minutos o site abre no domínio.</li>
+                <li><span>O domínio precisa estar na conta da Cloudflare da Norte (<b>Add a domain</b>, se ainda não estiver).</span></li>
+                <li><span>Abra <b>Workers &amp; Pages</b> → <b>publicador-norte</b> → <b>Settings</b> → <b>Domains &amp; Routes</b>.</span></li>
+                <li><span>Clique em <b>Add</b> → <b>Custom domain</b> e digite {dominios.map((d, i) => <span key={d}>{i ? ' e ' : ''}<b>{d}</b></span>)}, um de cada vez.</span></li>
+                <li><span>A Cloudflare cria o DNS e o certificado sozinha. Em alguns minutos o site abre no domínio.</span></li>
               </ol>
             </>
           )}
