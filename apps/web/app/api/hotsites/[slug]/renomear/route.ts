@@ -7,7 +7,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     const { novo } = (await req.json()) as { novo: string };
     if (!slugValido(novo)) return erro(400, 'Use só letras minúsculas, números e hífen (ex.: makai-2027).');
     if (novo === slug) return Response.json({ slug });
-    await servicos().armazenamento.renomear(slug, novo);
+    const { armazenamento } = servicos();
+    if ((await armazenamento.ler(slug))?.evento.producao?.dominios.length) return erro(409, 'Este evento tem domínio de produção. Tire os domínios (passo Publicar) antes de mudar o endereço.');
+    await armazenamento.renomear(slug, novo);
     return Response.json({ slug: novo });
   });
 }

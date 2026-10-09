@@ -38,7 +38,7 @@ describe('D. Status e contagens', () => {
 
   it('D5: opções de status com HTML testando só "aberta"', () => {
     const det = detectar({ tapume: '', praca: SE_ABERTA }, 'tapume_praca');
-    expect(det.opcoes.status).toEqual(['em breve', 'aberta']);
+    expect(det.opcoes.status).toEqual(['em breve', 'aberta', 'realizado']);
   });
 
   it('D6: linha nova copiada de uma linha "aberta" volta ao status padrão', () => {

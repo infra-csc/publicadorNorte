@@ -48,6 +48,7 @@ export interface Aviso {
   /** código estável para a interface e os testes */
   codigo:
     | 'falta-html'
+    | 'sem-realizado'
     | 'sem-cidades'
     | 'sem-etapas'
     | 'arquivo-duplicado'

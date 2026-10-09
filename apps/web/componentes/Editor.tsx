@@ -210,7 +210,7 @@ export function Editor({ slug, children }: { slug: string; children: React.React
   const det = useMemo(() => (dados ? detectar(dados.modelos, dados.evento.formato) : null), [dados?.modelos, dados?.evento.formato]);
   const vars = useMemo(() => (det && dados ? sincronizarVars(det, dados.evento.vars) : {}), [det, dados?.evento.vars]);
   const cad = useMemo(
-    () => (det && dados ? new Cadastro(det, { ...dados.evento, vars, arquivos: dados.arquivos.map((a) => a.caminho) }) : null),
+    () => (det && dados ? new Cadastro(det, { ...dados.evento, vars, arquivos: dados.arquivos.map((a) => a.caminho), agora: new Date() }) : null),
     [det, dados?.evento, vars, dados?.arquivos],
   );
 

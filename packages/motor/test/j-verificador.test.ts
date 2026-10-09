@@ -66,6 +66,11 @@ describe('J. Verificador de HTML', () => {
     expect(codigos('<img src="_media/praca/kit/foto.webp"><img src="_images/praca/kit/a.png">')).toEqual([]);
   });
 
+  it('J13: scrollIntoView no script', () => {
+    expect(codigos('<p>x</p><script>tab.scrollIntoView({ block: "nearest" });</script>')).toEqual(['rolagem-em-script']);
+    expect(codigos('<p>x</p><script>barra.scrollTo({ left: 10 });</script>')).toEqual([]);
+  });
+
   it('J9: HTML do guia copiado à risca não tem problema', () => {
     expect(verificarHtml(fixture('guia-secao-12.html'), 'praca')).toEqual([]);
   });

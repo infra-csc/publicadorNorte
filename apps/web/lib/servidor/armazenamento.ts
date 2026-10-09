@@ -3,7 +3,8 @@
 import type { TipoPagina } from '@norte/motor';
 import { COTAS_PADRAO, type Cota } from '@norte/motor';
 import { cotasDoEvento, paginasComPatrocinio } from '../comum/montagem';
-import type { ArquivoMidia, BancoPatrocinios, Evento, EventoCompleto, EventoPatrocinavel, ResumoEvento, UsoPatrocinadores } from '../comum/tipos';
+import type { ArquivoMidia, BancoPatrocinios, Evento, EventoCompleto, EventoPatrocinavel, IndiceProducao, ResumoEvento, UsoPatrocinadores } from '../comum/tipos';
+import { ARQ_INDICE } from './sitesProducao';
 import { ErroGitHub, type GitHub, type Mudancas } from './github';
 
 export class Conflito extends Error {}
@@ -31,6 +32,13 @@ export interface Armazenamento {
   /** grava se ninguém tiver gravado depois da `versao` lida; senão lança Conflito */
   /** `marcar`: muda os eventos afetados (ex.: atualização pendente) no mesmo commit; devolve true se mudou */
   salvarBanco(banco: BancoPatrocinios, versao: string, marcar?: (e: Evento) => boolean): Promise<string>;
+  /**
+   * produção: lê o evento, aplica `fn` e grava junto o índice domínio → evento que o Worker usa.
+   * Lança Conflito se um domínio já for de outro evento.
+   */
+  atualizarProducao(slug: string, fn: (e: Evento) => void, mensagem: string): Promise<{ evento: Evento; versao: string }>;
+  /** domínio → slug de todos os eventos */
+  dominiosEmUso(): Promise<Record<string, string>>;
   /** quais eventos usam cada patrocinador */
   usoPatrocinadores(): Promise<UsoPatrocinadores>;
   /** uso de cada patrocinador e as páginas/cotas de todos os eventos (uma leitura só) */
@@ -69,7 +77,7 @@ export class ArmazenamentoGitHub implements Armazenamento {
       [...todos].filter(([p]) => p.startsWith(PASTA) && p.endsWith('/' + ARQ_EVENTO) && p.split('/').length === 3).map(async ([, a]) => {
         const e = JSON.parse(await this.gh.lerTexto(a.sha)) as Evento;
         const ativa = e.publicacoes.find((p) => p.versao === e.versaoAtiva);
-        out.push({ slug: e.slug, nome: e.nome, formato: e.formato, cidades: e.cidades.length, atualizadoEm: e.atualizadoEm, url: ativa?.url || null, pendente: !!e.pendencia?.motivos.length });
+        out.push({ slug: e.slug, nome: e.nome, formato: e.formato, cidades: e.cidades.length, atualizadoEm: e.atualizadoEm, url: ativa?.url || null, pendente: !!e.pendencia?.motivos.length, producao: e.producao?.versao != null ? e.producao.dominios[0] || null : null });
       }),
     );
     return out.sort((a, b) => (a.atualizadoEm < b.atualizadoEm ? 1 : -1));
@@ -132,6 +140,39 @@ export class ArmazenamentoGitHub implements Armazenamento {
       return { mudancas: new Map([[pasta(slug) + ARQ_EVENTO, novo]]), resultado: { evento: e, versao: novo } };
     });
     return resultado;
+  }
+
+  async atualizarProducao(slug: string, fn: (e: Evento) => void, mensagem: string): Promise<{ evento: Evento; versao: string }> {
+    const { resultado } = await this.gh.alterar(this.branch, mensagem, async (atuais) => {
+      const sha = atuais.get(pasta(slug) + ARQ_EVENTO);
+      if (!sha) throw new NaoEncontrado('Evento não encontrado.');
+      const e = JSON.parse(await this.gh.lerTexto(sha)) as Evento;
+      fn(e);
+      e.atualizadoEm = new Date().toISOString();
+      const idx = atuais.get(ARQ_INDICE);
+      const indice: IndiceProducao = idx ? JSON.parse(await this.gh.lerTexto(idx)) : { sites: {} };
+      for (const [d, s] of Object.entries(indice.sites)) if (s.slug === slug) delete indice.sites[d];
+      const p = e.producao;
+      for (const d of p?.dominios || []) {
+        if (indice.sites[d]) throw new Conflito(`O domínio ${d} já é do evento "${indice.sites[d].slug}".`);
+        if (p!.versao != null && p!.commit) indice.sites[d] = { slug, commit: p!.commit, versao: p!.versao, principal: p!.dominios[0] };
+      }
+      const novo = await this.gh.criarBlobTexto(json(e));
+      const mudancas: Mudancas = new Map([[pasta(slug) + ARQ_EVENTO, novo], [ARQ_INDICE, await this.gh.criarBlobTexto(JSON.stringify(indice, null, 2) + '\n')]]);
+      return { mudancas, resultado: { evento: e, versao: novo } };
+    });
+    return resultado;
+  }
+
+  /** domínios já usados por outros eventos (para avisar antes de gravar) */
+  async dominiosEmUso(): Promise<Record<string, string>> {
+    const todos = await this.arquivosDoBranch();
+    const out: Record<string, string> = {};
+    await Promise.all([...todos].filter(([p]) => p.startsWith(PASTA) && p.endsWith('/' + ARQ_EVENTO) && p.split('/').length === 3).map(async ([, a]) => {
+      const e = JSON.parse(await this.gh.lerTexto(a.sha)) as Evento;
+      for (const d of e.producao?.dominios || []) out[d] = e.slug;
+    }));
+    return out;
   }
 
   async salvarModelo(slug: string, tipo: TipoPagina, html: string): Promise<void> {

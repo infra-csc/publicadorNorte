@@ -167,7 +167,7 @@ publicacoes(id, evento_id, versao, ativa bool, paginas int, avisos jsonb, public
 
 | # | Decisão | Quem | Sugestão |
 |---|---|---|---|
-| D1 | Domínio dos sites publicados e forma da URL: `eventos.<dominio>/<evento>/` ou subdomínio por evento | Norte | caminho por evento num subdomínio fixo (um certificado, zero configuração por evento) |
+| D1 | ~~Domínio dos sites publicados~~ **Decidido (out/2026):** domínio próprio por evento, DNS da Norte na Cloudflare; teste continua no GitHub Pages, produção no Worker do publicador (ESPECIFICACAO 11.1) | Norte | — |
 | D2 | Hospedagem: Vercel + Supabase (sugerido) ou infraestrutura que a Norte já usa | Norte | Vercel + Supabase |
 | D3 | Mídia publicada: URL do Storage/CDN ou cópia dentro de cada versão | dev | cópia por versão (versão anterior continua intacta) |
 | D4 | Layout e campos do rodapé padrão | Norte | — |

@@ -1,12 +1,15 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "publicador-norte",
-  "main": ".open-next/worker.js",
+  "main": "worker.ts",
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
   "observability": { "enabled": true },
-  // configurações sem segredo; GITHUB_TOKEN e SENHA_EQUIPE entram como "secrets" (wrangler secret put)
+  // modo automático (status "realizado"): de hora em hora, worker.ts → scheduled → /api/automacao
+  "triggers": { "crons": ["7 * * * *"] },
+  // worker.ts: os domínios dos sites em produção são servidos antes do Next (lib/servidor/sitesProducao.ts)
+  // configurações sem segredo; GITHUB_TOKEN, SENHA_EQUIPE e CLOUDFLARE_API_TOKEN entram como "secrets"
   "vars": {
     "GITHUB_REPO": "RenanPrates/publicadorNorte",
     "GITHUB_BRANCH_DADOS": "dados",

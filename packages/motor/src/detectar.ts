@@ -60,7 +60,7 @@ export function acharVars(html: string): Ocorrencia[] {
 }
 
 /** status reconhecidos em @total_<status> */
-export const STATUS_CONHECIDOS = ['breve', 'em_breve', 'aberta', 'aberto', 'abertas', 'encerrada', 'encerrado', 'esgotada', 'esgotado', 'adiada', 'cancelada'];
+export const STATUS_CONHECIDOS = ['breve', 'em_breve', 'realizado', 'realizada', 'aberta', 'aberto', 'abertas', 'encerrada', 'encerrado', 'esgotada', 'esgotado', 'adiada', 'cancelada'];
 
 /** @total_cidades/pracas/etapas e @total_<status> são contagens; outros @total_… (ex.: @total_categorias) são variáveis comuns */
 export function ehContagem(base: string, opcoes: Record<string, string[]>): boolean {
@@ -121,7 +121,8 @@ export function detectar(modelos: Modelos, formato: Formato): Deteccao {
     }
     // "em breve" é o padrão e sempre existe; "aberta" é a outra opção
     const outras = [...opc.status].filter((o) => !['breve', 'em-breve'].includes(slug(o)));
-    opc.status = new Set(['em breve', ...(outras.length ? outras : ['aberta'])]);
+    // "realizado" sempre existe (o modo automático usa; no manual dá para escolher)
+    opc.status = new Set(['em breve', ...(outras.length ? outras : ['aberta']), ...(outras.some((o) => /^realizad/.test(slug(o))) ? [] : ['realizado'])]);
   }
   const opcoes: Record<string, string[]> = {};
   for (const [k, s] of Object.entries(opc)) opcoes[k] = [...s];

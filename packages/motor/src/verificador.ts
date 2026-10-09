@@ -11,6 +11,7 @@ export type CodigoProblema =
   | 'preco-fora-do-gratuito'
   | 'preco-antes-do-gratuito'
   | 'decisao-em-script'
+  | 'rolagem-em-script'
   | 'decisao-em-atributo'
   | 'a-confirmar-fixo'
   | 'status-invalido'
@@ -123,6 +124,11 @@ export function verificarHtml(html: string, _tipo?: TipoPagina): Problema[] {
     const s = html.slice(a, b);
     const m = s.match(/\bgratuit[oa]s?\b|a confirmar|@\{?(?:gratuito|status|preco_vista|valor_parcelado)(?:_\d+)?\b/i);
     if (m) add('decisao-em-script', a + m.index!, 'Preço, gratuito ou status decidido dentro de <script>. O publicador não roda JavaScript: use @se.', trechoEm(a + m.index!));
+  }
+  // scrollIntoView rola também a janela (e o publicador em volta da prévia): o site abre no meio
+  for (const [a, b] of scripts) {
+    const i = html.slice(a, b).search(/\.scrollIntoView\s*\(/);
+    if (i >= 0) add('rolagem-em-script', a + i + 1, 'scrollIntoView rola a página inteira até o elemento (o site abre no meio, não no topo). Para mostrar uma aba ou um item, role só a barra: barra.scrollTo({ left: … }).', trechoEm(a + i));
   }
   // decisão guardada em atributo data-
   for (const m of html.matchAll(/\sdata-[\w-]+\s*=\s*["']\s*@\{?(gratuito|status)(?:_\d+)?\b/gi)) {

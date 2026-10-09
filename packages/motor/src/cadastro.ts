@@ -1,4 +1,5 @@
 import { colunas, type Deteccao, TEXTOS_PADRAO } from './detectar';
+import { estaRealizado, type Automacao } from './datas';
 import { avaliar, nomesFormula } from './formulas';
 import { MARCA_OCULTA, midiaEscondida, valorMidia } from './midia';
 import { fmtBR, numBR, slug } from './texto';
@@ -16,6 +17,9 @@ export interface DadosCadastro {
   imagens?: Record<string, string>;
   /** caminhos dos arquivos enviados (pasta _media) */
   arquivos?: Iterable<string>;
+  /** modo automático (status "realizado" depois do fim) e o momento de referência */
+  automacao?: Automacao;
+  agora?: Date;
 }
 
 /** primeira coluna preenchida entre estas vira o nome do item */
@@ -40,7 +44,11 @@ export class Cadastro {
     this.imagens = d.imagens || {};
     this.arquivos = [...(d.arquivos || [])];
     this.ordem = d.ordem || {};
+    this.automacao = d.automacao;
+    this.agora = d.agora;
   }
+  private automacao?: Automacao;
+  private agora?: Date;
 
   colunas(tipo: TipoItem | 'geral'): string[] {
     let c = this.cacheCols.get(tipo);
@@ -75,6 +83,8 @@ export class Cadastro {
       return valorMidia(base, undefined, this.det, this.arquivos);
     }
     if (vistos?.has(base)) return '';
+    // modo automático: passou do fim, o status é "realizado" (em todo lugar que usa o status)
+    if (base === 'status' && it && estaRealizado(it, this.automacao, this.agora)) return 'realizado';
     const bruto = v?.dono === 'geral' || !it ? this.gerais[base] : it[base];
     if (bruto != null && String(bruto).trim() !== '') {
       const t = String(bruto).trim();

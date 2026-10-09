@@ -1,5 +1,5 @@
 'use client';
-import { deISO, ehData, FORMULAS_PADRAO, lerData, novaLinha, paraISO, slugValor, sincronizarVars, type Linha, type TipoItem } from '@norte/motor';
+import { deISO, ehData, estaRealizado, FORMULAS_PADRAO, lerData, limiteRealizado, novaLinha, paraISO, slugValor, sincronizarVars, type Linha, type TipoItem } from '@norte/motor';
 import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { gerarEvento } from '@/lib/comum/montagem';
 import type { Evento } from '@/lib/comum/tipos';
@@ -17,8 +17,10 @@ function Celula({ tipo, linha, col }: { tipo: TipoItem; linha: Linha; col: strin
   const set = (v: string) => alterar((e) => { const l = lista(e, tipo).find((x) => x._id === linha._id); if (l) l[col] = v; });
   if (col === 'status') {
     const ops = det.opcoes.status || ['em breve', 'aberta'];
+    const auto = cad.valorDe(linha, 'status') === 'realizado' && slugValor(valor) !== 'realizado';
     return (
-      <select value={slugValor(valor) === 'breve' ? '' : valor} onChange={(e) => set(e.target.value)} aria-label="status">
+      <select value={slugValor(valor) === 'breve' ? '' : valor} onChange={(e) => set(e.target.value)} aria-label="status" title={auto ? 'Realizado (automático): já passou do último dia' : undefined} className={auto ? 'st-auto' : undefined}>
+        {auto && <option value={valor}>realizado (automático)</option>}
         {ops.map((o) => <option key={o} value={slugValor(o) === 'breve' ? '' : o}>{rotulo(o)}</option>)}
         {valor && !ops.some((o) => slugValor(o) === slugValor(valor)) && <option value={valor}>{valor} (o HTML não conhece)</option>}
       </select>
@@ -304,6 +306,53 @@ function Planilha() {
   );
 }
 
+/** status pelas datas: manual (a equipe troca) ou automático (vira "realizado" depois do último dia) */
+function StatusPelasDatas() {
+  const { evento, cad, alterar } = useEditor();
+  const a = evento.automacao || { ativo: false, horas: 8 };
+  const linhas = [...evento.cidades, ...evento.etapas];
+  if (!linhas.length && !a.ativo) return null;
+  const agora = new Date();
+  const nome = (l: Linha) => cad.nomeItem(evento.etapas.includes(l) ? 'etapa' : 'cidade', l);
+  const comData = linhas.filter((l) => limiteRealizado(l, a.horas) != null);
+  const feitas = linhas.filter((l) => estaRealizado(l, { ...a, ativo: true }, agora));
+  const proxima = comData
+    .map((l) => ({ l, t: limiteRealizado(l, a.horas)! }))
+    .filter((x) => x.t > agora.getTime())
+    .sort((x, y) => x.t - y.t)[0];
+  const quando = (t: number) => new Date(t).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+  const mudar = (m: Partial<typeof a>) => alterar((e) => { e.automacao = { ...(e.automacao || { ativo: false, horas: 8 }), ...m }; });
+  return (
+    <section className="card stack" style={{ gap: 10 }}>
+      <div className="row between">
+        <div>
+          <h2 style={{ fontSize: 18 }}>Status pelas datas</h2>
+          <p className="small muted" style={{ margin: 0 }}>{a.ativo ? 'Automático: depois do último dia, a cidade vira “realizado” sozinha e o site é republicado.' : 'Manual: a equipe troca o status de cada cidade.'}</p>
+        </div>
+        <div className="seg" role="group" aria-label="Status pelas datas">
+          <button type="button" aria-pressed={!a.ativo} onClick={() => mudar({ ativo: false })}>Manual</button>
+          <button type="button" aria-pressed={a.ativo} onClick={() => mudar({ ativo: true })}>Automático</button>
+        </div>
+      </div>
+      {a.ativo && (
+        <>
+          <label className="row small" style={{ gap: 8 }}>
+            Vira “realizado”
+            <input className="inp" type="number" min={0} max={240} style={{ width: 80, padding: '6px 8px' }} value={a.horas} onChange={(e) => mudar({ horas: Math.max(0, Math.min(240, Number(e.target.value) || 0)) })} aria-label="Horas" />
+            horas depois que começa o último dia (horário de Brasília). Ex.: termina dia 23 → 23 às {String(a.horas % 24).padStart(2, '0')}h{a.horas >= 24 ? ` (+${Math.floor(a.horas / 24)} dia)` : ''}.
+          </label>
+          <p className="small muted" style={{ margin: 0 }}>
+            {feitas.length ? `Já realizado: ${feitas.map(nome).join(', ')}.` : 'Nenhuma cidade realizada ainda.'}
+            {proxima && ` Próxima: ${nome(proxima.l)} em ${quando(proxima.t)}.`}
+            {comData.length < linhas.length && ` ${linhas.length - comData.length} sem data completa (não mudam).`}
+            {' '}O site é conferido de hora em hora e republicado quando alguma cidade muda.
+          </p>
+        </>
+      )}
+    </section>
+  );
+}
+
 /** caixa de texto que cresce com o conteúdo (uma linha quando cabe) */
 function CampoTexto({ valor, placeholder, rotulo, mudar }: { valor: string; placeholder?: string; rotulo: string; mudar: (v: string) => void }) {
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -521,7 +570,8 @@ function ListaEmBlocos({ busca }: { busca: string }) {
                   return (
                     <label key={c} className="f"><span className="v" style={{ alignSelf: 'start' }}>@{c}</span>
                       {ops ? (
-                        <select className="inp" value={c === 'status' && slugValor(valor) === 'breve' ? '' : valor} onChange={(e) => mudar(l._id, c, e.target.value)}>
+                        <select className={'inp' + (c === 'status' && cad.valorDe(l, 'status') === 'realizado' && slugValor(valor) !== 'realizado' ? ' st-auto' : '')} value={c === 'status' && slugValor(valor) === 'breve' ? '' : valor} onChange={(e) => mudar(l._id, c, e.target.value)}>
+                          {c === 'status' && cad.valorDe(l, 'status') === 'realizado' && slugValor(valor) !== 'realizado' && <option value={valor}>realizado (automático)</option>}
                           {c !== 'status' && <option value="">—</option>}
                           {ops.map((o) => <option key={o} value={c === 'status' && slugValor(o) === 'breve' ? '' : o}>{rotulo(o)}</option>)}
                           {valor && !ops.some((o) => slugValor(o) === slugValor(valor)) && <option value={valor}>{valor} (o HTML não conhece)</option>}
@@ -597,6 +647,7 @@ export function PassoCadastro() {
             <Planilha />
             <input className="inp busca-cad" type="search" placeholder="Buscar campo ou valor…" aria-label="Buscar no cadastro" value={busca} onChange={(e) => setBusca(e.target.value)} />
           </div>
+          {!busca && <StatusPelasDatas />}
           <Gerais busca={busca} />
           {unica ? temLista && <ListaEmBlocos busca={busca} /> : <Tabela tipo="cidade" foco={foco} setFoco={setFoco} busca={busca} />}
           {evento.formato === 'tapume_etapa_praca' && <Tabela tipo="etapa" foco={foco} setFoco={setFoco} busca={busca} />}

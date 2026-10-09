@@ -70,7 +70,7 @@ Modelo:
 | D2 | cidades: [aberta, vazio, vazio] | `@total_aberta` = 1, `@total_breve` = 2 |
 | D3 | `<!-- @se status = em breve -->` e status vazio | verdadeiro |
 | D4 | status `em breve` digitado, `@total_breve` | conta 1 |
-| D5 | opções de status com HTML testando só `aberta` | [em breve, aberta]; padrão em breve |
+| D5 | opções de status com HTML testando só `aberta` | [em breve, aberta, realizado]; padrão em breve |
 | D6 | linha nova copiada de uma linha `aberta` | status volta ao padrão |
 | D7 | `@agrupar por regiao` com Sudeste [2 cidades], Nordeste [1] | `@total_cidades` = 2 no grupo Sudeste, 1 no Nordeste |
 | D8 | status "aberto" numa cidade e HTML testa "aberta" | aviso "valor que o HTML não conhece" |
@@ -163,6 +163,7 @@ Os tapumes de cards fixos dos casos H1–H4 são fixtures sintéticos em `packag
 | J10 | `<div data-gratuito="@gratuito_1">` | problema: decisão guardada em atributo |
 | J11 | `<img src="assets/foto.webp">` | problema: mídia fora de `_media/` |
 | J12 | `@total_categorias_1`, `<!-- @se gratuito_1 == "sim" -->` | problemas: `total_` próprio; sintaxe do `@se` |
+| J13 | `<script>tab.scrollIntoView(…)</script>` | problema: rolagem da página inteira (o site abre no meio); `barra.scrollTo({ left })` não é problema |
 
 ## K. Seções (esconder e mostrar)
 
@@ -219,3 +220,11 @@ Os tapumes de cards fixos dos casos H1–H4 são fixtures sintéticos em `packag
 | O2 | @periodo: mesmo mês, meses diferentes, anos diferentes, sem fim, extenso | "13 a 23 out 2026", "28 set a 3 out 2026", "30 dez 2026 a 2 jan 2027", "13 out 2026", "13 a 23 de outubro de 2026" |
 | O3 | HTML só com @data_inicio_dia_1, @periodo_1 e @periodo no card | data_inicio e data_fim viram colunas da cidade sozinhas; variações são automáticas e saem formatadas |
 | O4 | prévia editável com @data_evento_dia e @data_evento | só a data pura é editável; as variações não |
+
+## P. Modo automático (status realizado)
+
+| # | Entrada | Esperado |
+|---|---|---|
+| P1 | automático, 8 h; Cotia termina 23/10/2026; Ibiúna só com início 23/10; agora 23/10 07:59 e 08:00 (Brasília) | às 07:59 nada muda; às 08:00 Cotia e Ibiúna ficam "realizado" em @se e em @total_realizado; sem data não muda |
+| P2 | manual; horas 0 e 30 | manual não muda; 0 h: 00:00 do último dia; 30 h: dia seguinte às 06:00 |
+| P3 | automático com HTML sem `@se status = realizado` | "realizado" está nas opções de status; aviso (alerta) "O HTML não mostra realizado" |

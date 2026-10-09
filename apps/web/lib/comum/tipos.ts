@@ -40,11 +40,15 @@ export interface Evento {
   patrocinios?: { porPagina: Record<string, ComposicaoPatrocinio>; estilo?: EstiloPatrocinio; /** cotas do evento (sem isso, as padrão) */ cotas?: Cota[] };
   /** mudanças feitas fora do evento (ex.: na aba Patrocínios) que ainda não foram publicadas */
   pendencia?: { desde: string; motivos: string[] };
+  /** modo automático: depois do último dia (+ horas) a cidade/etapa vira "realizado" e o site é republicado sozinho */
+  automacao?: { ativo: boolean; horas: number; /** linhas que já saíram como "realizado" na última publicação */ realizados?: string[] };
   /** ordem dos blocos de mídia na tela do publicador, por página (não muda o site) */
   ordemMidia?: Partial<Record<TipoPagina, string[]>>;
   publicacoes: Publicacao[];
-  /** versão no ar (null = nenhuma) */
+  /** versão no ar no endereço de teste (null = nenhuma) */
   versaoAtiva: number | null;
+  /** produção: o site no domínio próprio do evento (uma versão já publicada no teste) */
+  producao?: Producao;
   criadoEm: string;
   atualizadoEm: string;
 }
@@ -79,6 +83,22 @@ export interface AplicacaoPatrocinador {
 export interface EventoPatrocinavel { slug: string; nome: string; publicado: boolean; pendente: boolean; cotas: Cota[]; paginas: { id: string; nome: string }[] }
 export type UsoPatrocinadores = Record<string, { slug: string; nome: string; publicado: boolean; pendente: boolean; aplicacoes: AplicacaoPatrocinador[]; cotas: Cota[] }[]>;
 
+export interface Producao {
+  /** domínios do evento; o primeiro é o principal, os outros redirecionam para ele (ex.: www) */
+  dominios: string[];
+  /** versão em produção (null = fora do ar) */
+  versao: number | null;
+  /** commit do site (branch de publicação) com essa versão */
+  commit: string | null;
+  em?: string;
+  historico: { versao: number | null; em: string }[];
+}
+
+/** índice lido pelo Worker que entrega os sites: domínio → evento e versão */
+export interface IndiceProducao {
+  sites: Record<string, { slug: string; commit: string; versao: number; principal: string }>;
+}
+
 export interface ResumoEvento {
   slug: string;
   nome: string;
@@ -88,6 +108,8 @@ export interface ResumoEvento {
   url: string | null;
   /** há mudança esperando publicação */
   pendente: boolean;
+  /** domínio principal, se estiver em produção */
+  producao?: string | null;
 }
 
 export interface ArquivoMidia {

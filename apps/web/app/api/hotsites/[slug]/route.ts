@@ -28,7 +28,9 @@ export async function PUT(req: Request, { params }: Ctx) {
 export async function DELETE(req: Request, { params }: Ctx) {
   return responder(req, async () => {
     const { slug } = await params;
-    await servicos().armazenamento.excluir(slug);
+    const { armazenamento } = servicos();
+    if ((await armazenamento.ler(slug))?.evento.producao?.dominios.length) return erro(409, 'Este evento tem domínio de produção. Tire os domínios (passo Publicar) antes de excluir.');
+    await armazenamento.excluir(slug);
     return new Response(null, { status: 204 });
   });
 }

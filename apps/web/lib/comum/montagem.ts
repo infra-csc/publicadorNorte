@@ -1,5 +1,5 @@
 // Junta o motor com os dados guardados: gera as páginas e descobre quais arquivos cada página usa.
-import { acharArquivo, COTAS_PADRAO, detectar, gerar, sincronizarVars, normRef, PASTA_LOGOS, refsDeArquivo, type Cota, type ResultadoGerar } from '@norte/motor';
+import { acharArquivo, COTAS_PADRAO, detectar, estaRealizado, gerar, sincronizarVars, normRef, PASTA_LOGOS, refsDeArquivo, type Cota, type ResultadoGerar } from '@norte/motor';
 import type { ArquivoMidia, BancoPatrocinios, Evento } from './tipos';
 
 /** logos do banco de patrocinadores, como arquivos do site (_patrocinadores/…) */
@@ -55,9 +55,17 @@ export function migrarOnePage(e: Evento, modelos: Partial<Record<string, string>
   return mudou;
 }
 
-export function gerarEvento(evento: Evento, modelos: Partial<Record<string, string>>, arquivos: ArquivoMidia[], banco?: BancoPatrocinios | null, opcoes?: { marcarEdicao?: boolean }): ResultadoGerar {
+/** cidades e etapas que estão "realizado" agora pelo modo automático (ids, em ordem) */
+export function realizadosAgora(evento: Pick<Evento, 'automacao' | 'cidades' | 'etapas'>, agora: Date): string[] {
+  if (!evento.automacao?.ativo) return [];
+  return [...evento.cidades, ...evento.etapas].filter((l) => estaRealizado(l, evento.automacao, agora)).map((l) => l._id);
+}
+
+export function gerarEvento(evento: Evento, modelos: Partial<Record<string, string>>, arquivos: ArquivoMidia[], banco?: BancoPatrocinios | null, opcoes?: { marcarEdicao?: boolean; agora?: Date }): ResultadoGerar {
   return gerar({
     marcarEdicao: opcoes?.marcarEdicao,
+    automacao: evento.automacao,
+    agora: opcoes?.agora ?? new Date(),
     formato: evento.formato,
     modelos,
     vars: evento.vars,

@@ -505,24 +505,32 @@ Troque só o miolo do preço. O gratuito continua vindo antes:
 
 ### 12.3 Status da cidade
 
-O status só tem dois valores:
+O status tem três valores:
 
 | Valor na tabela | Significado |
 |---|---|
 | `em breve` (padrão, quando ninguém escolheu) | Inscrições ainda não abertas |
 | `aberta` | Inscrições abertas |
+| `realizado` | A etapa já aconteceu |
 
-No HTML, teste **sempre** contra `aberta`:
+No **modo automático** do evento (passo Cadastro → "Status pelas datas"), cada cidade vira `realizado` sozinha depois do último dia (`data_fim`, ou `data_inicio` se for um dia só), mais as horas configuradas. O site é republicado sozinho. No modo manual, a equipe escolhe.
+
+No HTML, trate **os três** casos, com `realizado` primeiro:
 
 ```html
-<!-- @se status = aberta -->
+<!-- @se status = realizado -->
+  <div class="card card--realizado">… Realizado …</div>
+<!-- @senao --><!-- @se status = aberta -->
   <a class="card" href="@url">… Inscrições abertas …</a>
 <!-- @senao -->
   <div class="card card--breve">… Em breve …</div>
-<!-- @fim -->
+<!-- @fim --><!-- @fim -->
 ```
 
-Contagens automáticas: `@total_aberta`, `@total_breve`, `@total_cidades`.
+- **Não calcule o status (nem "próxima parada", "acontecendo agora", "realizado") por JavaScript** comparando datas com o relógio do navegador: o publicador decide e a página já sai pronta. Use `@se status = …`.
+- Tudo o que muda quando a etapa acontece (selo, botão de inscrição, texto da data) fica dentro desses blocos, para mudar junto.
+
+Contagens automáticas: `@total_aberta`, `@total_breve`, `@total_realizado`, `@total_cidades`.
 Não use `@total_` para outra coisa. Para o número de categorias, use um nome sem esse prefixo, como `@qtd_categorias_1`.
 
 
@@ -539,6 +547,8 @@ Não use `@total_` para outra coisa. Para o número de categorias, use um nome s
 | Colocar `@se` dentro de string JS, `<template>` ou atributo | Só vale como comentário HTML normal no corpo da página |
 | Usar outro nome (`gratis`, `evento_gratuito`, `free`, `valor`, `preco`) | Os nomes são `gratuito` e `preco_vista` (ou `parcelamento` e `valor_parcelado`) |
 | Testar o status contra `aberto`, `abertas` ou `open` | O valor é `aberta` |
+| Calcular status, "próxima parada" ou "realizado" por JavaScript com a data do navegador | O publicador decide pelo modo automático; use `@se status = realizado` |
+| `elemento.scrollIntoView(…)` no JavaScript (ex.: trazer a aba ativa à vista) | Rola a página inteira até o elemento: o site abre no meio, não no topo. Role só a barra: `barra.scrollTo({ left: aba.offsetLeft - 16 })` |
 
 
 ### 12.5 Conferência antes de entregar o HTML
@@ -550,7 +560,8 @@ Procure no arquivo e confirme cada item:
 - [ ] A palavra `gratuito` não aparece em nenhum `<script>`
 - [ ] "A confirmar" só aparece depois de um `<!-- @senao -->`
 - [ ] Número de `<!-- @se` + `<!-- @repetir` + `<!-- @agrupar` = número de `<!-- @fim`
-- [ ] O status é testado como `<!-- @se status = aberta -->`
+- [ ] O status é testado como `<!-- @se status = realizado -->` e `<!-- @se status = aberta -->` (sem status calculado por JavaScript)
 - [ ] Nenhuma variável própria começa com `total_`
+- [ ] Nenhum `scrollIntoView` no JavaScript (o site precisa abrir no topo)
 
 Se algum item falhar, corrija antes de entregar.

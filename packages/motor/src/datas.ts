@@ -95,3 +95,23 @@ export function periodo(inicio: unknown, fim: unknown, extenso = false): string 
   if (a.a === b.a || a.a == null || b.a == null) return `${a.d} ${mes(a)} a ${um(b)}`;
   return `${um(a)} a ${um(b)}`;
 }
+
+/** modo automático do evento: depois do último dia (mais estas horas) a cidade fica "realizado" */
+export interface Automacao { ativo: boolean; horas: number }
+
+/** fuso dos eventos: horário de Brasília (UTC−3, sem horário de verão desde 2019) */
+const FUSO_HORAS = 3;
+
+/** momento (ms, UTC) em que a linha vira "realizado": 0h do último dia (data_fim, ou data_inicio) + horas; null sem data completa */
+export function limiteRealizado(l: Record<string, string | undefined>, horas: number): number | null {
+  const x = lerData(l.data_fim) || lerData(l.data_inicio) || lerData(l.data);
+  if (!x || x.a == null) return null;
+  return Date.UTC(x.a, x.m - 1, x.d) + (FUSO_HORAS + (Number(horas) || 0)) * 3600e3;
+}
+
+/** a linha já passou do fim (só no modo automático; "agora" vem de fora, o motor não lê o relógio) */
+export function estaRealizado(l: Record<string, string | undefined>, auto: Automacao | undefined, agora: Date | undefined): boolean {
+  if (!auto?.ativo || !agora) return false;
+  const lim = limiteRealizado(l, auto.horas);
+  return lim != null && agora.getTime() >= lim;
+}

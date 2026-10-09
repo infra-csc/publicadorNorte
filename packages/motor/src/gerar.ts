@@ -1,5 +1,5 @@
 import { lerBlocos, type No } from './blocos';
-import { ehPeriodo, formatarData, formatoDeData, periodo } from './datas';
+import { ehPeriodo, formatarData, formatoDeData, periodo, type Automacao } from './datas';
 import { converterMarcas, MARCA_INI, marcar } from './edicao';
 import { Cadastro } from './cadastro';
 import { temCardsFixos } from './cards-fixos';
@@ -33,6 +33,8 @@ export interface EntradaGerar {
   rodape?: EscolhaRodape;
   /** patrocinadores: composição por página (tapume e cada cidade) e o banco geral */
   patrocinios?: EntradaPatrocinios;
+  /** modo automático: status "realizado" depois do fim de cada cidade/etapa (usa "agora") */
+  automacao?: Automacao;
   /** prévia editável: marca cada texto de variável com <pub-v data-v data-l> (nunca no site publicado) */
   marcarEdicao?: boolean;
 }
@@ -247,6 +249,12 @@ export function gerar(e: EntradaGerar): ResultadoGerar {
     }
   }
   const unica = e.formato === 'unica';
+  if (e.automacao?.ativo && !Object.values(e.modelos).some((h) => h && /@se\s+status\s*!?=\s*realizad/i.test(h))) {
+    avisos.push({
+      codigo: 'sem-realizado', nivel: 'alerta', passo: 'paginas', titulo: 'O HTML não mostra "realizado"',
+      detalhe: 'O modo automático está ligado, mas o HTML não tem <!-- @se status = realizado -->. As cidades que terminarem vão aparecer como "em breve".',
+    });
+  }
   if (!unica && !cad.cidades.length) {
     avisos.push({ codigo: 'sem-cidades', nivel: 'bloqueia', titulo: 'Nenhuma cidade cadastrada', detalhe: 'As páginas de praça saem do cadastro de cidades.', passo: 'cadastro' });
   }

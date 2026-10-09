@@ -27,7 +27,8 @@ function scriptPrevia() {
   var morph = function (vivo: Node, velho: Node, novo: Node): boolean {
     if (vivo.nodeType === 1 && (vivo as Element).tagName === 'PUB-V' && focado(vivo)) return true;
     if (novo.nodeType === 3) {
-      if (velho.nodeValue === novo.nodeValue || focado(vivo)) return true;
+      // já está certo (ex.: outra cópia do campo que está sendo digitado) ou é o campo com o cursor
+      if (velho.nodeValue === novo.nodeValue || vivo.nodeValue === novo.nodeValue || focado(vivo)) return true;
       // o JS da página reescreveu este texto (ex.: formatou uma data): recarrega para ele refazer
       if (vivo.nodeValue !== velho.nodeValue) return false;
       vivo.nodeValue = novo.nodeValue;
@@ -88,6 +89,34 @@ function scriptPrevia() {
     if (s) { s.removeAllRanges(); s.addRange(r); }
   };
 
+  // scrollIntoView da página rolaria também o publicador em volta da prévia: aqui ele rola só dentro da página
+  var rolarAte = function (this: Element, o?: boolean | ScrollIntoViewOptions) {
+    var op: ScrollIntoViewOptions = typeof o === 'object' && o ? o : { block: o === false ? 'end' : 'start', inline: 'nearest' };
+    var pos = function (ini: number, fim: number, vIni: number, vFim: number, modo?: string) {
+      if (modo === 'center') return (ini + fim) / 2 - (vIni + vFim) / 2;
+      if (modo === 'end') return fim - vFim;
+      if (modo === 'nearest') return ini < vIni ? ini - vIni : fim > vFim ? Math.min(fim - vFim, ini - vIni) : 0;
+      return ini - vIni;
+    };
+    var comport = op.behavior === 'smooth' ? 'smooth' : 'auto';
+    for (var el = this.parentElement; el; el = el.parentElement) {
+      if (el === document.body || el === document.documentElement) break;
+      var cs = getComputedStyle(el);
+      var rolaX = /(auto|scroll)/.test(cs.overflowX) && el.scrollWidth > el.clientWidth;
+      var rolaY = /(auto|scroll)/.test(cs.overflowY) && el.scrollHeight > el.clientHeight;
+      if (!rolaX && !rolaY) continue;
+      var r = this.getBoundingClientRect(), c = el.getBoundingClientRect();
+      el.scrollBy({
+        left: rolaX ? pos(r.left, r.right, c.left, c.right, op.inline || 'nearest') : 0,
+        top: rolaY ? pos(r.top, r.bottom, c.top, c.bottom, op.block || 'start') : 0,
+        behavior: comport as ScrollBehavior,
+      });
+    }
+    var f = this.getBoundingClientRect();
+    scrollBy({ left: pos(f.left, f.right, 0, innerWidth, op.inline || 'nearest'), top: pos(f.top, f.bottom, 0, innerHeight, op.block || 'start'), behavior: comport as ScrollBehavior });
+  };
+  Element.prototype.scrollIntoView = rolarAte as typeof Element.prototype.scrollIntoView;
+
   addEventListener('message', function (e: MessageEvent) {
     var d = e.data || {};
     if (d.tipo === 'pub-base') {
@@ -95,6 +124,8 @@ function scriptPrevia() {
       if (d.y) scrollTo(0, d.y);
       editar(d.editar);
       if (d.foco) focar(d.foco.v, d.foco.l || '');
+      // pronto para aparecer (o publicador troca o quadro só depois de desenhar, sem piscar branco)
+      requestAnimationFrame(function () { requestAnimationFrame(function () { envia({ tipo: 'pub-visivel' }); }); });
     } else if (d.tipo === 'pub-atualizar') {
       var novo = new DOMParser().parseFromString(d.html, 'text/html');
       var ok = false;
