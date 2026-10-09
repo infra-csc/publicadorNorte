@@ -8,6 +8,7 @@ import { ajustarTagsMidia, opcoesMidia, pastasMidia, tirarMidiaOculta } from './
 import { abreviar, esc, slug, slugValor } from './texto';
 import { FORMATOS, NOME_PAGINA, type Aviso, type Formato, type Linha, type Modelos, type TipoItem, type TipoPagina, type Vars } from './tipos';
 import { ehMidia, trocarVars } from './variaveis';
+import { colocarModulos } from './modulos';
 import { ocultasDaPagina, removerSecoes, reordenarSecoes, type EscolhaSecoes } from './secoes';
 import { colocarRodape, rodapeDaPagina, type EscolhaRodape } from './rodape';
 import { colocarPatrocinios, montarPatrocinios, patrocinadoresFora, type EntradaPatrocinios } from './patrocinios';
@@ -281,7 +282,7 @@ export function gerar(e: EntradaGerar): ResultadoGerar {
     const R: Rastro = { faltas: [], fora: new Set(), faltaG };
     const linhasDaPagina = kind === 'tapume' ? [] : [ctx.cidade?._id, ctx.etapa?._id];
     const ocultas = ocultasDaPagina(kind, e.secoes, linhasDaPagina);
-    const corpo = tirarMidiaOculta(removerSecoes(reordenarSecoes(converterMarcas(montador.render(arv.raiz, { ...ctx, kind }, R)), e.secoes?.ordem?.[kind]), ocultas));
+    const corpo = tirarMidiaOculta(removerSecoes(reordenarSecoes(colocarModulos(converterMarcas(montador.render(arv.raiz, { ...ctx, kind }, R)), e.secoes?.modulos?.[kind]), e.secoes?.ordem?.[kind]), ocultas));
     // patrocinadores só nas internas: a página do One page, a praça (sem etapas) e cada etapa; o tapume nunca
     const chavePatro = kind === 'unica' ? 'unica' : kind === 'etapa' ? ctx.etapa?._id : kind === 'praca' && !comEtapas ? ctx.cidade?._id : undefined;
     const comPatro = e.patrocinios && chavePatro ? colocarPatrocinios(corpo, montarPatrocinios(e.patrocinios.porPagina[chavePatro], e.patrocinios)) : corpo;

@@ -351,3 +351,9 @@ tr:last-child td { border-bottom: 0; }
 .campo-data small { font-size: 11.5px; }
 .grid-ed .campo-data .inp { border: 0; background: none; padding: 8px 10px; min-width: 150px; }
 .st-auto { color: var(--ok); font-weight: 600; }
+.modulo-ed { grid-column: 2; display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; padding-top: 8px; border-top: 1px dashed var(--line); margin-top: 4px; }
+.modulo-miniatura { width: 120px; height: 90px; border: 1px solid var(--line); border-radius: 8px; display: grid; place-items: center; overflow: hidden; background: repeating-conic-gradient(var(--sunk) 0 25%, transparent 0 50%) 0 0 / 14px 14px; }
+.modulo-miniatura img, .modulo-miniatura svg { max-width: 100%; max-height: 86px; display: block; }
+.modulo-miniatura > span { display: grid; place-items: center; width: 100%; height: 100%; }
+.modulo-campos { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+@media (max-width: 640px) { .modulo-ed { grid-template-columns: 1fr; } }

@@ -57,6 +57,7 @@ packages/motor/
     midia.ts        opções e padrão de mídia, refsDeArquivo(), ajustarTagsMidia()
     gerar.ts        gerar() → páginas + avisos
     conversor.ts    temCardsFixos(), converterCardsFixos() (linkedom no lugar do DOMParser)
+    modulos.ts      módulo de imagem do passo Seções (vira <section id="pub-img-…">; SVG limpo e com cor única)
     verificador.ts  verificarHtml() → problemas com linha
   test/             um arquivo por seção de CASOS_DE_TESTE (a-… a j-…)
     fixtures/       HTMLs sintéticos (cards fixos, trechos do guia)

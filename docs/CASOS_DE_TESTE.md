@@ -179,6 +179,16 @@ Os tapumes de cards fixos dos casos H1–H4 são fixtures sintéticos em `packag
 | K8 | seção nova no HTML fora da ordem salva | entra logo depois da que vinha antes dela |
 | K9 | ordem e seção escondida juntas, só na praça | tapume na ordem do HTML; praça reordenada e sem a escondida |
 
+## Q. Módulo de imagem (passo Seções)
+
+| # | Entrada | Esperado |
+|---|---|---|
+| Q1 | módulo numa página com seções; página sem seções | entra como `<section id="pub-img-…">` de primeiro nível depois da última seção (sem seções: antes do `</body>`); aparece na lista como "Imagem: <arquivo>" |
+| Q2 | ordem com o módulo entre duas seções; módulo escondido numa cidade | fica entre elas; some só naquela cidade; não aparece em outro tipo de página |
+| Q3 | PNG com largura 40, fundo e espaço G; valores inválidos | `<img>` com o caminho da mídia (vai para o site), `--pub-larg:40%`, fundo e regra para celular; largura vira 10–100, cor inválida não entra |
+| Q4 | SVG com script, onclick e javascript:; com e sem cor única | embutido limpo, com viewBox; sem cor fica o original; com cor, fill/stroke viram currentColor (menos none) |
+| Q5 | SVG com "@cidade_1" no texto | o @ fica como está (o módulo entra depois das variáveis) |
+
 ## L. Rodapé
 
 | # | Entrada | Esperado |

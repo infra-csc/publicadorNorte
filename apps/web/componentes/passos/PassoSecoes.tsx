@@ -1,6 +1,6 @@
 'use client';
 // Seções da página: ordem (arrastar muda a ordem na página gerada) e mostrar/esconder, no evento todo e por cidade.
-import { FORMATOS, NOME_PAGINA, ordemFinal, RODAPE_HTML, secoesDe, temRodapeHtml, type TipoPagina } from '@norte/motor';
+import { colocarModulos, ehModulo, FORMATOS, NOME_PAGINA, ordemFinal, RODAPE_HTML, secoesDe, temRodapeHtml, type TipoPagina } from '@norte/motor';
 import Link from 'next/link';
 import { useDeferredValue, useMemo, useState } from 'react';
 import { gerarEvento } from '@/lib/comum/montagem';
@@ -9,6 +9,7 @@ import { Cabecalho, NavPassos, useEditor } from '../Editor';
 import { Previa } from '../Previa';
 import { Alca, mover, useReordenar } from '../Reordenar';
 import { EditorRodape } from './EditorRodape';
+import { AdicionarModulo, EditorModulo, modulosDe } from './ModuloImagem';
 
 const garantir = (e: Evento) => (e.secoes ??= { ocultas: [], porLinha: {}, ordem: {} });
 
@@ -34,7 +35,9 @@ function Secoes() {
   const [pag, setPag] = useState<TipoPagina>(paginas.includes('praca') ? 'praca' : paginas[0]);
   const [linhaId, setLinhaId] = useState<string>(evento.cidades[0]?._id || '');
   const html = modelos[pag];
-  const detectadas = useMemo(() => (html == null ? [] : secoesDe(html)), [html]);
+  // seções do HTML + módulos de imagem (entram como seções no fim; a ordem salva põe cada um no lugar)
+  const mods = modulosDe(evento, pag);
+  const detectadas = useMemo(() => (html == null ? [] : secoesDe(colocarModulos(html, mods))), [html, mods]);
   // na ordem escolhida (as novas entram depois da que vinha antes delas no HTML)
   const secoes = useMemo(() => {
     const porId = new Map(detectadas.map((s) => [s.id, s]));
@@ -81,7 +84,7 @@ function Secoes() {
 
   return (
     <>
-      <Cabecalho passo="secoes" titulo="Seções da página">Arraste para mudar a ordem das seções na página. Esconda o que não deve aparecer, no evento todo ou só numa cidade. A prévia mostra o resultado.</Cabecalho>
+      <Cabecalho passo="secoes" titulo="Seções da página">Arraste para mudar a ordem das seções na página. Esconda o que não deve aparecer, no evento todo ou só numa cidade. Dá para pôr módulos de imagem entre as seções. A prévia mostra o resultado.</Cabecalho>
       <div className="row">
         <div className="seg" role="group" aria-label="Página">
           {paginas.map((k) => <button key={k} type="button" aria-pressed={pag === k} onClick={() => setPag(k)}>{NOME_PAGINA[k]}</button>)}
@@ -110,7 +113,7 @@ function Secoes() {
                 return (
                   <div key={s.id} className={'secao-item' + (aqui ? '' : ' escondida')} {...alvo(i)}>
                     <Alca i={i} total={secoes.length} alca={alca} mover={reordenar} rotulo={s.nome} />
-                    <div className="secao-nome"><b>{s.nome}</b><span className="mono small muted">#{s.id}</span></div>
+                    <div className="secao-nome"><b>{s.nome}</b>{ehModulo(s.id) ? <span className="small muted">módulo de imagem</span> : <span className="mono small muted">#{s.id}</span>}</div>
                     <div className="secao-controles">
                       <span className="small muted">Evento todo</span>
                       <span className="seg" role="group" aria-label={`${s.nome} no evento todo`}>
@@ -127,11 +130,13 @@ function Secoes() {
                         </select>
                       )}
                     </div>
+                    {ehModulo(s.id) && <EditorModulo pag={pag} id={s.id} />}
                   </div>
                 );
               })}
             </div>
           )}
+          <AdicionarModulo pag={pag} />
           {temRodape && (() => {
             const geralVisivel = !ocultaGeral(RODAPE_HTML);
             const exc = excecao(RODAPE_HTML);

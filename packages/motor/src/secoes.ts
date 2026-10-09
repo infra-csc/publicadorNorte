@@ -1,5 +1,6 @@
 // Seções que dá para esconder: cada <section id="…"> de primeiro nível do HTML-modelo.
 // Esconder = tirar a seção da página gerada e também os links que apontam para ela (#id).
+import type { ModuloImagem } from './modulos';
 import { escRx } from './texto';
 import { dentro, faixas } from './variaveis';
 
@@ -17,12 +18,14 @@ export interface EscolhaSecoes {
   porLinha?: Record<string, Record<string, boolean>>;
   /** ordem das seções por tipo de página (ids). Muda a ordem na página gerada. */
   ordem?: Partial<Record<string, string[]>>;
+  /** módulos de imagem por tipo de página (entram como seções: ordem e esconder valem para eles) */
+  modulos?: Partial<Record<string, ModuloImagem[]>>;
 }
 
-interface Bloco { id: string | null; abre: string; ini: number; fim: number; miolo: string }
+export interface Bloco { id: string | null; abre: string; ini: number; fim: number; miolo: string }
 
 /** elementos <tag> de primeiro nível (fora de comentários, scripts e estilos) */
-function blocos(src: string, tag = 'section'): Bloco[] {
+export function blocos(src: string, tag = 'section'): Bloco[] {
   const ignorar = faixas(src, /<!--[\s\S]*?-->|<script\b[\s\S]*?<\/script>|<style\b[\s\S]*?<\/style>/gi);
   const rx = new RegExp(`<${tag}\\b[^>]*>|<\\/${tag}\\s*>`, 'gi');
   const out: Bloco[] = [];
