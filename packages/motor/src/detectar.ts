@@ -1,4 +1,5 @@
 import { lerBlocos, type No, type ErroBloco } from './blocos';
+import { ehPeriodo, formatoDeData } from './datas';
 import { slug } from './texto';
 import { FORMATOS, type Dono, type EstadoVar, type Formato, type Modelos, type TipoItem, type TipoPagina, type Vars } from './tipos';
 import { ehMidia, varsDoTexto } from './variaveis';
@@ -98,6 +99,20 @@ export function detectar(modelos: Modelos, formato: Formato): Deteccao {
       if (o.opc) (opc[o.base] = opc[o.base] || new Set()).add(o.opc);
     }
   }
+  // variações de data (@data_inicio_dia, @periodo…) precisam da data guardada: a coluna vem sozinha
+  for (const d of [...mapa.values()]) {
+    const fd = formatoDeData(d.base);
+    const raizes = fd ? [fd.raiz] : ehPeriodo(d.base) ? ['data_inicio', 'data_fim'] : [];
+    for (const r of raizes) {
+      const x = mapa.get(r);
+      if (!x) mapa.set(r, { base: r, por: { ...d.por }, numerada: d.numerada, laco: d.laco, nums: [...d.nums] });
+      else {
+        x.numerada = x.numerada || d.numerada;
+        x.laco = x.laco || d.laco;
+        for (const k of Object.keys(d.por) as TipoPagina[]) x.por[k] = x.por[k] ?? 0;
+      }
+    }
+  }
   if (opc.status) {
     // @total_aberta também diz que "aberta" é um status válido
     for (const b of mapa.keys()) {
@@ -119,6 +134,7 @@ export const TEXTOS_PADRAO: Record<string, string> = { a_confirmar: 'A confirmar
 export function inferirDono(d: VarDetectada, det: Deteccao): Dono {
   if (d.base === 'url' || ehContagem(d.base, det.opcoes) || raizAbrev(d.base, (b) => det.variaveis.has(b))) return 'auto';
   if (d.base in TEXTOS_PADRAO) return 'geral';
+  if (formatoDeData(d.base) || ehPeriodo(d.base)) return 'auto';
   // One page: tudo é geral; só o que está dentro de @repetir cidades é coluna da lista de cidades
   if (det.formato === 'unica') return d.laco ? 'cidade' : 'geral';
   const etapas = det.formato === 'tapume_etapa_praca';

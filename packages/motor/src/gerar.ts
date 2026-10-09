@@ -1,4 +1,5 @@
 import { lerBlocos, type No } from './blocos';
+import { ehPeriodo, formatarData, formatoDeData, periodo } from './datas';
 import { converterMarcas, marcar } from './edicao';
 import { Cadastro } from './cadastro';
 import { temCardsFixos } from './cards-fixos';
@@ -154,6 +155,19 @@ class Montador {
     const idx = num || 1;
     if (v.excluida) return '';
     if (ehContagem(base, cad.det.opcoes)) return this.contar(base, ctx);
+    // datas: a variação sai da data guardada (e não é editável na prévia)
+    const fd = v.dono === 'auto' ? formatoDeData(base) : null;
+    if (fd && cad.vars[fd.raiz]) {
+      const r = this.resolver(fd.raiz, num, tok, ctx, R);
+      this.linhaUsada = null;
+      return r == null ? r : formatarData(r, fd.formato);
+    }
+    if (v.dono === 'auto' && ehPeriodo(base) && cad.vars.data_inicio) {
+      const ini = this.resolver('data_inicio', num, tok, ctx, R);
+      const fim = cad.vars.data_fim ? this.resolver('data_fim', num, tok, ctx, R) : '';
+      this.linhaUsada = null;
+      return periodo(ini, fim, base === 'periodo_extenso');
+    }
     const raiz = /_abrev$/.test(base) && cad.vars[base.slice(0, -6)] ? base.slice(0, -6) : null;
     if (raiz && v.dono === 'auto') {
       const r = this.resolver(raiz, num, tok.replace(/_abrev/, ''), ctx, R);

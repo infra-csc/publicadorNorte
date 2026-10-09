@@ -57,8 +57,8 @@ Sempre que o dado existir no evento, use **exatamente** estes nomes. É o que ma
 | `@regiao_1` | Região (agrupa os cards no tapume) | Sudeste |
 | `@status_1` | Situação da inscrição | `aberta` ou `em breve` (o padrão; ver seção 12) |
 | `@local_1` | Onde acontece | Parque Villa-Lobos |
-| `@data_inicio_1` | Primeiro dia | 12/03 |
-| `@data_fim_1` | Último dia (vazio se for um dia só) | 14/03 |
+| `@data_inicio_1` | Primeiro dia | 13/10/2026 (calendário; o formato na página é do HTML, seção 4) |
+| `@data_fim_1` | Último dia (vazio se for um dia só) | 23/10/2026 |
 | `@link_inscricao_1` | Link do botão de inscrição | https://… |
 
 ### Preço
@@ -142,11 +142,33 @@ Evento sem O2 Prime: simplesmente não use estas variáveis.
 - Use **o mesmo padrão** em todo lugar onde o preço aparece (card do kit, barra fixa, FAQ, card do tapume).
 - Se tirar a linha `@se gratuito`, tire também o `@fim` correspondente (o último).
 
-### Data de um dia ou período
+### Datas: o cadastro guarda, o HTML escolhe o formato
+Toda variável de data se chama `data` ou começa com `data_` (`@data_inicio`, `@data_fim`, `@data_etapa`…). No publicador ela é sempre um **campo de data com calendário** (13/10/2026). **Como a data aparece na página é escolha do HTML**, pelo fim do nome da variável. O publicador formata sozinho; **não formate data com JavaScript** (nem leia `data-ini`/`data-fim` para remontar o texto).
+
+| No HTML | Sai (data 13/10/2026) |
+|---|---|
+| `@data_inicio` | 13/10/2026 |
+| `@data_inicio_curta` | 13/10 |
+| `@data_inicio_dia` | 13 |
+| `@data_inicio_mes` | 10 |
+| `@data_inicio_mes_abrev` | out |
+| `@data_inicio_mes_nome` | outubro |
+| `@data_inicio_ano` | 2026 |
+| `@data_inicio_semana` | terça-feira |
+| `@data_inicio_semana_abrev` | ter |
+| `@data_inicio_extenso` | 13 de outubro de 2026 |
+| `@periodo` | 13 a 23 out 2026 (de `data_inicio` a `data_fim`) |
+| `@periodo_extenso` | 13 a 23 de outubro de 2026 |
+
+- Na página da cidade, com `_1` no fim, como sempre: `@data_inicio_dia_1`, `@periodo_1`. No card do tapume e dentro de `@repetir cidades`, sem número.
+- `@periodo` não repete mês e ano: "13 a 23 out 2026", "28 set a 3 out 2026", "30 dez 2026 a 2 jan 2027"; um dia só (sem data de fim): "13 out 2026".
+- Não precisa escrever a data pura no HTML para a coluna existir: usar só `@data_inicio_dia` ou `@periodo` já cria a coluna de data no cadastro.
+- Para montar o seu próprio formato, combine as partes: `@data_inicio_dia de @data_inicio_mes_nome` → "13 de outubro".
+
+Exemplo de período com dia da semana:
 ```html
-<!-- @se data_fim -->De @data_inicio_1 a @data_fim_1<!-- @senao -->@data_inicio_1<!-- @fim -->
+<!-- @se data_fim -->@periodo_1<!-- @senao -->@data_inicio_semana_1, @data_inicio_extenso_1<!-- @fim -->
 ```
-Com as duas datas: "De 12/03 a 14/03". Só com a data de início: "12/03".
 
 ### Desconto
 ```html
@@ -253,7 +275,7 @@ Dentro do card, as variáveis **não têm número** (o card já é de uma cidade
 <!-- @se status = aberta -->
     <a class="card aberta" href="@url">
       <h3>@cidade <span>@uf</span></h3>
-      <p><!-- @se data_fim -->@data_inicio a @data_fim<!-- @senao -->@data_inicio<!-- @fim --> · @local</p>
+      <p>@periodo · @local</p>
       <p><!-- @se gratuito = sim -->Evento gratuito<!-- @senao --><!-- @se preco_vista -->R$@preco_vista<!-- @senao -->@a_confirmar<!-- @fim --><!-- @fim --></p>
       <span class="tag">inscrições abertas</span>
     </a>
@@ -413,7 +435,7 @@ No passo **Seções**, quem publica pode esconder partes da página (no evento t
 - [ ] Preços com "R$" no HTML e variável só com número
 - [ ] Forma de cobrança definida (à vista ou parcelado) e só as variáveis dela no HTML
 - [ ] Nenhum preço ou "A confirmar" escrito fixo; preço sempre pelo padrão da seção 4, com gratuito e preço vazio tratados
-- [ ] Datas com o padrão de um dia ou período
+- [ ] Datas pelas variações do nome (`@periodo`, `@data_inicio_dia`, `@data_inicio_mes_abrev`…), nunca formatadas por JavaScript (seção 4)
 - [ ] Tapume com **um card só** entre `@repetir cidades` e `@fim`, com versão aberta e em breve
 - [ ] Todo `@se`, `@repetir` e `@agrupar` tem o seu `@fim`
 - [ ] Todo "A confirmar" é `@a_confirmar`, como texto simples: sem borda, tracejado, bolinha, ícone ou selo (seção 4)

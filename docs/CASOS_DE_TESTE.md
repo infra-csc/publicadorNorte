@@ -209,3 +209,12 @@ Os tapumes de cards fixos dos casos H1–H4 são fixtures sintéticos em `packag
 | N1 | página gerada sem `marcarEdicao` | nenhuma marca nem `<pub-v>` (o site publicado nunca tem) |
 | N2 | com `marcarEdicao`: variável em texto, atributo, `<title>`, `<style>`, `<script>` e em `@repetir cidades`; contagem | texto visível vira `<pub-v data-v="variável" data-l="linha">` (linha vazia = geral, id da cidade na lista); atributos, title, style e script ficam com o valor puro; contagens não são marcadas |
 | N3 | `@a_confirmar` no `@senao` de `@se local`, dentro de `@repetir cidades` | é sempre geral; sem valor sai "A confirmar" (marcado e editável na prévia); o texto digitado vale para todos os lugares |
+
+## O. Datas
+
+| # | Entrada | Esperado |
+|---|---|---|
+| O1 | 13/10/2026 com _dia, _mes, _mes_nome, _mes_abrev, _ano, _curta, _semana, _semana_abrev, _extenso; "12/03"; texto | 13, 10, outubro, out, 2026, 13/10, terça-feira, ter, "13 de outubro de 2026"; sem ano: mês sim, ano vazio; texto sai como foi digitado |
+| O2 | @periodo: mesmo mês, meses diferentes, anos diferentes, sem fim, extenso | "13 a 23 out 2026", "28 set a 3 out 2026", "30 dez 2026 a 2 jan 2027", "13 out 2026", "13 a 23 de outubro de 2026" |
+| O3 | HTML só com @data_inicio_dia_1, @periodo_1 e @periodo no card | data_inicio e data_fim viram colunas da cidade sozinhas; variações são automáticas e saem formatadas |
+| O4 | prévia editável com @data_evento_dia e @data_evento | só a data pura é editável; as variações não |

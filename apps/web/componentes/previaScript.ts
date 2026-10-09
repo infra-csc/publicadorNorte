@@ -26,14 +26,23 @@ function scriptPrevia() {
   var focado = function (n: Node) { var a = document.activeElement; return !!a && a !== document.body && a.contains(n); };
   var morph = function (vivo: Node, velho: Node, novo: Node): boolean {
     if (novo.nodeType === 3) {
-      if (velho.nodeValue !== novo.nodeValue && !focado(vivo)) vivo.nodeValue = novo.nodeValue;
+      if (velho.nodeValue === novo.nodeValue || focado(vivo)) return true;
+      // o JS da página reescreveu este texto (ex.: formatou uma data): recarrega para ele refazer
+      if (vivo.nodeValue !== velho.nodeValue) return false;
+      vivo.nodeValue = novo.nodeValue;
       return true;
     }
     // nada mudou neste pedaço: deixa como está (inclusive o que o JS da página reescreveu nele)
     if (velho.isEqualNode(novo)) return true;
     if (novo.nodeName === 'SCRIPT') return false;
     var ve = velho as Element, ne = novo as Element, vi = vivo as Element;
-    Array.prototype.forEach.call(ne.attributes, function (a: Attr) { if (ve.getAttribute(a.name) !== a.value) vi.setAttribute(a.name, a.value); });
+    var mexido = false;
+    Array.prototype.forEach.call(ne.attributes, function (a: Attr) {
+      if (ve.getAttribute(a.name) === a.value) return;
+      if (vi.getAttribute(a.name) !== ve.getAttribute(a.name)) mexido = true;
+      vi.setAttribute(a.name, a.value);
+    });
+    if (mexido) return false;
     Array.prototype.forEach.call(ve.attributes, function (a: Attr) { if (!ne.hasAttribute(a.name)) vi.removeAttribute(a.name); });
     var vo = filhos(velho), no = filhos(novo);
     if (vo.length !== no.length) return false;

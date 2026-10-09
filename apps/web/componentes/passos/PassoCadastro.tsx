@@ -1,5 +1,5 @@
 'use client';
-import { FORMULAS_PADRAO, novaLinha, slugValor, sincronizarVars, type Linha, type TipoItem } from '@norte/motor';
+import { deISO, ehData, FORMULAS_PADRAO, lerData, novaLinha, paraISO, slugValor, sincronizarVars, type Linha, type TipoItem } from '@norte/motor';
 import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { gerarEvento } from '@/lib/comum/montagem';
 import type { Evento } from '@/lib/comum/tipos';
@@ -34,6 +34,7 @@ function Celula({ tipo, linha, col }: { tipo: TipoItem; linha: Linha; col: strin
       </select>
     );
   }
+  if (ehData(col)) return <CampoData valor={valor} rotulo={col} mudar={set} />;
   const calc = cad.vars[col]?.formula ? cad.calculado(linha, col) : '';
   return (
     <>
@@ -315,6 +316,21 @@ function CampoTexto({ valor, placeholder, rotulo, mudar }: { valor: string; plac
   return <textarea ref={ref} className="inp campo-auto" rows={1} value={valor} placeholder={placeholder} aria-label={rotulo} onChange={(e) => mudar(e.target.value)} />;
 }
 
+/**
+ * Campo de data: sempre o calendário do navegador; guarda dd/mm/aaaa.
+ * Valor antigo que não é data completa (ex.: "12/03") aparece embaixo até ser trocado.
+ */
+function CampoData({ valor, rotulo, mudar }: { valor: string; rotulo: string; mudar: (v: string) => void }) {
+  const iso = paraISO(valor);
+  const antigo = valor.trim() && !iso;
+  return (
+    <span className="campo-data">
+      <input className="inp" type="date" value={iso} aria-label={rotulo} onChange={(e) => mudar(e.target.value ? deISO(e.target.value) : '')} />
+      {antigo && <small className="muted" title="Escolha a data completa no calendário">Hoje: “{valor}”{lerData(valor) ? ' (sem ano)' : ''}</small>}
+    </span>
+  );
+}
+
 const semAcento = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const bate = (busca: string, ...textos: string[]) => !busca || textos.some((t) => semAcento(t).includes(semAcento(busca)));
 
@@ -413,7 +429,7 @@ function BlocoSerie({ s, busca }: { s: Serie; busca: string }) {
           <div className="grid3">
             {[...s.itens.get(n)!.entries()].map(([campo, g]) => (
               <label key={g} className="f"><span className="v" style={{ alignSelf: 'start' }} title={'@' + g}>{nomeCampo(campo, s.raiz)}</span>
-                <CampoTexto valor={valor(g)} placeholder={cad.calculado(null, g)} rotulo={g} mudar={(v) => alterar((x) => { x.gerais[g] = v; })} />
+                {ehData(g) ? <CampoData valor={valor(g)} rotulo={g} mudar={(v) => alterar((x) => { x.gerais[g] = v; })} /> : <CampoTexto valor={valor(g)} placeholder={cad.calculado(null, g)} rotulo={g} mudar={(v) => alterar((x) => { x.gerais[g] = v; })} />}
               </label>
             ))}
           </div>
@@ -440,7 +456,7 @@ function Gerais({ busca }: { busca: string }) {
         <div className="grid3">
           {visiveis.map((g) => (
             <label key={g} className="f"><span className="v" style={{ alignSelf: 'start' }}>@{g}</span>
-              <CampoTexto valor={evento.gerais[g] ?? ''} placeholder={cad.calculado(null, g)} rotulo={g} mudar={(v) => alterar((x) => { x.gerais[g] = v; })} />
+              {ehData(g) ? <CampoData valor={evento.gerais[g] ?? ''} rotulo={g} mudar={(v) => alterar((x) => { x.gerais[g] = v; })} /> : <CampoTexto valor={evento.gerais[g] ?? ''} placeholder={cad.calculado(null, g)} rotulo={g} mudar={(v) => alterar((x) => { x.gerais[g] = v; })} />}
             </label>
           ))}
         </div>
@@ -511,7 +527,7 @@ function ListaEmBlocos({ busca }: { busca: string }) {
                           {valor && !ops.some((o) => slugValor(o) === slugValor(valor)) && <option value={valor}>{valor} (o HTML não conhece)</option>}
                         </select>
                       ) : (
-                        <CampoTexto valor={valor} placeholder={cad.calculado(l, c)} rotulo={c} mudar={(v) => mudar(l._id, c, v)} />
+                        ehData(c) ? <CampoData valor={valor} rotulo={c} mudar={(v) => mudar(l._id, c, v)} /> : <CampoTexto valor={valor} placeholder={cad.calculado(l, c)} rotulo={c} mudar={(v) => mudar(l._id, c, v)} />
                       )}
                     </label>
                   );
