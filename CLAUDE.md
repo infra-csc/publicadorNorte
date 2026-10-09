@@ -77,6 +77,7 @@ apps/web/           Next.js 16 (App Router). Ler node_modules/next/dist/docs ant
 - O publicador roda na **Cloudflare** a partir de uma cópia deste repositório na organização infra-csc: a cada push na main, `.github/workflows/avisar-cloudflare.yml` avisa a cópia (segredo DISPARO_CLOUDFLARE) e o deploy sai na hora. A configuração do Worker está em apps/web/wrangler.jsonc e open-next.config.ts (`pnpm cf:build`); o CI monta esse build a cada push.
 - O destino final é a Cloudflare: tudo que é do GitHub fica atrás de `Armazenamento` e `DestinoPublicacao`. O app não pode usar APIs só de Node (roda em Workers via OpenNext).
 - Imports do motor sem extensão `.js` (o Turbopack não resolve `.js` → `.ts`).
+- As rotas de eventos ficam em `/api/hotsites`, não `/api/eventos`: a lista EasyPrivacy (bloqueador do Opera, uBlock, Brave) tem a regra `||workers.dev/api/event`, que derruba qualquer caminho `/api/event…` em `*.workers.dev`. Antes de criar rota nova, confira que o caminho não esbarra em listas de bloqueio.
 
 ## Fluxo de trabalho
 

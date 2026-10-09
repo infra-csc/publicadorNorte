@@ -123,7 +123,7 @@ export function PassoMidia() {
   async function apagar(caminho: string) {
     setExcluir(null);
     try {
-      await api(`/api/eventos/${evento.slug}/midia`, json('DELETE', { caminhos: [caminho] }));
+      await api(`/api/hotsites/${evento.slug}/midia`, json('DELETE', { caminhos: [caminho] }));
       setArquivos(arquivos.filter((a) => a.caminho !== caminho));
       // escolhas que apontavam para o arquivo voltam ao padrão
       alterar((e) => {

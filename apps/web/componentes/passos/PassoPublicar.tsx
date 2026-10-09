@@ -44,7 +44,7 @@ export function PassoPublicar() {
     try {
       await salvarJa();
       setOcupado('Publicando…');
-      const res = await api<{ publicacao: Publicacao; evento: Evento; versao: string }>(`/api/eventos/${evento.slug}/publicar`, { method: 'POST' });
+      const res = await api<{ publicacao: Publicacao; evento: Evento; versao: string }>(`/api/hotsites/${evento.slug}/publicar`, { method: 'POST' });
       substituir(res.evento, res.versao);
       setEsperando(res.publicacao.commit);
       lerSite();
@@ -61,7 +61,7 @@ export function PassoPublicar() {
     setOcupado('Voltando…');
     try {
       await salvarJa();
-      const res = await api<{ evento: Evento; versao: string }>(`/api/eventos/${evento.slug}/publicacoes/${v}`, { method: 'POST' });
+      const res = await api<{ evento: Evento; versao: string }>(`/api/hotsites/${evento.slug}/publicacoes/${v}`, { method: 'POST' });
       substituir(res.evento, res.versao);
       const s = await api<EstadoSite>('/api/site').catch(() => null);
       if (s) setSite(s);
@@ -74,7 +74,7 @@ export function PassoPublicar() {
 
   async function baixarZip() {
     await salvarJa();
-    location.href = `/api/eventos/${evento.slug}/zip`;
+    location.href = `/api/hotsites/${evento.slug}/zip`;
   }
 
   const hist = [...evento.publicacoes].reverse();

@@ -17,7 +17,7 @@ export function PassoEvento() {
     setMsg('');
     try {
       await salvarJa();
-      const r = await api<{ slug: string }>(`/api/eventos/${evento.slug}/renomear`, json('POST', { novo: novoSlug }));
+      const r = await api<{ slug: string }>(`/api/hotsites/${evento.slug}/renomear`, json('POST', { novo: novoSlug }));
       // recarrega pelo endereço novo (o evento foi movido no armazenamento)
       location.href = `/eventos/${r.slug}/evento`;
     } catch (e) {

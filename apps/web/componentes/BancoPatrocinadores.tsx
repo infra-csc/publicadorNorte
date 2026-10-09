@@ -164,7 +164,7 @@ function OndeAparece({ p, usos, eventos, recarregar, visualizar }: { p: Patrocin
     setOcupado('+' + slug);
     setErro('');
     try {
-      await api(`/api/eventos/${slug}/patrocinios`, json('PATCH', { acao: 'adicionar', patrocinador: p.id, nome: p.nome, paginas, cota }));
+      await api(`/api/hotsites/${slug}/patrocinios`, json('PATCH', { acao: 'adicionar', patrocinador: p.id, nome: p.nome, paginas, cota }));
       await recarregar();
       setFeito(true);
       return true;
@@ -180,7 +180,7 @@ function OndeAparece({ p, usos, eventos, recarregar, visualizar }: { p: Patrocin
     setOcupado(slug + a.pagina);
     setErro('');
     try {
-      await api(`/api/eventos/${slug}/patrocinios`, json('PATCH', { pagina: a.pagina, patrocinador: p.id, nome: p.nome, ...pedido }));
+      await api(`/api/hotsites/${slug}/patrocinios`, json('PATCH', { pagina: a.pagina, patrocinador: p.id, nome: p.nome, ...pedido }));
       await recarregar();
       setFeito(true);
     } catch (e) {
@@ -230,7 +230,7 @@ function Visualizar({ slug, nome, pagina: inicial, banco, fechar }: { slug: stri
   const [dados, setDados] = useState<{ evento: Evento; modelos: Partial<Record<string, string>>; arquivos: ArquivoMidia[] } | null>(null);
   const [erro, setErro] = useState('');
   const [escolhida, setPagina] = useState(inicial);
-  useEffect(() => { api<NonNullable<typeof dados>>(`/api/eventos/${slug}`).then(setDados, (e) => setErro(e.message)); }, [slug]);
+  useEffect(() => { api<NonNullable<typeof dados>>(`/api/hotsites/${slug}`).then(setDados, (e) => setErro(e.message)); }, [slug]);
   useEffect(() => {
     const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') fechar(); };
     document.addEventListener('keydown', esc);

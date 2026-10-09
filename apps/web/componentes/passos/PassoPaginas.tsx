@@ -36,7 +36,7 @@ function CartaoPagina({ tipo }: { tipo: TipoPagina }) {
 
   async function gravar(texto: string, arquivo: string, conv: ResultadoConversao | null) {
     const antes = html != null ? basesDe(html) : null;
-    await api(`/api/eventos/${evento.slug}/modelos/${tipo}`, { method: 'PUT', body: texto, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+    await api(`/api/hotsites/${evento.slug}/modelos/${tipo}`, { method: 'PUT', body: texto, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     setModelo(tipo, texto);
     const novos = { ...modelos, [tipo]: texto };
     alterar((e) => {
@@ -176,7 +176,7 @@ function CartaoMidia() {
   async function remover() {
     setConfirmar(false);
     try {
-      await api(`/api/eventos/${evento.slug}/midia`, { method: 'DELETE' });
+      await api(`/api/hotsites/${evento.slug}/midia`, { method: 'DELETE' });
       setArquivos([]);
       setProgresso('Arquivos removidos.');
     } catch (e) {

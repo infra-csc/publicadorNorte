@@ -7,11 +7,16 @@ export class ErroApi extends Error {
 }
 
 export async function api<T = unknown>(caminho: string, init: RequestInit = {}): Promise<T> {
-  let r: Response;
-  try {
-    r = await fetch(caminho, init);
-  } catch {
-    throw new ErroApi(0, 'Sem conexão com o publicador. Ele está rodando?');
+  let r: Response | undefined;
+  // leitura que falhou na rede (oscilação, VPN): tenta de novo antes de desistir; gravação não repete
+  const leitura = !init.method || init.method === 'GET';
+  for (let tentativa = 0; !r; tentativa++) {
+    try {
+      r = await fetch(caminho, init);
+    } catch {
+      if (leitura && tentativa < 2) { await new Promise((ok) => setTimeout(ok, 800 * (tentativa + 1))); continue; }
+      throw new ErroApi(0, 'Não consegui falar com o publicador. Confira a internet e recarregue a página. Se usa VPN, bloqueador de anúncios ou extensões (no Opera, a VPN e o bloqueador vêm ligados), desligue para este site.');
+    }
   }
   // sessão expirou ou senha trocada: volta para a tela de entrada
   if (r.status === 401 && caminho !== '/api/entrar') {

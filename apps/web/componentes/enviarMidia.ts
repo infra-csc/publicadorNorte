@@ -42,7 +42,7 @@ export async function enviarMidia(slugEvento: string, itens: ItemEnvio[], existe
   await Promise.all([trabalhar(), trabalhar(), trabalhar(), trabalhar()]);
   if (novos.length) {
     progresso('Guardando…');
-    await api(`/api/eventos/${slugEvento}/midia`, json('POST', { arquivos: novos }));
+    await api(`/api/hotsites/${slugEvento}/midia`, json('POST', { arquivos: novos }));
   }
   return { novos, porPedido, pulados, grandes };
 }

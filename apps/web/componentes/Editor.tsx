@@ -94,7 +94,7 @@ export function Editor({ slug, children }: { slug: string; children: React.React
   useRolagemArrastando();
 
   useEffect(() => {
-    api<EventoCompleto>(`/api/eventos/${slug}`).then(
+    api<EventoCompleto>(`/api/hotsites/${slug}`).then(
       (d) => { evRef.current = d.evento; versaoRef.current = d.versao; setDados(d); },
       (e) => setErro(e.message),
     );
@@ -105,7 +105,7 @@ export function Editor({ slug, children }: { slug: string; children: React.React
     const p = (async () => {
       setEstado('salvando');
       try {
-        const r = await api<{ versao: string }>(`/api/eventos/${slug}`, json('PUT', { evento: evRef.current, versao: versaoRef.current }));
+        const r = await api<{ versao: string }>(`/api/hotsites/${slug}`, json('PUT', { evento: evRef.current, versao: versaoRef.current }));
         versaoRef.current = r.versao;
         setEstado('ok');
       } catch (e) {

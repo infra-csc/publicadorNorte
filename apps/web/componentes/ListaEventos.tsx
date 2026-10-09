@@ -21,14 +21,14 @@ export function ListaEventos() {
   const [criando, setCriando] = useState(false);
   const [confirmar, setConfirmar] = useState<string | null>(null);
 
-  const carregar = () => api<ResumoEvento[]>('/api/eventos').then(setEventos, (e) => setErro(e.message));
+  const carregar = () => api<ResumoEvento[]>('/api/hotsites').then(setEventos, (e) => setErro(e.message));
   useEffect(() => { carregar(); }, []);
 
   async function criar() {
     setCriando(true);
     setErro('');
     try {
-      const e = await api<Evento>('/api/eventos', json('POST', { nome, formato }));
+      const e = await api<Evento>('/api/hotsites', json('POST', { nome, formato }));
       router.push(`/eventos/${e.slug}/paginas`);
     } catch (e) {
       setErro((e as Error).message);
@@ -39,7 +39,7 @@ export function ListaEventos() {
   async function excluir(slug: string) {
     setConfirmar(null);
     try {
-      await api(`/api/eventos/${slug}`, { method: 'DELETE' });
+      await api(`/api/hotsites/${slug}`, { method: 'DELETE' });
       carregar();
     } catch (e) {
       setErro((e as Error).message);
