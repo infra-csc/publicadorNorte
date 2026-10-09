@@ -1,4 +1,5 @@
 import { lerBlocos, type No } from './blocos';
+import { converterMarcas, marcar } from './edicao';
 import { Cadastro } from './cadastro';
 import { temCardsFixos } from './cards-fixos';
 import { detectar, ehContagem, sincronizarVars, type Deteccao } from './detectar';
@@ -31,6 +32,8 @@ export interface EntradaGerar {
   rodape?: EscolhaRodape;
   /** patrocinadores: composição por página (tapume e cada cidade) e o banco geral */
   patrocinios?: EntradaPatrocinios;
+  /** prévia editável: marca cada texto de variável com <pub-v data-v data-l> (nunca no site publicado) */
+  marcarEdicao?: boolean;
 }
 
 export interface PaginaGerada {
@@ -74,7 +77,9 @@ interface Rastro {
 }
 
 class Montador {
-  constructor(private cad: Cadastro, private formato: Formato) {}
+  /** linha do cadastro de onde veio o último valor ('' = geral; null = não editável) */
+  private linhaUsada: string | null = null;
+  constructor(private cad: Cadastro, private formato: Formato, private marcarEdicao = false) {}
 
   private get comEtapas() {
     return this.formato === 'tapume_etapa_praca';
@@ -136,8 +141,10 @@ class Montador {
     return trocarVars(src, (base, num, tok) => {
       const v = this.cad.vars[base];
       if (!v || v.ignorar) return null;
+      this.linhaUsada = null;
       const r = this.resolver(base, num, tok, ctx, R);
-      return r == null ? null : esc(r);
+      if (r == null) return null;
+      return this.marcarEdicao && this.linhaUsada != null ? marcar(base, this.linhaUsada, esc(r)) : esc(r);
     });
   }
 
@@ -165,6 +172,7 @@ class Montador {
     }
     if (ctx.grupo && base === ctx.grupo.col && !ctx.item) return ctx.grupo.valor;
     if (v.dono === 'geral') {
+      this.linhaUsada = '';
       const val = cad.valorDe(null, base);
       if (!val) R.faltaG.add(tok);
       return val;
@@ -175,6 +183,7 @@ class Montador {
     else if (tipo === 'etapa') it = ctx.etapa || this.escopo('etapa', ctx)[idx - 1];
     else it = ctx.cidade || (ctx.item && ctx.tipoItem === 'etapa' ? cad.cidadeDa(ctx.item) : null) || cad.cidades[idx - 1];
     if (!it) { R.fora.add(tok); return ''; }
+    this.linhaUsada = it._id;
     const val = cad.valorDe(it, base);
     if (!val) {
       const daPagina = (ctx.cidade && it === ctx.cidade) || (ctx.etapa && it === ctx.etapa);
@@ -210,7 +219,7 @@ export function gerar(e: EntradaGerar): ResultadoGerar {
     avisos.push({ codigo: 'sem-etapas', nivel: 'bloqueia', titulo: 'Nenhuma etapa cadastrada', detalhe: 'Neste formato, cada cidade tem as suas etapas.', passo: 'cadastro' });
   }
 
-  const montador = new Montador(cad, e.formato);
+  const montador = new Montador(cad, e.formato, !!e.marcarEdicao);
   const arvores = new Map<TipoPagina, ReturnType<typeof lerBlocos>>();
   const add = (kind: TipoPagina, arquivo: string, titulo: string, ctx: Omit<Ctx, 'kind'>, nivel: 0 | 1) => {
     const modelo = e.modelos[kind];
@@ -229,7 +238,7 @@ export function gerar(e: EntradaGerar): ResultadoGerar {
     const R: Rastro = { faltas: [], fora: new Set(), faltaG };
     const linhasDaPagina = kind === 'tapume' ? [] : [ctx.cidade?._id, ctx.etapa?._id];
     const ocultas = ocultasDaPagina(kind, e.secoes, linhasDaPagina);
-    const corpo = tirarMidiaOculta(removerSecoes(reordenarSecoes(montador.render(arv.raiz, { ...ctx, kind }, R), e.secoes?.ordem?.[kind]), ocultas));
+    const corpo = tirarMidiaOculta(removerSecoes(reordenarSecoes(converterMarcas(montador.render(arv.raiz, { ...ctx, kind }, R)), e.secoes?.ordem?.[kind]), ocultas));
     // patrocinadores só nas internas: a página do One page, a praça (sem etapas) e cada etapa; o tapume nunca
     const chavePatro = kind === 'unica' ? 'unica' : kind === 'etapa' ? ctx.etapa?._id : kind === 'praca' && !comEtapas ? ctx.cidade?._id : undefined;
     const comPatro = e.patrocinios && chavePatro ? colocarPatrocinios(corpo, montarPatrocinios(e.patrocinios.porPagina[chavePatro], e.patrocinios)) : corpo;

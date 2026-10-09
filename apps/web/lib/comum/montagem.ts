@@ -54,8 +54,9 @@ export function migrarOnePage(e: Evento, modelos: Partial<Record<string, string>
   return mudou;
 }
 
-export function gerarEvento(evento: Evento, modelos: Partial<Record<string, string>>, arquivos: ArquivoMidia[], banco?: BancoPatrocinios | null): ResultadoGerar {
+export function gerarEvento(evento: Evento, modelos: Partial<Record<string, string>>, arquivos: ArquivoMidia[], banco?: BancoPatrocinios | null, opcoes?: { marcarEdicao?: boolean }): ResultadoGerar {
   return gerar({
+    marcarEdicao: opcoes?.marcarEdicao,
     formato: evento.formato,
     modelos,
     vars: evento.vars,

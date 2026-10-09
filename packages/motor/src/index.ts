@@ -13,6 +13,7 @@ export {
 } from './detectar';
 export { avaliar, nomesFormula } from './formulas';
 export { Cadastro, novaLinha, COLUNAS_NOME, type DadosCadastro } from './cadastro';
+export { converterMarcas, MARCA_INI, MARCA_MEIO, MARCA_FIM } from './edicao';
 export {
   ajustarTagsMidia, refsDeArquivo, acharArquivo, normRef, opcoesMidia, padraoMidia, valorMidia, pastasMidia,
   versaoTela, caminhoMidia, OCULTA, midiaEscondida, arquivoDaEscolha, tirarMidiaOculta, secaoMidia, slotMidia, arquivoAceito, tipoArquivo, TIPOS_ARQUIVO, CSS_MIDIA, type OpcaoMidia,

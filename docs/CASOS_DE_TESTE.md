@@ -201,3 +201,10 @@ Os tapumes de cards fixos dos casos H1–H4 são fixtures sintéticos em `packag
 | M5 | só patrocinador desativado | seção não aparece; aviso |
 | M6 | tapume + praça, com etapas e One page | só internas: cada praça a sua (tapume nunca); com etapas, cada etapa a sua e a praça nenhuma; One page com a dela (chave `unica`); antes do rodapé do HTML e do rodapé padrão |
 | M7 | bloco com várias cotas lado a lado e nome do bloco; cota sem nome | nome do bloco acima da faixa; cota sem nome sem título; bloco de uma cota ignora o nome do bloco |
+
+## N. Edição na prévia
+
+| # | Entrada | Esperado |
+|---|---|---|
+| N1 | página gerada sem `marcarEdicao` | nenhuma marca nem `<pub-v>` (o site publicado nunca tem) |
+| N2 | com `marcarEdicao`: variável em texto, atributo, `<title>`, `<style>`, `<script>` e em `@repetir cidades`; contagem | texto visível vira `<pub-v data-v="variável" data-l="linha">` (linha vazia = geral, id da cidade na lista); atributos, title, style e script ficam com o valor puro; contagens não são marcadas |

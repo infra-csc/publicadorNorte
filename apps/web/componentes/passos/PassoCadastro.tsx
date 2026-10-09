@@ -451,15 +451,34 @@ function Gerais({ busca }: { busca: string }) {
 }
 
 export function PassoCadastro() {
-  const { evento, modelos, arquivos, cad, banco } = useEditor();
+  const { evento, modelos, arquivos, cad, banco, alterar } = useEditor();
   const [foco, setFoco] = useState<string | null>(null);
   const unica = evento.formato === 'unica';
   const [busca, setBusca] = useState('');
+  // editar nos campos ou direto na prévia (os textos da página ficam editáveis)
+  const [modo, setModo] = useState<'campos' | 'previa'>('campos');
+  const naPrevia = modo === 'previa';
   // One page sem @repetir cidades no HTML: não mostra a lista
   const temLista = !unica || cad.colunas('cidade').length > 0 || evento.cidades.length > 0;
   const ev = useDeferredValue(evento);
-  const resultado = useMemo(() => gerarEvento(ev, modelos, arquivos, banco), [ev, modelos, arquivos, banco]);
+  const resultado = useMemo(() => gerarEvento(ev, modelos, arquivos, banco, { marcarEdicao: naPrevia }), [ev, modelos, arquivos, banco, naPrevia]);
+  const [paginaEscolhida, setPaginaEscolhida] = useState('');
+  const [alturaJanela, setAlturaJanela] = useState(900);
+  useEffect(() => { const f = () => setAlturaJanela(innerHeight); f(); addEventListener('resize', f); return () => removeEventListener('resize', f); }, []);
+  // texto digitado na prévia: geral (sem linha) ou da cidade/etapa daquela linha
+  const editarNaPrevia = (variavel: string, linha: string, valor: string) => alterar((e) => {
+    if (!linha) { e.gerais[variavel] = valor; return; }
+    const l = e.cidades.find((x) => x._id === linha) || e.etapas.find((x) => x._id === linha);
+    if (l) l[variavel] = valor;
+  });
+  const trocaModo = (
+    <div className="seg" role="group" aria-label="Onde editar">
+      <button type="button" aria-pressed={!naPrevia} onClick={() => setModo('campos')} title="Editar nos campos">Campos</button>
+      <button type="button" aria-pressed={naPrevia} onClick={() => setModo('previa')} title="Editar direto na prévia">✎ Na prévia</button>
+    </div>
+  );
   const pagina =
+    (naPrevia && resultado.paginas.find((p) => p.arquivo === paginaEscolhida)) ||
     resultado.paginas.find((p) => foco && (p.etapaId === foco || (p.cidadeId === foco && !p.etapaId))) ||
     resultado.paginas.find((p) => p.tipo === 'praca') ||
     resultado.paginas[0];
@@ -467,6 +486,19 @@ export function PassoCadastro() {
   return (
     <>
       <Cabecalho passo="cadastro" titulo="Cadastro">{unica ? 'Preencha os valores da página. A lista de cidades (se houver) alimenta os trechos que se repetem, como agenda e acordeão.' : 'Preencha os valores. Cada linha vira uma página. Dá para colar linhas de uma planilha. A prévia mostra a linha em que você está.'}</Cabecalho>
+      {naPrevia ? (
+        <div className="stack">
+          <div className="w-item info"><span className="ic">✎</span><div>Clique num texto da página e digite. Só os textos que vêm do cadastro ficam marcados e podem ser editados. Imagens e vídeos se trocam no passo Mídia.</div></div>
+          {resultado.paginas.length > 1 && (
+            <label className="row small" style={{ gap: 6 }}>Página:
+              <select className="inp" style={{ width: 'auto', padding: '6px 10px' }} value={pagina?.arquivo || ''} onChange={(e) => setPaginaEscolhida(e.target.value)}>
+                {resultado.paginas.map((p) => <option key={p.arquivo} value={p.arquivo}>{p.titulo} · {p.arquivo}</option>)}
+              </select>
+            </label>
+          )}
+          <Previa html={pagina?.html ?? null} titulo={pagina ? `${pagina.titulo} · ${pagina.arquivo}` : 'Prévia'} altura={Math.max(520, alturaJanela - 260)} editar aoEditar={editarNaPrevia} extra={trocaModo} />
+        </div>
+      ) : (
       <div className="split">
         <div className="stack" style={{ minWidth: 0 }}>
           <div className="row between" style={{ gap: 8 }}>
@@ -478,9 +510,10 @@ export function PassoCadastro() {
           {evento.formato === 'tapume_etapa_praca' && <Tabela tipo="etapa" foco={foco} setFoco={setFoco} busca={busca} />}
         </div>
         <div className="lado">
-          <Previa html={pagina?.html ?? null} titulo={pagina ? `${pagina.titulo} · ${pagina.arquivo}` : 'Prévia'} altura={560} />
+          <Previa html={pagina?.html ?? null} titulo={pagina ? `${pagina.titulo} · ${pagina.arquivo}` : 'Prévia'} altura={560} extra={trocaModo} />
         </div>
       </div>
+      )}
       <NavPassos passo="cadastro" />
     </>
   );
