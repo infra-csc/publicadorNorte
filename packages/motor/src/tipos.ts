@@ -50,6 +50,7 @@ export interface Aviso {
     | 'falta-html'
     | 'sem-realizado'
     | 'sem-cidades'
+    | 'linhas-vazias'
     | 'sem-etapas'
     | 'arquivo-duplicado'
     | 'bloco-mal-fechado'

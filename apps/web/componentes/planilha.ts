@@ -1,6 +1,6 @@
 // Cadastro em planilha: baixar (.xlsx) e enviar (.xlsx ou .csv).
 // Enviar não grava direto: devolve uma proposta (o que muda) para a pessoa conferir e aplicar.
-import { COLUNAS_NOME, type Cadastro, type Linha, type TipoItem } from '@norte/motor';
+import { COLUNAS_NOME, linhaVazia, type Cadastro, type Linha, type TipoItem } from '@norte/motor';
 import type { Evento } from '@/lib/comum/tipos';
 
 const COL_ID = 'id (não altere)';
@@ -81,13 +81,20 @@ function lerCsv(t: string): Tabela {
   return linhas.map((l) => l.map((x) => x.trim()));
 }
 
+/** tabela no formato "variavel | valor" (ou "campo | valor"): são os gerais, não cidades */
+const ehGerais = (t: Tabela) => {
+  const [a, b] = (t[0] || []).map(limpo);
+  return ['variavel', 'campo', 'nome'].includes(a || '') && b === 'valor' && (t[0] || []).filter((x) => x.trim()).length === 2;
+};
+
 export async function lerPlanilha(arquivo: File, evento: Evento, cad: Cadastro): Promise<Proposta> {
   const abas = new Map<string, Tabela>();
   if (/\.csv$/i.test(arquivo.name)) {
-    abas.set('cidades', lerCsv(await arquivo.text()));
+    const t = lerCsv(await arquivo.text());
+    abas.set(ehGerais(t) ? 'gerais' : 'cidades', t);
   } else if (/\.xlsx$/i.test(arquivo.name)) {
     const { default: ler } = await import('read-excel-file/browser');
-    for (const a of await ler(arquivo)) abas.set(limpo(a.sheet), a.data.map((r) => r.map(texto)));
+    for (const a of await ler(arquivo)) { const t = a.data.map((r) => r.map(texto)); abas.set(ehGerais(t) && !abas.has('gerais') ? 'gerais' : limpo(a.sheet), t); }
   } else {
     throw new Error('Envie a planilha em .xlsx (Excel) ou .csv.');
   }
@@ -115,6 +122,7 @@ export async function lerPlanilha(arquivo: File, evento: Evento, cad: Cadastro):
     const cols = cad.colunas(tipo);
     const porNome = new Map(cols.map((c) => [limpo(c), c]));
     const cab = (tab[0] || []).map((h) => h.trim());
+    if (!cab.some((h) => porNome.has(limpo(h)))) throw new Error(`A aba “${aba}” não tem nenhuma coluna do cadastro (${cols.slice(0, 4).join(', ')}…). Confira a primeira linha.`);
     const mapa = cab.map((h) => {
       const k = limpo(h);
       if (!k) return null;
@@ -136,7 +144,8 @@ export async function lerPlanilha(arquivo: File, evento: Evento, cad: Cadastro):
     let atualizadas = 0;
     const out: Linha[] = [];
     for (const r of tab.slice(1)) {
-      if (!r.some((x) => x?.trim())) continue;
+      // linha sem nenhum valor (só o id, ou nada) não vira cidade
+      if (!mapa.some((c, i) => c && c !== '_id' && (r[i] ?? '').trim())) continue;
       const v = (campo: string) => { const i = mapa.indexOf(campo); return i >= 0 ? (r[i] ?? '').trim() : ''; };
       let base = achar(v('_id'), colNome ? v(colNome) : '');
       const l: Linha = base ? structuredClone(base) : { _id: novoId() };
@@ -151,7 +160,9 @@ export async function lerPlanilha(arquivo: File, evento: Evento, cad: Cadastro):
       }
       out.push(l);
     }
-    const removidas = atuais.filter((x) => !usadas.has(x._id)).map((x) => cad.nomeItem(tipo, x));
+    const fora = atuais.filter((x) => !usadas.has(x._id));
+    const vazias = fora.filter(linhaVazia).length;
+    const removidas = [...fora.filter((x) => !linhaVazia(x)).map((x) => cad.nomeItem(tipo, x)), ...(vazias ? [`${vazias} sem nada preenchido`] : [])];
     resumo.push({ aba, novas, atualizadas, removidas });
     return out;
   }

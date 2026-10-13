@@ -1,5 +1,5 @@
 'use client';
-import { deISO, ehData, estaRealizado, FORMULAS_PADRAO, lerData, limiteRealizado, novaLinha, paraISO, slugValor, sincronizarVars, type Linha, type TipoItem } from '@norte/motor';
+import { deISO, ehData, estaRealizado, FORMULAS_PADRAO, lerData, limiteRealizado, linhaVazia, novaLinha, paraISO, slugValor, sincronizarVars, type Linha, type TipoItem } from '@norte/motor';
 import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { gerarEvento } from '@/lib/comum/montagem';
 import type { Evento } from '@/lib/comum/tipos';
@@ -10,6 +10,29 @@ import { Previa } from '../Previa';
 const novoId = () => crypto.randomUUID().slice(0, 8);
 const lista = (e: Evento, t: TipoItem) => (t === 'etapa' ? e.etapas : e.cidades);
 const rotulo = (o: string) => (slugValor(o) === 'breve' ? 'em breve' : o);
+
+/** linhas sem nada preenchido (ex.: sobra de planilha): aviso e botão para tirar todas, com confirmação */
+function TirarVazias({ tipo }: { tipo: TipoItem }) {
+  const { evento, alterar } = useEditor();
+  const [confirmar, setConfirmar] = useState(false);
+  const n = lista(evento, tipo).filter(linhaVazia).length;
+  if (!n) return null;
+  const nome = tipo === 'etapa' ? 'etapa' : 'cidade';
+  return (
+    <div className="w-item warn">
+      <span className="ic">!</span>
+      <div className="row between" style={{ flex: 1, gap: 8, flexWrap: 'wrap' }}>
+        <span><b>{n} {nome}(s) sem nada preenchido</b>{evento.formato === 'unica' ? 'Ficam de fora da página.' : 'Cada uma vira uma página em branco.'}</span>
+        {confirmar ? (
+          <span className="row" style={{ gap: 4 }}>
+            <button className="btn sm danger-fill" type="button" onClick={() => { alterar((e) => { const l = lista(e, tipo); const fica = l.filter((x) => !linhaVazia(x)); l.splice(0, l.length, ...fica); }); setConfirmar(false); }}>Tirar {n}</button>
+            <button className="btn sm ghost" type="button" onClick={() => setConfirmar(false)}>Não</button>
+          </span>
+        ) : <button className="btn sm" type="button" onClick={() => setConfirmar(true)}>Tirar as vazias</button>}
+      </div>
+    </div>
+  );
+}
 
 function Celula({ tipo, linha, col }: { tipo: TipoItem; linha: Linha; col: string }) {
   const { cad, det, alterar } = useEditor();
@@ -178,6 +201,7 @@ function Tabela({ tipo, foco, setFoco, busca }: { tipo: TipoItem; foco: string |
           <button className="btn sm pri" type="button" onClick={adicionar}>+ {tipo === 'etapa' ? 'Etapa' : 'Cidade'}</button>
         </span>
       </div>
+      <TirarVazias tipo={tipo} />
       {novaCol !== null && (
         <div className="colpanel">
           <label className="f">Nome da nova coluna <small>Letras, números e _. Use em fórmulas ou escreva <span className="v">@nome</span> no HTML.</small>
@@ -387,27 +411,30 @@ const bate = (busca: string, ...textos: string[]) => !busca || textos.some((t) =
  * Variáveis gerais numeradas viram blocos: tema1_titulo, tema1_texto, tema2_titulo… → bloco "tema" com itens 1, 2…
  * O número tem que estar colado num pedaço do nome (tema1, faq10, patrocinio2).
  */
-type Serie = { raiz: string; campos: string[]; itens: Map<number, Map<string, string>> };
+type Serie = { chave: string; raiz: string; campos: string[]; itens: Map<number, Map<string, string>> };
 function separarSeries(gerais: string[]): { soltas: string[]; series: Serie[] } {
   const porRaiz = new Map<string, Serie>();
-  const de = new Map<string, { raiz: string; n: number; campo: string }>();
+  const de = new Map<string, { chave: string; raiz: string; n: number; campo: string }>();
   for (const g of gerais) {
     const partes = g.split('_');
     const i = partes.findIndex((p) => /^[a-z]+\d+$/.test(p));
     if (i < 0) continue;
     const [, raiz, num] = /^([a-z]+)(\d+)$/.exec(partes[i])!;
     const campo = [...partes.slice(0, i), raiz + '#', ...partes.slice(i + 1)].join('_');
-    de.set(g, { raiz, n: Number(num), campo });
+    const chave = [...partes.slice(0, i), raiz].join('_');
+    de.set(g, { chave, raiz, n: Number(num), campo });
   }
-  for (const [g, { raiz, n, campo }] of de) {
-    const s: Serie = porRaiz.get(raiz) || { raiz, campos: [], itens: new Map() };
-    porRaiz.set(raiz, s);
+  for (const [g, { chave, raiz, n, campo }] of de) {
+    const s: Serie = porRaiz.get(chave) || { chave, raiz, campos: [], itens: new Map() };
+    porRaiz.set(chave, s);
     if (!s.campos.includes(campo)) s.campos.push(campo);
     if (!s.itens.has(n)) s.itens.set(n, new Map());
     s.itens.get(n)!.set(campo, g);
   }
-  // só é bloco se tiver pelo menos dois números
-  const series = [...porRaiz.values()].filter((s) => s.itens.size > 1);
+  // só é lista com três números ou mais, ou com dois que têm os mesmos campos (equipe1_nome/_funcao, equipe2_nome/_funcao);
+  // titulo_linha1 + titulo_linha2 ou destaque1 + destaque2_gratuito são textos diferentes e ficam soltos
+  const mesmos = (s: Serie) => s.campos.length > 1 && [...s.itens.values()].every((m) => m.size === s.campos.length);
+  const series = [...porRaiz.values()].filter((s) => s.itens.size > 2 || (s.itens.size === 2 && mesmos(s)));
   const naSerie = new Set(series.flatMap((s) => [...s.itens.values()].flatMap((m) => [...m.values()])));
   for (const s of series) s.itens = new Map([...s.itens].sort((a, b) => a[0] - b[0]));
   return { soltas: gerais.filter((g) => !naSerie.has(g)), series };
@@ -510,7 +537,7 @@ function Gerais({ busca }: { busca: string }) {
           ))}
         </div>
       )}
-      {series.map((s) => <BlocoSerie key={s.raiz} s={s} busca={busca} />)}
+      {series.map((s) => <BlocoSerie key={s.chave} s={s} busca={busca} />)}
     </section>
   );
 }
@@ -542,6 +569,7 @@ function ListaEmBlocos({ busca }: { busca: string }) {
             </button>
           )}
         </div>
+        <TirarVazias tipo="cidade" />
         {mostradas.map((l) => {
           const i = linhas.indexOf(l);
           return (

@@ -1,7 +1,7 @@
 import { lerBlocos, type No } from './blocos';
 import { ehPeriodo, formatarData, formatoDeData, periodo, type Automacao } from './datas';
 import { converterMarcas, MARCA_INI, marcar } from './edicao';
-import { Cadastro } from './cadastro';
+import { Cadastro, linhaVazia } from './cadastro';
 import { temCardsFixos } from './cards-fixos';
 import { detectar, ehContagem, sincronizarVars, TEXTOS_PADRAO, VARS_GALERIA, type Deteccao } from './detectar';
 import { ajustarTagsMidia, opcoesMidia, pastasMidia, tirarMidiaOculta } from './midia';
@@ -281,7 +281,11 @@ const RX_TEXTO_PADRAO_MARCADO = new RegExp('\\uE000(?:' + Object.keys(TEXTOS_PAD
 export function gerar(e: EntradaGerar): ResultadoGerar {
   const det = detectar(e.modelos, e.formato);
   const vars = sincronizarVars(det, e.vars);
-  const cad = new Cadastro(det, { ...e, vars });
+  // One page: linha da lista sem nada preenchido (ex.: sobra de planilha) não entra no @repetir cidades
+  // (nos outros formatos ela continua virando página cidade-N.html, como no protótipo)
+  const cidades = e.formato === 'unica' ? (e.cidades || []).filter((l) => !linhaVazia(l)) : e.cidades || [];
+  const nVazias = (e.cidades || []).length - cidades.length;
+  const cad = new Cadastro(det, { ...e, vars, cidades });
   const paginasDoFormato = FORMATOS[e.formato].paginas;
   const comEtapas = e.formato === 'tapume_etapa_praca';
   const paginas: PaginaGerada[] = [];
@@ -300,6 +304,12 @@ export function gerar(e: EntradaGerar): ResultadoGerar {
     avisos.push({
       codigo: 'sem-realizado', nivel: 'alerta', passo: 'paginas', titulo: 'O HTML não mostra "realizado"',
       detalhe: 'O modo automático está ligado, mas o HTML não tem <!-- @se status = realizado -->. As cidades que terminarem vão aparecer como "em breve".',
+    });
+  }
+  if (nVazias) {
+    avisos.push({
+      codigo: 'linhas-vazias', nivel: 'alerta', passo: 'cadastro', titulo: nVazias + ' cidade(s) vazia(s) no cadastro',
+      detalhe: 'Cidades sem nenhum valor ficam de fora da página. Tire-as no passo Cadastro ("Tirar as vazias").',
     });
   }
   if (!unica && !cad.cidades.length) {

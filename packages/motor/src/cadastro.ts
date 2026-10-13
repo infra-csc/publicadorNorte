@@ -160,6 +160,11 @@ export class Cadastro {
   }
 }
 
+/** linha sem nenhum valor digitado (só o id): não é cidade nem etapa, fica de fora das páginas */
+export function linhaVazia(l: Linha): boolean {
+  return Object.entries(l).every(([k, v]) => k.startsWith('_') || !String(v ?? '').trim());
+}
+
 /**
  * Linha nova copiada da de cima, menos o nome (cada linha é outra cidade/etapa), o arquivo e o status
  * (o status volta ao padrão, em breve).

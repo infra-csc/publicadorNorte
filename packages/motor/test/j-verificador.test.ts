@@ -46,6 +46,7 @@ describe('J. Verificador de HTML', () => {
     expect(p).toHaveLength(1);
     expect(p[0].mensagem).toContain('"aberta"');
     expect(so('<!-- @se status = aberta -->x<!-- @fim --><!-- @se status = em breve -->y<!-- @fim -->', 'status-invalido')).toEqual([]);
+    expect(so('<!-- @se status = realizado -->x<!-- @fim -->', 'status-invalido')).toEqual([]);
   });
 
   it('J6: nomes fora da base', () => {

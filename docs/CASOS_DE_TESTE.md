@@ -155,7 +155,7 @@ Os tapumes de cards fixos dos casos H1–H4 são fixtures sintéticos em `packag
 | J2 | `R$@preco_vista_1` fora de bloco `@se gratuito` | problema |
 | J3 | `<script>if (gratuito === 'sim')…</script>` | problema |
 | J4 | `A confirmar` fora de `@senao` | problema (só com "A" maiúsculo: "a confirmar" no meio de uma frase é texto comum) |
-| J5 | `@se status = aberto` | problema: use `aberta` |
+| J5 | `@se status = aberto` | problema: use `aberta`; `aberta`, `em breve` e `realizado` não acusam |
 | J6 | `@valor_1`, `@preco_1`, `@municipio_1` | problema: nome fora da base |
 | J7 | `<picture><img src="@media_hero_desktop_1"></picture>` | problema |
 | J8 | `src="data:image/png;base64,…"` | problema |
@@ -274,4 +274,13 @@ Os tapumes de cards fixos dos casos H1–H4 são fixtures sintéticos em `packag
 | U2 | galeria dentro de `@repetir cidades` | cada cidade mostra as dela e as de todas |
 | U3 | página da cidade (praça); duas galerias (`galeria`, `galeria_bastidores`) | só as da cidade e as de todas; cada galeria com a sua lista |
 | U4 | detecção | `@galeria_*` não vira coluna; `galeriasDe` lista as galerias dos HTMLs |
+
+## V. Cidades vazias (sobra de planilha)
+
+| # | Entrada | Esperado |
+|---|---|---|
+| V1 | One page com 2 cidades e 2 linhas sem nada (só id / só espaços) | `@repetir cidades` com 2 itens, `@total_cidades` = 2, aviso `linhas-vazias` "2 cidade(s) vazia(s)" |
+| V2 | tapume + praça com uma linha vazia | continua virando `cidade-N.html` (protótipo), sem aviso |
+| V3 | enviar `valores-iniciais.csv` (`variavel;valor`) | vai para os gerais; cidades não mudam (apps/web, planilha.test.ts) |
+| V4 | enviar planilha com linhas só de id | não viram cidade; as vazias atuais saem contadas ("N sem nada preenchido") |
 

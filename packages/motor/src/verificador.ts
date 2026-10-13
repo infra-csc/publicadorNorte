@@ -79,8 +79,8 @@ export function verificarHtml(html: string, _tipo?: TipoPagina): Problema[] {
     if (/==|["']/.test(n.arg) || /^@/.test(n.arg) || /^@?[A-Za-z]\w*_\d+\b/.test(n.arg)) {
       add('sintaxe-se', n.ini, `Escreva o @se sem "@", sem número e com um "=" só, sem aspas (ex.: @se gratuito = sim).`);
     }
-    if (n.col === 'status' && n.op && !['aberta', 'breve'].includes(slugValor(n.val))) {
-      add('status-invalido', n.ini, `O status testado é "${n.val}". Use "aberta" (ou "em breve").`);
+    if (n.col === 'status' && n.op && !['aberta', 'breve', 'realizado'].includes(slugValor(n.val))) {
+      add('status-invalido', n.ini, `O status testado é "${n.val}". Use "aberta", "em breve" ou "realizado".`);
     }
     if (SINONIMOS[n.col]) add('nome-fora-da-base', n.ini, `@se ${n.col}: use o nome da base @${SINONIMOS[n.col]}.`);
   };

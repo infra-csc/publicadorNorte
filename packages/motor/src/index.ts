@@ -12,7 +12,7 @@ export {
   type Deteccao, type VarDetectada, type Ocorrencia,
 } from './detectar';
 export { avaliar, nomesFormula } from './formulas';
-export { Cadastro, novaLinha, COLUNAS_NOME, type DadosCadastro } from './cadastro';
+export { Cadastro, linhaVazia, novaLinha, COLUNAS_NOME, type DadosCadastro } from './cadastro';
 export { TEXTOS_PADRAO, VARS_GALERIA, galeriasDe } from './detectar';
 export { estaRealizado, limiteRealizado, type Automacao } from './datas';
 export { ehData, ehPeriodo, formatoDeData, formatarData, periodo, lerData, paraISO, deISO, FORMATOS_DATA, type FormatoData } from './datas';
