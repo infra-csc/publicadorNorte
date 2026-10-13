@@ -18,6 +18,7 @@ export const PASSOS = [
   ['midia', 'Mídia', 'Trocar imagens e vídeos'],
   ['patrocinios', 'Patrocínios', 'Logos dos patrocinadores'],
   ['secoes', 'Seções', 'Ordem e o que aparece'],
+  ['seo', 'SEO', 'Google e redes sociais'],
   ['conferir', 'Conferir', 'Prévia e avisos'],
   ['publicar', 'Publicar', 'Colocar o site no ar'],
 ] as const;
@@ -236,6 +237,7 @@ export function Editor({ slug, children }: { slug: string; children: React.React
     midia: dados.arquivos.length > 0,
     patrocinios: paginasComPatrocinio(ev).some((p) => (ev.patrocinios?.porPagina[p.id]?.blocos.length || 0) > 0),
     secoes: !!(ev.secoes?.ocultas?.length || Object.keys(ev.secoes?.ordem || {}).length),
+    seo: !!(ev.seo && (ev.seo.favicon || ev.seo.titulo || ev.seo.descricao || ev.seo.share?.imagem)),
     conferir: false,
     publicar: ev.versaoAtiva != null,
   };

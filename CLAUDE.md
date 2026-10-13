@@ -57,6 +57,7 @@ packages/motor/
     midia.ts        opções e padrão de mídia, refsDeArquivo(), ajustarTagsMidia()
     gerar.ts        gerar() → páginas + avisos
     conversor.ts    temCardsFixos(), converterCardsFixos() (linkedom no lugar do DOMParser)
+    seo.ts          aplicarSeo()/lerSeo(): title, description, favicon, Open Graph/Twitter (vazio = automático)
     modulos.ts      módulo de imagem do passo Seções (vira <section id="pub-img-…">; SVG limpo e com cor única)
     verificador.ts  verificarHtml() → problemas com linha
   test/             um arquivo por seção de CASOS_DE_TESTE (a-… a j-…)

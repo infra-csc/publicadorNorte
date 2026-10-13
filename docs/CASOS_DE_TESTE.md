@@ -238,3 +238,14 @@ Os tapumes de cards fixos dos casos H1–H4 são fixtures sintéticos em `packag
 | P1 | automático, 8 h; Cotia termina 23/10/2026; Ibiúna só com início 23/10; agora 23/10 07:59 e 08:00 (Brasília) | às 07:59 nada muda; às 08:00 Cotia e Ibiúna ficam "realizado" em @se e em @total_realizado; sem data não muda |
 | P2 | manual; horas 0 e 30 | manual não muda; 0 h: 00:00 do último dia; 30 h: dia seguinte às 06:00 |
 | P3 | automático com HTML sem `@se status = realizado` | "realizado" está nas opções de status; aviso (alerta) "O HTML não mostra realizado" |
+
+## R. SEO e compartilhamento
+
+| # | Entrada | Esperado |
+|---|---|---|
+| R1 | tudo vazio, HTML com title, description e favicon | título/descrição do HTML; og:title/og:description copiam; og:image = primeira foto (jpg/png/webp, não svg); favicon do HTML; tags sem duplicar |
+| R2 | HTML sem title nem description | título = nome do evento (na cidade: "evento · cidade"); descrição = primeiro parágrafo com 40+ caracteres, cortado em ~155 sem quebrar palavra, com "…" |
+| R3 | título, descrição, favicon e compartilhamento preenchidos; página de cidade com campos das cidades | valem os preenchidos, com {evento}/{cidade} trocados e aspas/< escapados; na cidade: título próprio, og:title = o da página, mesma imagem; favicon e imagem vão para o site |
+| R4 | com endereço do site | og:image e og:url absolutos (index.html → raiz) |
+| R5 | gerar sem seo / com seo | sem seo o head fica como veio; com seo a página principal usa os campos gerais e as cidades os seus |
+

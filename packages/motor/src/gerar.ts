@@ -9,6 +9,7 @@ import { abreviar, esc, slug, slugValor } from './texto';
 import { FORMATOS, NOME_PAGINA, type Aviso, type Formato, type Linha, type Modelos, type TipoItem, type TipoPagina, type Vars } from './tipos';
 import { ehMidia, trocarVars } from './variaveis';
 import { colocarModulos } from './modulos';
+import { aplicarSeo, type Seo } from './seo';
 import { ocultasDaPagina, removerSecoes, reordenarSecoes, type EscolhaSecoes } from './secoes';
 import { colocarRodape, rodapeDaPagina, type EscolhaRodape } from './rodape';
 import { colocarPatrocinios, montarPatrocinios, patrocinadoresFora, type EntradaPatrocinios } from './patrocinios';
@@ -38,6 +39,10 @@ export interface EntradaGerar {
   automacao?: Automacao;
   /** prévia editável: marca cada texto de variável com <pub-v data-v data-l> (nunca no site publicado) */
   marcarEdicao?: boolean;
+  /** SEO e compartilhamento (sem isso, o <head> do HTML fica como veio) */
+  seo?: Seo;
+  /** endereço do site (https://dominio/): og:image e og:url absolutos */
+  urlSite?: string;
 }
 
 export interface PaginaGerada {
@@ -286,7 +291,14 @@ export function gerar(e: EntradaGerar): ResultadoGerar {
     // patrocinadores só nas internas: a página do One page, a praça (sem etapas) e cada etapa; o tapume nunca
     const chavePatro = kind === 'unica' ? 'unica' : kind === 'etapa' ? ctx.etapa?._id : kind === 'praca' && !comEtapas ? ctx.cidade?._id : undefined;
     const comPatro = e.patrocinios && chavePatro ? colocarPatrocinios(corpo, montarPatrocinios(e.patrocinios.porPagina[chavePatro], e.patrocinios)) : corpo;
-    const html = ajustarTagsMidia(colocarRodape(comPatro, rodapeDaPagina(e.rodape, linhasDaPagina)));
+    const montado = ajustarTagsMidia(colocarRodape(comPatro, rodapeDaPagina(e.rodape, linhasDaPagina)));
+    const html = e.seo
+      ? aplicarSeo(montado, e.seo, {
+        cidade: kind !== 'unica' && ctx.cidade ? cad.nomeItem('cidade', ctx.cidade) : undefined,
+        etapa: ctx.etapa ? cad.nomeItem('etapa', ctx.etapa) : undefined,
+        urlSite: e.urlSite, arquivo,
+      })
+      : montado;
     for (const f of R.faltas) {
       if (!vazios.has(f.chave)) vazios.set(f.chave, new Set());
       vazios.get(f.chave)!.add(f.quem ?? titulo);

@@ -7,6 +7,7 @@ import { PassoPaginas } from './PassoPaginas';
 import { PassoPatrocinios } from './PassoPatrocinios';
 import { PassoPublicar } from './PassoPublicar';
 import { PassoSecoes } from './PassoSecoes';
+import { PassoSeo } from './PassoSeo';
 import { PassoVariaveis } from './PassoVariaveis';
 
 export function PassoAtual({ passo }: { passo: string }) {
@@ -18,6 +19,7 @@ export function PassoAtual({ passo }: { passo: string }) {
     case 'midia': return <PassoMidia />;
     case 'patrocinios': return <PassoPatrocinios />;
     case 'secoes': return <PassoSecoes />;
+    case 'seo': return <PassoSeo />;
     case 'conferir': return <PassoConferir />;
     default: return <PassoPublicar />;
   }

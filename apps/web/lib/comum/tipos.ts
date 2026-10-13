@@ -47,6 +47,8 @@ export interface Evento {
   publicacoes: Publicacao[];
   /** versão no ar no endereço de teste (null = nenhuma) */
   versaoAtiva: number | null;
+  /** SEO e compartilhamento (vazio = automático) */
+  seo?: SeoEvento;
   /** produção: o site no domínio próprio do evento (uma versão já publicada no teste) */
   producao?: Producao;
   criadoEm: string;
@@ -82,6 +84,18 @@ export interface AplicacaoPatrocinador {
 /** evento visto pela aba Patrocínios: páginas e cotas para adicionar logos */
 export interface EventoPatrocinavel { slug: string; nome: string; publicado: boolean; pendente: boolean; cotas: Cota[]; paginas: { id: string; nome: string }[] }
 export type UsoPatrocinadores = Record<string, { slug: string; nome: string; publicado: boolean; pendente: boolean; aplicacoes: AplicacaoPatrocinador[]; cotas: Cota[] }[]>;
+
+/** passo SEO: o que ficar vazio sai automático (do HTML, do nome do evento, do primeiro parágrafo, da primeira foto) */
+export interface SeoEvento {
+  /** ícone da aba (caminho na mídia) */
+  favicon?: string;
+  titulo?: string;
+  descricao?: string;
+  /** redes sociais (WhatsApp, Facebook, LinkedIn, X) */
+  share?: { imagem?: string; titulo?: string; descricao?: string };
+  /** páginas das cidades/etapas ({cidade}, {etapa}, {evento}) */
+  interna?: { titulo?: string; descricao?: string };
+}
 
 export interface Producao {
   /** domínios do evento; o primeiro é o principal, os outros redirecionam para ele (ex.: www) */

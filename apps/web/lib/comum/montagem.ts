@@ -61,9 +61,18 @@ export function realizadosAgora(evento: Pick<Evento, 'automacao' | 'cidades' | '
   return [...evento.cidades, ...evento.etapas].filter((l) => estaRealizado(l, evento.automacao, agora)).map((l) => l._id);
 }
 
-export function gerarEvento(evento: Evento, modelos: Partial<Record<string, string>>, arquivos: ArquivoMidia[], banco?: BancoPatrocinios | null, opcoes?: { marcarEdicao?: boolean; agora?: Date }): ResultadoGerar {
+/** endereço do site para as tags de compartilhamento: o domínio de produção, senão o de teste */
+export function urlDoSite(e: Pick<Evento, 'producao' | 'publicacoes'>): string | undefined {
+  const d = e.producao?.dominios?.[0];
+  if (d) return `https://${d}/`;
+  return e.publicacoes[e.publicacoes.length - 1]?.url || undefined;
+}
+
+export function gerarEvento(evento: Evento, modelos: Partial<Record<string, string>>, arquivos: ArquivoMidia[], banco?: BancoPatrocinios | null, opcoes?: { marcarEdicao?: boolean; agora?: Date; urlSite?: string }): ResultadoGerar {
   return gerar({
     marcarEdicao: opcoes?.marcarEdicao,
+    seo: { ...evento.seo, nomeEvento: evento.nome },
+    urlSite: opcoes?.urlSite || urlDoSite(evento),
     automacao: evento.automacao,
     agora: opcoes?.agora ?? new Date(),
     formato: evento.formato,

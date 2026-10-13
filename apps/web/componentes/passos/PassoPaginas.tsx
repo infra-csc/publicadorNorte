@@ -1,8 +1,9 @@
 'use client';
 import { acharArquivo, acharVars, FORMATOS, NOME_PAGINA, normRef, refsDeArquivo, temCardsFixos, verificarHtml, type ResultadoConversao, type TipoPagina } from '@norte/motor';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { arquivoAceito, caminhoGuardado, tamanho } from '@/lib/comum/arquivos';
 import { api, json } from '../api';
+import { lerSoltos, temArquivos, type ArquivoSolto } from '../arrastarPasta';
 import { enviarMidia, juntar } from '../enviarMidia';
 import { Cabecalho, NavPassos, useEditor, varsSincronizadas } from '../Editor';
 
@@ -155,10 +156,15 @@ function CartaoMidia() {
     return { refs: r.size, faltam: [...r].filter((x) => !acharArquivo(x, caminhos)) };
   }, [modelos, arquivos]);
 
-  async function receber(lista: FileList | null) {
-    if (!lista?.length) return;
+  const [arrastando, setArrastando] = useState(false);
+  const profundidade = useRef(0);
+  const receber = (lista: FileList | null) =>
+    lista?.length ? receberSoltos([...lista].map((f) => ({ file: f, rel: (f as File & { webkitRelativePath?: string }).webkitRelativePath || f.name }))) : undefined;
+
+  async function receberSoltos(lista: ArquivoSolto[]) {
+    if (!lista.length) return;
     setErro('');
-    const todos = [...lista].map((f) => ({ f, caminho: caminhoGuardado((f as File & { webkitRelativePath?: string }).webkitRelativePath || f.name) }));
+    const todos = lista.map((x) => ({ f: x.file, caminho: caminhoGuardado(x.rel) }));
     const aceitos = todos.filter((x) => arquivoAceito(x.caminho));
     const ignorados = todos.length - aceitos.length;
     if (!aceitos.length) return setErro('Nenhuma imagem, vídeo ou fonte nessa seleção.');
@@ -186,11 +192,25 @@ function CartaoMidia() {
 
   const inputPasta = <input type="file" multiple className="sr" {...{ webkitdirectory: '' }} onChange={(e) => { receber(e.target.files); e.target.value = ''; }} />;
   const inputSoltos = <input type="file" multiple className="sr" onChange={(e) => { receber(e.target.files); e.target.value = ''; }} />;
+  // arrastar a pasta (ou arquivos) para qualquer lugar deste cartão
+  const soltar = {
+    onDragEnter: (e: React.DragEvent) => { if (!temArquivos(e)) return; e.preventDefault(); profundidade.current++; setArrastando(true); },
+    onDragOver: (e: React.DragEvent) => { if (!temArquivos(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; },
+    onDragLeave: () => { profundidade.current = Math.max(0, profundidade.current - 1); if (!profundidade.current) setArrastando(false); },
+    onDrop: async (e: React.DragEvent) => {
+      if (!temArquivos(e)) return;
+      e.preventDefault();
+      profundidade.current = 0;
+      setArrastando(false);
+      setProgresso('Lendo a pasta…');
+      try { await receberSoltos(await lerSoltos(e.dataTransfer)); } catch (x) { setErro('Não deu para ler o que foi arrastado: ' + (x as Error).message); setProgresso(''); }
+    },
+  };
   return (
-    <section className="card stack">
+    <section className={'card stack' + (arrastando ? ' card-soltar' : '')} {...soltar}>
       <div className="row between">
         <div><h3>Imagens, vídeos e arquivos do site</h3>
-          <p className="small muted">Envie a pasta <b>_media</b> (ou a pasta do site que contém a _media). Com ela, a prévia mostra tudo e você troca imagens e vídeos no passo Mídia.</p></div>
+          <p className="small muted">Envie (ou arraste para cá) a pasta <b>_media</b> ou a pasta do site que contém a _media. Com ela, a prévia mostra tudo e você troca imagens e vídeos no passo Mídia.</p></div>
         {arquivos.length ? (faltam.length ? <span className="pill warn">Faltam {faltam.length}</span> : <span className="pill ok">Tudo encontrado</span>) : refs ? <span className="pill warn">Falta enviar</span> : null}
       </div>
       {arquivos.length ? (
@@ -211,7 +231,7 @@ function CartaoMidia() {
       ) : (
         <div className="row">
           <label className="drop" style={{ flex: 1 }}>
-            <b style={{ color: 'var(--ink)' }}>Escolher a pasta _media</b>
+            <b style={{ color: 'var(--ink)' }}>{arrastando ? 'Solte a pasta aqui' : 'Arraste a pasta _media para cá ou clique para escolher'}</b>
             <span className="small">Imagens, vídeos e fontes. Outros arquivos são ignorados.</span>
             {inputPasta}
           </label>
