@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { PassoAtual } from '@/componentes/passos/PassoAtual';
 
-const VALIDOS = ['evento', 'paginas', 'variaveis', 'cadastro', 'midia', 'patrocinios', 'secoes', 'seo', 'conferir', 'publicar'];
+const VALIDOS = ['evento', 'paginas', 'variaveis', 'cadastro', 'midia', 'patrocinios', 'secoes', 'pos', 'seo', 'conferir', 'publicar'];
 
 export default async function Passo({ params }: { params: Promise<{ passo: string }> }) {
   const { passo } = await params;

@@ -1,7 +1,7 @@
 import { lerBlocos, type No, type ErroBloco } from './blocos';
 import { ehPeriodo, formatoDeData } from './datas';
 import { slug } from './texto';
-import { FORMATOS, type Dono, type EstadoVar, type Formato, type Modelos, type TipoItem, type TipoPagina, type Vars } from './tipos';
+import { FORMATOS, tipoBase, type Dono, type EstadoVar, type Formato, type Modelos, type TipoItem, type TipoPagina, type Vars } from './tipos';
 import { ehMidia, varsDoTexto } from './variaveis';
 
 export interface Ocorrencia {
@@ -92,9 +92,9 @@ export function detectar(modelos: Modelos, formato: Formato): Deteccao {
   const mapa = new Map<string, VarDetectada>();
   const opc: Record<string, Set<string>> = {};
   const erros: Deteccao['erros'] = {};
-  const paginas = FORMATOS[formato].paginas;
-  // a página do One page funciona como uma praça (com a linha única do cadastro)
-  for (const k of ['praca', 'unica', 'etapa', 'tapume'] as TipoPagina[]) {
+  const paginas = [...FORMATOS[formato].paginas, ...FORMATOS[formato].pos];
+  // a página do One page funciona como uma praça (com a linha única do cadastro); o pós-evento vem depois
+  for (const k of ['praca', 'unica', 'etapa', 'tapume', 'pos_praca', 'pos_unica', 'pos_etapa'] as TipoPagina[]) {
     const html = modelos[k];
     if (!paginas.includes(k) || html == null) continue;
     erros[k] = lerBlocos(html).erros;
@@ -139,6 +139,12 @@ export function detectar(modelos: Modelos, formato: Formato): Deteccao {
   return { formato, variaveis: mapa, opcoes, erros };
 }
 
+/** variável que só aparece nos HTMLs de pós-evento (preenchida no passo Pós-evento, não no Cadastro) */
+export function soNoPos(d: VarDetectada | undefined): boolean {
+  const k = d ? Object.keys(d.por) : [];
+  return k.length > 0 && k.every((x) => x.startsWith('pos_'));
+}
+
 /** textos gerais com valor padrão (editáveis no cadastro e na prévia): valem para o site todo, mesmo dentro de @repetir */
 export const TEXTOS_PADRAO: Record<string, string> = { a_confirmar: 'A confirmar' };
 
@@ -151,8 +157,11 @@ export function inferirDono(d: VarDetectada, det: Deteccao): Dono {
   const etapas = det.formato === 'tapume_etapa_praca';
   if (d.laco) return d.laco === 'etapa' && etapas ? 'etapa' : 'cidade';
   if (!d.numerada) return 'geral';
-  // home → cidade → etapa: o que só aparece na página da etapa é da etapa
-  if (etapas) return 'etapa' in d.por && !('praca' in d.por) && !('tapume' in d.por) ? 'etapa' : 'cidade';
+  // home → cidade → etapa: o que só aparece na página da etapa (ou no pós-evento dela) é da etapa
+  if (etapas) {
+    const tipos = new Set((Object.keys(d.por) as TipoPagina[]).map(tipoBase));
+    return tipos.has('etapa') && !tipos.has('praca') && !tipos.has('tapume') ? 'etapa' : 'cidade';
+  }
   return 'cidade';
 }
 

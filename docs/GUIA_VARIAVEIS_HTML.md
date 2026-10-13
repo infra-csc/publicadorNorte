@@ -506,6 +506,24 @@ No passo **Seções**, quem publica pode esconder partes da página (no evento t
 
 ---
 
+## 9b. Pós-evento (HTML opcional)
+
+Depois do evento, a página pode trocar de HTML **no mesmo endereço** (resultados, fotos, agradecimento). É um HTML à parte, enviado no passo **Pós-evento** do publicador:
+
+| Formato | HTML de pós-evento | Entra no lugar de |
+|---|---|---|
+| One page | um (`pos_unica`) | o index.html |
+| Tapume + praça | um (`pos_praca`), usado em cada praça | a página de cada cidade em que for ligado |
+| Tapume + praça + etapa | `pos_praca` e/ou `pos_etapa` | a página da cidade e/ou da etapa em que for ligado |
+
+O tapume (home) não muda. Regras:
+- Segue **o mesmo guia** (seções 1 a 9): todo texto visível é variável, imagens e ícones como arquivo, responsivo, `@se` para o que pode faltar.
+- As variáveis da base valem do mesmo jeito (`@evento`, `@cidade_1`, `@data_inicio_1`, `@local_1`…) e vêm do Cadastro.
+- As variáveis **próprias** do pós-evento começam com `pos_`: `@pos_titulo`, `@pos_texto`, `@pos_botao`, `@link_pos_resultados`. Elas aparecem no passo Pós-evento (não no Cadastro). Como na praça, `@pos_x` é igual em todas as páginas e `@pos_x_1` (ou dentro de `@se`) é de cada cidade/etapa.
+- Imagens do pós-evento: `@img_<secao>_<nome>` com arquivos em `_media/pos/<secao>/` (ex.: `@img_resultados_podio` → `_media/pos/resultados/podio.webp`).
+- Fotos do evento por cidade: galeria própria, `<!-- @repetir galeria_pos -->…<!-- @fim -->` (seção 1.4). Cada cidade mostra as fotos dela.
+- Entregue o HTML de pós-evento como `pos-evento.html`, com o bloco de documentação no fim (seção 10).
+
 ## 10. Bloco de documentação (obrigatório no fim de cada HTML)
 
 ```html

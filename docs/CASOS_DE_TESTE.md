@@ -302,3 +302,13 @@ Os tapumes de cards fixos dos casos H1–H4 são fixtures sintéticos em `packag
 | X3 | só teste com produção na mesma versão / pediu produção sem domínio | produção acompanha / só teste, com o aviso "não tem domínio" |
 | X4 | evento que não pode ser publicado | não publica, agendamento sai, motivo em `ultimoAgendamento` |
 
+## Y. Pós-evento
+
+| # | Entrada | Esperado |
+|---|---|---|
+| Y1 | One page com `pos_unica`, desligado / ligado ("unica") | página normal / pós no mesmo index.html (`pos: true`); `@pos_texto` é geral e só do pós |
+| Y2 | tapume + praça com `pos_praca`: ligado em SP; `comRealizado` com RJ realizado; `previa` | só SP troca; só RJ troca; todas trocam; tapume nunca; `@pos_texto_1` é da cidade |
+| Y3 | pós ligado em cidade "em breve", publicação | abre (não vira página fechada) |
+| Y4 | com etapas e `pos_etapa` | só a etapa ligada troca; variável só do pós da etapa é da etapa; sem HTML de pós, nada muda |
+| Y5 | `@img_resultados_podio` no pós | pasta `_media/pos/resultados/` |
+

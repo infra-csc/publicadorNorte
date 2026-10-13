@@ -12,6 +12,9 @@ const DESC_PAG: Record<TipoPagina, string> = {
   tapume: 'A página home. Gera uma página só, o index.html.',
   praca: 'A página de cada cidade. Vira uma página para cada cidade cadastrada.',
   etapa: 'A página interna de cada etapa. Vira uma página para cada etapa de cada cidade.',
+  pos_unica: 'Entra no lugar da página (mesmo endereço) quando o pós-evento é ligado.',
+  pos_praca: 'Entra no lugar da página de cada cidade em que o pós-evento for ligado (mesmo endereço).',
+  pos_etapa: 'Entra no lugar da página de cada etapa em que o pós-evento for ligado (mesmo endereço).',
 };
 
 const basesDe = (html?: string) => new Set(html == null ? [] : acharVars(html).map((o) => o.base));
@@ -24,7 +27,7 @@ function baixar(nome: string, texto: string) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-function CartaoPagina({ tipo }: { tipo: TipoPagina }) {
+export function CartaoPagina({ tipo }: { tipo: TipoPagina }) {
   const { evento, modelos, setModelo, alterar } = useEditor();
   const html = modelos[tipo];
   const reg = evento.paginas[tipo];

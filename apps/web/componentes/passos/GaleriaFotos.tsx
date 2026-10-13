@@ -16,9 +16,10 @@ const TIPO_ARRASTO = 'application/x-pub-fotos';
 const ehVideo = (c: string) => /\.(mp4|webm)$/i.test(c);
 const nomeGaleria = (g: string) => (g === 'galeria' ? 'Galeria' : 'Galeria ' + g.replace(/^galeria_?/, '').replace(/_/g, ' '));
 
-export function Galerias() {
+/** uma galeria por nome usado nos HTMLs (ou só as indicadas) */
+export function Galerias({ nomes: so }: { nomes?: string[] }) {
   const { modelos } = useEditor();
-  const nomes = galeriasDe(modelos);
+  const nomes = so || galeriasDe(modelos);
   return <>{nomes.map((g) => <Galeria key={g} colecao={g} />)}</>;
 }
 

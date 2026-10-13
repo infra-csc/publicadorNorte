@@ -136,7 +136,7 @@ export function PassoPublicar() {
         {r.bloqueado ? <Avisos avisos={r.avisos.filter((a) => a.nivel === 'bloqueia')} /> : r.avisos.length > 0 && (
           <div className="w-item warn"><span className="ic">!</span><div><b>{r.avisos.length} aviso(s) em aberto</b>Dá para publicar assim mesmo: as variáveis sem valor saem em branco. Veja no passo Conferir.</div></div>
         )}
-        <ul className="files">{r.paginas.map((p) => <li key={p.arquivo}>{p.arquivo}{p.fechada && <span className="muted"> · em breve: ainda não abre (leva para a página principal)</span>}</li>)}</ul>
+        <ul className="files">{r.paginas.map((p) => <li key={p.arquivo}>{p.arquivo}{p.pos && <span className="muted"> · pós-evento</span>}{p.fechada && <span className="muted"> · em breve: ainda não abre (leva para a página principal)</span>}</li>)}</ul>
         {r.paginas.some((p) => p.fechada) && <p className="small muted" style={{ margin: 0 }}>Páginas de cidades “em breve” não abrem no site: quem digitar o endereço vai para a página principal. Quando o status mudar para “aberta”, publique de novo.</p>}
       </section>
 

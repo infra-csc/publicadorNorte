@@ -1,5 +1,5 @@
 'use client';
-import { arquivoDaEscolha, ehMidia, galeriasDe, FORMATOS, ordemFinal, midiaEscondida, NOME_PAGINA, OCULTA, opcoesMidia, pastasMidia, secaoMidia, sincronizarVars, slotMidia, type OpcaoMidia, type TipoPagina } from '@norte/motor';
+import { arquivoDaEscolha, ehMidia, galeriasDe, FORMATOS, ordemFinal, midiaEscondida, NOME_PAGINA, OCULTA, opcoesMidia, PASTA_PAG, pastasMidia, secaoMidia, sincronizarVars, slotMidia, type OpcaoMidia, type TipoPagina } from '@norte/motor';
 import { useDeferredValue, useMemo, useState } from 'react';
 import { gerarEvento } from '@/lib/comum/montagem';
 import { api, json, urlArquivo } from '../api';
@@ -11,7 +11,6 @@ import { Galerias } from './GaleriaFotos';
 
 const ehVideo = (c: string) => /\.(mp4|webm)$/i.test(c);
 const ehImagem = (c: string) => /\.(webp|png|jpe?g|gif|avif|svg)$/i.test(c);
-const PASTA_PAG: Record<TipoPagina, string> = { tapume: 'tapume', praca: 'praca', etapa: 'etapa', unica: 'pagina' };
 
 /** que arquivos cada lugar aceita: @img_ só imagem, @video_ só vídeo, @arquivo_ PDF (download), @media_ (e a seção) imagem e vídeo */
 function aceita(base: string | null) {
@@ -24,10 +23,46 @@ function aceita(base: string | null) {
 }
 
 export function PassoMidia() {
-  const { evento, modelos, arquivos, setArquivos, det, cad, alterar, banco } = useEditor();
+  const { evento, modelos, arquivos, cad, banco } = useEditor();
   const paginas = FORMATOS[evento.formato].paginas.filter((k) => modelos[k] != null);
+  // o pós-evento tem a mídia no passo dele
+  const principais = Object.fromEntries(paginas.map((k) => [k, modelos[k]]));
   const [pag, setPag] = useState<TipoPagina>(paginas.includes('praca') ? 'praca' : paginas[0]);
   const [linhaId, setLinhaId] = useState<string>(evento.cidades[0]?._id || '');
+  const ev = useDeferredValue(evento);
+  const resultado = useMemo(() => gerarEvento(ev, modelos, arquivos, banco), [ev, modelos, arquivos, banco]);
+  const pagina = resultado.paginas.find((p) => p.tipo === pag && (pag === 'tapume' || pag === 'unica' || p.cidadeId === linhaId)) || resultado.paginas.find((p) => p.tipo === pag);
+
+  return (
+    <>
+      <Cabecalho passo="midia" titulo="Mídia">Escolha a imagem ou o vídeo de cada lugar. Arraste arquivos do computador para um bloco ou direto para um lugar. Arraste a alça ⠿ para arrumar os blocos na tela (o site não muda).</Cabecalho>
+      <div className="row">
+        <div className="seg" role="group" aria-label="Página">
+          {paginas.map((k) => <button key={k} type="button" aria-pressed={pag === k} onClick={() => setPag(k)}>{NOME_PAGINA[k]}</button>)}
+        </div>
+        {evento.cidades.length > 0 && (
+          <label className="row small" style={{ gap: 6 }}>Cidade:
+            <select className="inp" style={{ width: 'auto', padding: '6px 10px' }} value={linhaId} onChange={(e) => setLinhaId(e.target.value)}>
+              {evento.cidades.map((c) => <option key={c._id} value={c._id}>{cad.nomeItem('cidade', c)}</option>)}
+            </select>
+          </label>
+        )}
+      </div>
+      <div className="split">
+        <div className="stack" style={{ minWidth: 0 }}>
+          <Galerias nomes={galeriasDe(principais)} />
+          <ListaMidia pag={pag} linhaId={linhaId} vazio={galeriasDe(principais).length ? null : <div className="card empty">Esta página não tem imagens ou vídeos trocáveis (variáveis @img_, @video_ ou @media_).</div>} />
+        </div>
+        <div className="lado"><Previa html={pagina?.html ?? null} titulo={pagina ? `${pagina.titulo} · ${pagina.arquivo}` : 'Prévia'} altura={560} /></div>
+      </div>
+      <NavPassos passo="midia" />
+    </>
+  );
+}
+
+/** lugares de mídia de um tipo de página, por seção (_media/<pasta>/<seção>/), com envio e escolha por cidade */
+export function ListaMidia({ pag, linhaId, vazio }: { pag: TipoPagina; linhaId: string; vazio?: React.ReactNode }) {
+  const { evento, arquivos, setArquivos, det, cad, alterar } = useEditor();
   const [arrastando, setArrastando] = useState<string | null>(null);
   const [status, setStatus] = useState<{ onde: string; texto: string; erro?: boolean } | null>(null);
   const [excluir, setExcluir] = useState<string | null>(null);
@@ -137,10 +172,6 @@ export function PassoMidia() {
     }
   }
 
-  const ev = useDeferredValue(evento);
-  const resultado = useMemo(() => gerarEvento(ev, modelos, arquivos, banco), [ev, modelos, arquivos, banco]);
-  const pagina = resultado.paginas.find((p) => p.tipo === pag && (pag === 'tapume' || pag === 'unica' || p.cidadeId === linhaId)) || resultado.paginas.find((p) => p.tipo === pag);
-
   /** propriedades de uma área que aceita arquivos arrastados */
   const alvoDrop = (chave: string, secao: string, base: string | null) => ({
     onDragOver: (e: React.DragEvent) => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); e.stopPropagation(); setArrastando(chave); } },
@@ -179,83 +210,63 @@ export function PassoMidia() {
 
   return (
     <>
-      <Cabecalho passo="midia" titulo="Mídia">Escolha a imagem ou o vídeo de cada lugar. Arraste arquivos do computador para um bloco ou direto para um lugar. Arraste a alça ⠿ para arrumar os blocos na tela (o site não muda).</Cabecalho>
-      <div className="row">
-        <div className="seg" role="group" aria-label="Página">
-          {paginas.map((k) => <button key={k} type="button" aria-pressed={pag === k} onClick={() => setPag(k)}>{NOME_PAGINA[k]}</button>)}
-        </div>
-        {evento.cidades.length > 0 && (
-          <label className="row small" style={{ gap: 6 }}>Cidade:
-            <select className="inp" style={{ width: 'auto', padding: '6px 10px' }} value={linhaId} onChange={(e) => setLinhaId(e.target.value)}>
-              {evento.cidades.map((c) => <option key={c._id} value={c._id}>{cad.nomeItem('cidade', c)}</option>)}
-            </select>
-          </label>
-        )}
-      </div>
       {msg('geral')}
-      <div className="split">
-        <div className="stack" style={{ minWidth: 0 }}>
-          <Galerias />
-          {!secoes.length && !galeriasDe(modelos).length && <div className="card empty">Esta página não tem imagens ou vídeos trocáveis (variáveis @img_, @video_ ou @media_).</div>}
-          {secoes.map(([s, bases], i) => (
-            <section key={s} className={'img-sec' + (arrastando === 'secao:' + s ? ' drop-on' : '')} {...juntarAlvos(alvo(i), alvoDrop('secao:' + s, s, null))}>
-              <div className="row between">
-                <h2 style={{ fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}><Alca i={i} total={secoes.length} alca={alca} mover={reordenar} rotulo={s} />{s} <span className="mono small muted">_media/{PASTA_PAG[pag]}/{s}/</span></h2>
-                <label className="btn sm ghost">+ Adicionar à pasta
-                  <input type="file" multiple accept="image/*,video/*,.pdf,application/pdf" className="sr" onChange={(e) => { receber(e.target.files, s, null); e.target.value = ''; }} />
-                </label>
+      {!secoes.length && vazio}
+      {secoes.map(([s, bases], i) => (
+        <section key={s} className={'img-sec' + (arrastando === 'secao:' + s ? ' drop-on' : '')} {...juntarAlvos(alvo(i), alvoDrop('secao:' + s, s, null))}>
+          <div className="row between">
+            <h2 style={{ fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}><Alca i={i} total={secoes.length} alca={alca} mover={reordenar} rotulo={s} />{s} <span className="mono small muted">_media/{PASTA_PAG[pag]}/{s}/</span></h2>
+            <label className="btn sm ghost">+ Adicionar à pasta
+              <input type="file" multiple accept="image/*,video/*,.pdf,application/pdf" className="sr" onChange={(e) => { receber(e.target.files, s, null); e.target.value = ''; }} />
+            </label>
+          </div>
+          {arrastando === 'secao:' + s && <p className="small" style={{ color: 'var(--accent)' }}>Solte para adicionar na pasta {s}/</p>}
+          {msg('secao:' + s)}
+          {bases.map((b) => {
+            const ops = opcoesMidia(b, det, caminhos);
+            const geral = cad.vars[b]?.dono === 'geral';
+            const l = geral ? null : linhaDe(b);
+            // o mesmo valor que vai para a página (por cidade sem escolha = escolha geral)
+            const valor = geral || !l ? cad.valorDe(null, b) : cad.valorDe(l, b);
+            const guardada = escolhaDe(b);
+            const escondida = midiaEscondida(guardada);
+            const atual = escondida ? arquivoDaEscolha(guardada) : valor;
+            const herdada = !geral && l && !l[b];
+            // no tapume, só faz sentido escolher por cidade dentro do card que se repete
+            const podePorCidade = evento.cidades.length > 0 && (pag !== 'tapume' || !!det.variaveis.get(b)?.laco);
+            const regra = aceita(b);
+            return (
+              <div key={b} className={'img-slot' + (arrastando === b ? ' drop-on' : '')} {...alvoDrop(b, s, b)}>
+                <div className="row between" style={{ gap: 8 }}>
+                  <span className="row" style={{ gap: 8 }}>
+                    <span className="v">@{b}</span>
+                    <span className="small muted">
+                      {geral ? 'a mesma em todas as cidades' : `escolha de ${l ? cad.nomeItem(tipoLinha(b), l) : '—'}${herdada ? ' (usando a escolha geral)' : ''}`}
+                      {escondida && <b style={{ color: 'var(--warn)' }}> · escondida: o lugar fica sem mídia</b>}
+                    </span>
+                  </span>
+                  {podePorCidade && (
+                    <span className="seg" role="group" aria-label={`Como escolher @${b}`}>
+                      <button type="button" aria-pressed={geral} onClick={() => porCidade(b, false)}>Igual em todas</button>
+                      <button type="button" aria-pressed={!geral} onClick={() => porCidade(b, true)}>Por cidade</button>
+                    </span>
+                  )}
+                </div>
+                <div className="thumbs" role="radiogroup" aria-label={b}>
+                  {ops.map((o) => miniatura({ o, b, marcada: atual === o.caminho, escondida: escondida && atual === o.caminho, desativada: !geral && !l }))}
+                  <label className="thumb thumb-novo" title={`Adicionar ${regra.texto} para @${b}`}>
+                    <span className="mais">+</span>
+                    <span>Arraste ou clique</span>
+                    <input type="file" multiple accept={regra.accept} className="sr" onChange={(e) => { receber(e.target.files, s, b); e.target.value = ''; }} />
+                  </label>
+                </div>
+                {!ops.length && <p className="small" style={{ color: 'var(--warn)' }}>Sem arquivo ainda. Arraste {regra.texto} para cá (ficam em <span className="mono">{pastasMidia(b, det).find((p) => p.startsWith('_media'))}</span>).</p>}
+                {msg(b)}
               </div>
-              {arrastando === 'secao:' + s && <p className="small" style={{ color: 'var(--accent)' }}>Solte para adicionar na pasta {s}/</p>}
-              {msg('secao:' + s)}
-              {bases.map((b) => {
-                const ops = opcoesMidia(b, det, caminhos);
-                const geral = cad.vars[b]?.dono === 'geral';
-                const l = geral ? null : linhaDe(b);
-                // o mesmo valor que vai para a página (por cidade sem escolha = escolha geral)
-                const valor = geral || !l ? cad.valorDe(null, b) : cad.valorDe(l, b);
-                const guardada = escolhaDe(b);
-                const escondida = midiaEscondida(guardada);
-                const atual = escondida ? arquivoDaEscolha(guardada) : valor;
-                const herdada = !geral && l && !l[b];
-                // no tapume, só faz sentido escolher por cidade dentro do card que se repete
-                const podePorCidade = evento.cidades.length > 0 && (pag !== 'tapume' || !!det.variaveis.get(b)?.laco);
-                const regra = aceita(b);
-                return (
-                  <div key={b} className={'img-slot' + (arrastando === b ? ' drop-on' : '')} {...alvoDrop(b, s, b)}>
-                    <div className="row between" style={{ gap: 8 }}>
-                      <span className="row" style={{ gap: 8 }}>
-                        <span className="v">@{b}</span>
-                        <span className="small muted">
-                          {geral ? 'a mesma em todas as cidades' : `escolha de ${l ? cad.nomeItem(tipoLinha(b), l) : '—'}${herdada ? ' (usando a escolha geral)' : ''}`}
-                          {escondida && <b style={{ color: 'var(--warn)' }}> · escondida: o lugar fica sem mídia</b>}
-                        </span>
-                      </span>
-                      {podePorCidade && (
-                        <span className="seg" role="group" aria-label={`Como escolher @${b}`}>
-                          <button type="button" aria-pressed={geral} onClick={() => porCidade(b, false)}>Igual em todas</button>
-                          <button type="button" aria-pressed={!geral} onClick={() => porCidade(b, true)}>Por cidade</button>
-                        </span>
-                      )}
-                    </div>
-                    <div className="thumbs" role="radiogroup" aria-label={b}>
-                      {ops.map((o) => miniatura({ o, b, marcada: atual === o.caminho, escondida: escondida && atual === o.caminho, desativada: !geral && !l }))}
-                      <label className="thumb thumb-novo" title={`Adicionar ${regra.texto} para @${b}`}>
-                        <span className="mais">+</span>
-                        <span>Arraste ou clique</span>
-                        <input type="file" multiple accept={regra.accept} className="sr" onChange={(e) => { receber(e.target.files, s, b); e.target.value = ''; }} />
-                      </label>
-                    </div>
-                    {!ops.length && <p className="small" style={{ color: 'var(--warn)' }}>Sem arquivo ainda. Arraste {regra.texto} para cá (ficam em <span className="mono">{pastasMidia(b, det).find((p) => p.startsWith('_media'))}</span>).</p>}
-                    {msg(b)}
-                  </div>
-                );
-              })}
-            </section>
-          ))}
-        </div>
-        <div className="lado"><Previa html={pagina?.html ?? null} titulo={pagina ? `${pagina.titulo} · ${pagina.arquivo}` : 'Prévia'} altura={560} /></div>
-      </div>
-      <NavPassos passo="midia" />
+            );
+          })}
+        </section>
+      ))}
     </>
   );
 }

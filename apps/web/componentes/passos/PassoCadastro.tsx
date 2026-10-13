@@ -1,5 +1,5 @@
 'use client';
-import { deISO, ehData, estaRealizado, faltasNaSerie, separarSeries, type Serie, FORMULAS_PADRAO, lerData, limiteRealizado, linhaVazia, novaLinha, paraISO, slugValor, sincronizarVars, type Linha, type TipoItem } from '@norte/motor';
+import { deISO, ehData, estaRealizado, faltasNaSerie, separarSeries, soNoPos, type Cadastro, type Serie, FORMULAS_PADRAO, lerData, limiteRealizado, linhaVazia, novaLinha, paraISO, slugValor, sincronizarVars, type Linha, type TipoItem } from '@norte/motor';
 import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { gerarEvento } from '@/lib/comum/montagem';
 import type { Evento } from '@/lib/comum/tipos';
@@ -9,6 +9,8 @@ import { Previa } from '../Previa';
 
 const novoId = () => crypto.randomUUID().slice(0, 8);
 const lista = (e: Evento, t: TipoItem) => (t === 'etapa' ? e.etapas : e.cidades);
+/** colunas do Cadastro: as que só existem no HTML de pós-evento ficam no passo Pós-evento */
+const colunasDoCadastro = (cad: Cadastro, dono: 'geral' | TipoItem) => cad.colunas(dono).filter((b) => !soNoPos(cad.det.variaveis.get(b)));
 const rotulo = (o: string) => (slugValor(o) === 'breve' ? 'em breve' : o);
 
 /** linhas sem nada preenchido (ex.: sobra de planilha): aviso e botão para tirar todas, com confirmação */
@@ -126,7 +128,7 @@ function PainelColuna({ tipo, col, cols, fechar }: { tipo: TipoItem; col: string
 
 function Tabela({ tipo, foco, setFoco, busca }: { tipo: TipoItem; foco: string | null; setFoco: (id: string) => void; busca: string }) {
   const { evento, cad, det, alterar } = useEditor();
-  const cols = cad.colunas(tipo);
+  const cols = colunasDoCadastro(cad, tipo);
   const linhas = lista(evento, tipo);
   const [painel, setPainel] = useState<string | null>(null);
   const [novaCol, setNovaCol] = useState<string | null>(null);
@@ -378,7 +380,7 @@ function StatusPelasDatas() {
 }
 
 /** caixa de texto que cresce com o conteúdo (uma linha quando cabe) */
-function CampoTexto({ valor, placeholder, rotulo, mudar }: { valor: string; placeholder?: string; rotulo: string; mudar: (v: string) => void }) {
+export function CampoTexto({ valor, placeholder, rotulo, mudar }: { valor: string; placeholder?: string; rotulo: string; mudar: (v: string) => void }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   useLayoutEffect(() => {
     const el = ref.current;
@@ -493,7 +495,7 @@ function BlocoSerie({ s, busca }: { s: Serie; busca: string }) {
 
 function Gerais({ busca }: { busca: string }) {
   const { evento, cad, alterar } = useEditor();
-  const gerais = cad.colunas('geral');
+  const gerais = colunasDoCadastro(cad, 'geral');
   const { soltas, series } = useMemo(() => separarSeries(gerais), [gerais.join('|')]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!gerais.length) return null;
   const visiveis = soltas.filter((g) => bate(busca, g, String(evento.gerais[g] ?? '')));
@@ -519,7 +521,7 @@ function Gerais({ busca }: { busca: string }) {
 /** One page: a lista de cidades (@repetir cidades) em blocos, no mesmo formato dos outros blocos numerados */
 function ListaEmBlocos({ busca }: { busca: string }) {
   const { evento, cad, det, alterar } = useEditor();
-  const cols = cad.colunas('cidade');
+  const cols = colunasDoCadastro(cad, 'cidade');
   const linhas = evento.cidades;
   const [tirar, setTirar] = useState<string | null>(null);
   const mostradas = linhas.filter((l) => bate(busca, ...cols.map((c) => String(l[c] ?? ''))));
@@ -603,7 +605,7 @@ export function PassoCadastro() {
   const [modo, setModo] = useState<'campos' | 'previa'>('campos');
   const naPrevia = modo === 'previa';
   // One page sem @repetir cidades no HTML: não mostra a lista
-  const temLista = !unica || cad.colunas('cidade').length > 0 || evento.cidades.length > 0;
+  const temLista = !unica || colunasDoCadastro(cad, 'cidade').length > 0 || evento.cidades.length > 0;
   const ev = useDeferredValue(evento);
   const resultado = useMemo(() => gerarEvento(ev, modelos, arquivos, banco, { marcarEdicao: naPrevia }), [ev, modelos, arquivos, banco, naPrevia]);
   const [paginaEscolhida, setPaginaEscolhida] = useState('');

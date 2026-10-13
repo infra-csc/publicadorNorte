@@ -5,6 +5,7 @@ import { PassoEvento } from './PassoEvento';
 import { PassoMidia } from './PassoMidia';
 import { PassoPaginas } from './PassoPaginas';
 import { PassoPatrocinios } from './PassoPatrocinios';
+import { PassoPos } from './PassoPos';
 import { PassoPublicar } from './PassoPublicar';
 import { PassoSecoes } from './PassoSecoes';
 import { PassoSeo } from './PassoSeo';
@@ -19,6 +20,7 @@ export function PassoAtual({ passo }: { passo: string }) {
     case 'midia': return <PassoMidia />;
     case 'patrocinios': return <PassoPatrocinios />;
     case 'secoes': return <PassoSecoes />;
+    case 'pos': return <PassoPos />;
     case 'seo': return <PassoSeo />;
     case 'conferir': return <PassoConferir />;
     default: return <PassoPublicar />;

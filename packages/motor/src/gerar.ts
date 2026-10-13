@@ -27,7 +27,7 @@ export interface EntradaGerar {
   imagens?: Record<string, string>;
   /** caminhos dos arquivos enviados (pasta _media) */
   arquivos?: Iterable<string>;
-  /** data/hora de referência (o motor não lê o relógio). Reservado para o pós-evento (fase 3). */
+  /** data/hora de referência (o motor não lê o relógio) */
   agora?: Date;
   /** seções escondidas (no evento todo e por cidade/etapa) */
   secoes?: EscolhaSecoes;
@@ -47,6 +47,18 @@ export interface EntradaGerar {
   fecharEmBreve?: boolean;
   /** fotos de cada galeria (`@repetir galeria`), na ordem; cada uma com a cidade (_id) ou para todas */
   galerias?: Record<string, FotoGaleria[]>;
+  /**
+   * pós-evento: páginas em que o HTML de pós-evento entra no lugar (mesmo arquivo).
+   * `ativos`: "unica" ou o _id da cidade/etapa; `comRealizado`: também quando o status vira "realizado";
+   * `previa`: mostra o pós-evento em todas as páginas que têm HTML de pós (passo Pós-evento).
+   */
+  pos?: EscolhaPos;
+}
+
+export interface EscolhaPos {
+  ativos?: string[];
+  comRealizado?: boolean;
+  previa?: boolean;
 }
 
 export interface FotoGaleria {
@@ -65,6 +77,8 @@ export interface PaginaGerada {
   /** cidade/etapa em breve na publicação: o arquivo só leva para a home */
   fechada?: boolean;
   html: string;
+  /** o HTML de pós-evento está no lugar da página */
+  pos?: boolean;
   /** 0 = página de cidade/home, 1 = página de etapa (recuo na lista) */
   nivel: 0 | 1;
   cidadeId?: string;
@@ -322,7 +336,20 @@ export function gerar(e: EntradaGerar): ResultadoGerar {
   const montador = new Montador(cad, e.formato, !!e.marcarEdicao, e.galerias || {});
   const arvores = new Map<TipoPagina, ReturnType<typeof lerBlocos>>();
   let seoPrincipal: ValoresSeo | undefined;
-  const add = (kind: TipoPagina, arquivo: string, titulo: string, ctx: Omit<Ctx, 'kind'>, nivel: 0 | 1) => {
+  // pós-evento ligado nesta página? (o HTML de pós entra no lugar, mesmo arquivo)
+  const posAtivo = (base: TipoPagina, ctx: Omit<Ctx, 'kind'>): boolean => {
+    const p = e.pos;
+    if (!p) return false;
+    if (p.previa) return true;
+    const linha = base === 'etapa' ? ctx.etapa : base === 'praca' ? ctx.cidade : undefined;
+    const chave = base === 'unica' ? 'unica' : linha?._id;
+    if (chave && p.ativos?.includes(chave)) return true;
+    return !!p.comRealizado && !!linha && cad.statusDe(linha) === 'realizado';
+  };
+  const add = (base: TipoPagina, arquivo: string, titulo: string, ctx: Omit<Ctx, 'kind'>, nivel: 0 | 1) => {
+    const kPos = ('pos_' + base) as TipoPagina;
+    const pos = base !== 'tapume' && FORMATOS[e.formato].pos.includes(kPos as never) && e.modelos[kPos] != null && posAtivo(base, ctx);
+    const kind = pos ? kPos : base;
     const modelo = e.modelos[kind];
     if (modelo == null) return;
     let arv = arvores.get(kind);
@@ -341,24 +368,24 @@ export function gerar(e: EntradaGerar): ResultadoGerar {
     const ocultas = ocultasDaPagina(kind, e.secoes, linhasDaPagina);
     const corpo = tirarMidiaOculta(removerSecoes(reordenarSecoes(colocarModulos(converterMarcas(montador.render(arv.raiz, { ...ctx, kind }, R)), e.secoes?.modulos?.[kind]), e.secoes?.ordem?.[kind]), ocultas));
     // patrocinadores só nas internas: a página do One page, a praça (sem etapas) e cada etapa; o tapume nunca
-    const chavePatro = kind === 'unica' ? 'unica' : kind === 'etapa' ? ctx.etapa?._id : kind === 'praca' && !comEtapas ? ctx.cidade?._id : undefined;
+    const chavePatro = base === 'unica' ? 'unica' : base === 'etapa' ? ctx.etapa?._id : base === 'praca' && !comEtapas ? ctx.cidade?._id : undefined;
     const comPatro = e.patrocinios && chavePatro ? colocarPatrocinios(corpo, montarPatrocinios(e.patrocinios.porPagina[chavePatro], e.patrocinios)) : corpo;
     // em breve não abre: a página do item (cidade ou etapa, conforme o dono do status) só leva para a home
     const vs = cad.vars.status;
     const linhaStatus = vs?.dono === 'etapa' ? ctx.etapa : vs?.dono === 'cidade' ? ctx.cidade : undefined;
-    const fechada = !!e.fecharEmBreve && (kind === 'praca' || kind === 'etapa') && !!linhaStatus && !!det.opcoes.status && !vs?.ignorar && !vs?.excluida && cad.statusDe(linhaStatus) === 'breve';
+    const fechada = !pos && !!e.fecharEmBreve && (kind === 'praca' || kind === 'etapa') && !!linhaStatus && !!det.opcoes.status && !vs?.ignorar && !vs?.excluida && cad.statusDe(linhaStatus) === 'breve';
     const montado = ajustarTagsMidia(colocarRodape(comPatro, rodapeDaPagina(e.rodape, linhasDaPagina)));
     let html = montado;
     if (e.seo) {
       const sctx: ContextoSeo = {
-        cidade: kind !== 'unica' && ctx.cidade ? cad.nomeItem('cidade', ctx.cidade) : undefined,
+        cidade: base !== 'unica' && ctx.cidade ? cad.nomeItem('cidade', ctx.cidade) : undefined,
         etapa: ctx.etapa ? cad.nomeItem('etapa', ctx.etapa) : undefined,
-        linha: kind === 'etapa' ? ctx.etapa?._id : kind === 'praca' ? ctx.cidade?._id : undefined,
+        linha: base === 'etapa' ? ctx.etapa?._id : base === 'praca' ? ctx.cidade?._id : undefined,
         herdado: seoPrincipal, urlSite: e.urlSite, arquivo,
       };
       const valores = resolverSeo(montado, e.seo, sctx);
       // a página principal vem primeiro: as cidades herdam os valores dela
-      if (kind === 'tapume' || kind === 'unica') seoPrincipal = valores;
+      if (base === 'tapume' || base === 'unica') seoPrincipal = valores;
       html = aplicarSeo(montado, e.seo, sctx, valores);
     }
     const final = fechada ? paginaFechada(titulo) : html;
@@ -374,7 +401,7 @@ export function gerar(e: EntradaGerar): ResultadoGerar {
       });
     }
     paginas.push({
-      tipo: kind, arquivo, titulo, html: final, nivel, cidadeId: ctx.cidade?._id, etapaId: ctx.etapa?._id, ...(fechada ? { fechada } : {}),
+      tipo: base, arquivo, titulo, html: final, nivel, cidadeId: ctx.cidade?._id, etapaId: ctx.etapa?._id, ...(fechada ? { fechada } : {}), ...(pos ? { pos } : {}),
       avisos: avisos.length - a0 + (R.faltas.length ? 1 : 0),
     });
   };

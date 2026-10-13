@@ -24,7 +24,8 @@ export const versaoTela = (nome: string): '' | 'desktop' | 'mobile' => (RX_DESK.
 const tipoMidia = (base: string) => base.split('_')[0];
 export const secaoMidia = (base: string) => base.split('_')[1] || '';
 export const slotMidia = (base: string) => base.split('_').slice(2).join('_') || secaoMidia(base);
-const PASTA_PAG: Record<TipoPagina, string> = { tapume: 'tapume', praca: 'praca', etapa: 'etapa', unica: 'pagina' };
+/** pasta de mídia de cada tipo de página (_media/<pasta>/<seção>/); o pós-evento tem a dele */
+export const PASTA_PAG: Record<TipoPagina, string> = { tapume: 'tapume', praca: 'praca', etapa: 'etapa', unica: 'pagina', pos_unica: 'pos', pos_praca: 'pos', pos_etapa: 'pos' };
 
 /** _media/… (atual) ou _images/… (versão antiga do guia): caminho a partir dessa pasta */
 export const caminhoMidia = (k: string): string => {

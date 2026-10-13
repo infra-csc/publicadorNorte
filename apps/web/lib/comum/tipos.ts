@@ -53,6 +53,8 @@ export interface Evento {
   seo?: SeoEvento;
   /** produção: o site no domínio próprio do evento (uma versão já publicada no teste) */
   producao?: Producao;
+  /** pós-evento: páginas em que o HTML de pós entra no lugar ("unica" ou _id da cidade/etapa) e se liga sozinho no "realizado" */
+  pos?: { ativos: string[]; comRealizado?: boolean };
   /** publicação agendada: na hora marcada, o que estiver salvo vai para o teste (e para a produção, se pedido) */
   agendamento?: Agendamento;
   /** resultado do último agendamento (some quando outro é marcado) */

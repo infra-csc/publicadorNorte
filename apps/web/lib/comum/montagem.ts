@@ -68,10 +68,11 @@ export function urlDoSite(e: Pick<Evento, 'producao' | 'publicacoes'>): string |
   return e.publicacoes[e.publicacoes.length - 1]?.url || undefined;
 }
 
-export function gerarEvento(evento: Evento, modelos: Partial<Record<string, string>>, arquivos: ArquivoMidia[], banco?: BancoPatrocinios | null, opcoes?: { marcarEdicao?: boolean; agora?: Date; urlSite?: string; /** site publicado: cidade/etapa em breve não abre */ publicacao?: boolean }): ResultadoGerar {
+export function gerarEvento(evento: Evento, modelos: Partial<Record<string, string>>, arquivos: ArquivoMidia[], banco?: BancoPatrocinios | null, opcoes?: { marcarEdicao?: boolean; agora?: Date; urlSite?: string; /** site publicado: cidade/etapa em breve não abre */ publicacao?: boolean; /** passo Pós-evento: o pós no lugar de todas as páginas */ previaPos?: boolean }): ResultadoGerar {
   return gerar({
     marcarEdicao: opcoes?.marcarEdicao,
     galerias: evento.galerias,
+    pos: opcoes?.previaPos ? { ...evento.pos, previa: true } : evento.pos,
     seo: { ...evento.seo, nomeEvento: evento.nome },
     urlSite: opcoes?.urlSite || urlDoSite(evento),
     fecharEmBreve: opcoes?.publicacao,

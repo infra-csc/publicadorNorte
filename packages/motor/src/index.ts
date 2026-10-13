@@ -1,8 +1,8 @@
 // Motor do Publicador de Hotsites: HTML-modelo + cadastro + mídia → páginas + avisos.
 // Puro: sem banco, rede, DOM do navegador ou relógio. Data/hora entram como parâmetro.
 
-export { FORMATOS, NOME_PAGINA } from './tipos';
-export type { Formato, TipoPagina, TipoItem, Dono, EstadoVar, Vars, Linha, Modelos, Passo, Aviso } from './tipos';
+export { FORMATOS, NOME_PAGINA, BASE_DO_POS, ehPos, tipoBase } from './tipos';
+export type { Formato, TipoPagina, TipoPos, TipoItem, Dono, EstadoVar, Vars, Linha, Modelos, Passo, Aviso } from './tipos';
 export { slug, slugValor, esc, numBR, fmtBR, abreviar } from './texto';
 export { RX_VAR, ehMidia, varsDoTexto } from './variaveis';
 export { lerBlocos, RX_MARCA, type No, type NoSe, type ErroBloco } from './blocos';
@@ -13,15 +13,15 @@ export {
 } from './detectar';
 export { avaliar, nomesFormula } from './formulas';
 export { Cadastro, linhaVazia, novaLinha, COLUNAS_NOME, type DadosCadastro } from './cadastro';
-export { TEXTOS_PADRAO, VARS_GALERIA, galeriasDe } from './detectar';
+export { TEXTOS_PADRAO, VARS_GALERIA, galeriasDe, soNoPos } from './detectar';
 export { estaRealizado, limiteRealizado, type Automacao } from './datas';
 export { ehData, ehPeriodo, formatoDeData, formatarData, periodo, lerData, paraISO, deISO, FORMATOS_DATA, type FormatoData } from './datas';
 export { converterMarcas, MARCA_INI, MARCA_MEIO, MARCA_FIM } from './edicao';
 export {
-  ajustarTagsMidia, refsDeArquivo, acharArquivo, normRef, opcoesMidia, padraoMidia, valorMidia, pastasMidia,
+  ajustarTagsMidia, PASTA_PAG, refsDeArquivo, acharArquivo, normRef, opcoesMidia, padraoMidia, valorMidia, pastasMidia,
   versaoTela, caminhoMidia, OCULTA, midiaEscondida, arquivoDaEscolha, tirarMidiaOculta, secaoMidia, slotMidia, arquivoAceito, tipoArquivo, TIPOS_ARQUIVO, CSS_MIDIA, type OpcaoMidia,
 } from './midia';
-export { gerar, type EntradaGerar, type FotoGaleria, type PaginaGerada, type ResultadoGerar } from './gerar';
+export { gerar, type EntradaGerar, type EscolhaPos, type FotoGaleria, type PaginaGerada, type ResultadoGerar } from './gerar';
 export { temCardsFixos } from './cards-fixos';
 export type { ResultadoConversao, CardPreenchido } from './conversor';
 // converterCardsFixos usa um parser de HTML (linkedom): importe de '@norte/motor/conversor'
