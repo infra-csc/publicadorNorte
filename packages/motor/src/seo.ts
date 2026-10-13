@@ -1,25 +1,44 @@
 // SEO e compartilhamento: <title>, meta description, favicon e as tags de redes sociais (Open Graph e Twitter).
-// O que não foi preenchido sai automático: título e descrição do próprio HTML (ou o nome do evento e o primeiro
-// parágrafo), compartilhamento copiando o SEO e a primeira foto da página.
+// Página principal: o que não foi preenchido sai automático (título e descrição do próprio HTML, ou o nome do evento
+// e o primeiro parágrafo; compartilhamento copiando o SEO e a primeira foto da página).
+// Cidades/etapas: cada uma tem o seu cadastro; o que ficar vazio herda da principal, com o nome da cidade na frente
+// do título.
 import { esc } from './texto';
 
 export interface TextosSeo {
   titulo?: string;
   descricao?: string;
 }
-export interface Seo extends TextosSeo {
-  /** nome do evento (título automático quando o HTML não tem <title>) */
-  nomeEvento?: string;
+/** cadastro de SEO de uma página */
+export interface SeoPagina extends TextosSeo {
   /** ícone da aba (caminho na mídia) */
   favicon?: string;
   /** compartilhamento em redes sociais */
   share?: TextosSeo & { imagem?: string };
-  /** páginas das cidades/etapas: título e descrição próprios (aceitam {cidade}, {etapa}, {evento}) */
-  interna?: TextosSeo;
+}
+export interface Seo extends SeoPagina {
+  /** nome do evento (título automático quando o HTML não tem <title>) */
+  nomeEvento?: string;
+  /** cidades e etapas (pelo _id): o que ficar vazio herda da principal */
+  porPagina?: Record<string, SeoPagina>;
+}
+/** valores finais de uma página (os da principal são herdados pelas cidades) */
+export interface ValoresSeo {
+  titulo: string;
+  descricao: string;
+  ogTitulo: string;
+  ogDescricao: string;
+  /** caminho como está na mídia (antes de virar endereço completo) */
+  imagem?: string;
+  favicon?: string;
 }
 export interface ContextoSeo {
   cidade?: string;
   etapa?: string;
+  /** cidade/etapa: o _id da linha (cadastro próprio em seo.porPagina) */
+  linha?: string;
+  /** valores da página principal (as cidades herdam) */
+  herdado?: ValoresSeo;
   /** endereço do site (https://dominio/): deixa og:image e og:url absolutos */
   urlSite?: string;
   /** arquivo da página (index.html, cotia.html) */
@@ -88,22 +107,31 @@ const absoluto = (url: string | undefined, base: string | undefined) => {
 };
 const tipoIcone = (href: string) => (/\.svg$/i.test(href) ? 'image/svg+xml' : /\.png$/i.test(href) ? 'image/png' : /\.ico$/i.test(href) ? 'image/x-icon' : undefined);
 
+/** valores finais da página: o preenchido; senão o herdado da principal (cidades); senão o automático */
+export function resolverSeo(html: string, seo: Seo, ctx: ContextoSeo): ValoresSeo {
+  const troca = (v: string | undefined) =>
+    (v || '').replace(/\{cidade\}/gi, ctx.cidade || '').replace(/\{etapa\}/gi, ctx.etapa || '').replace(/\{evento\}/gi, seo.nomeEvento || '').replace(/\s+/g, ' ').trim();
+  const doHtml = lerSeo(html);
+  const nome = [ctx.cidade, ctx.etapa].filter(Boolean).join(' · ');
+  const interna = !!nome;
+  const p: SeoPagina = interna ? seo.porPagina?.[ctx.linha || ''] || {} : seo;
+  const h = interna ? ctx.herdado : undefined;
+  const naFrente = (t: string | undefined) => (t ? (nome ? `${nome} - ${t}` : t) : nome);
+  const titulo = troca(p.titulo) || (h ? naFrente(h.titulo) : doHtml.titulo || [seo.nomeEvento, nome].filter(Boolean).join(' · ')) || '';
+  const descricao = troca(p.descricao) || (h ? h.descricao : '') || doHtml.descricao || resumir(primeiroParagrafo(html) || '');
+  const ogTitulo = troca(p.share?.titulo) || (h ? (troca(p.titulo) ? titulo : naFrente(h.ogTitulo)) : titulo);
+  const ogDescricao = troca(p.share?.descricao) || (h && !troca(p.descricao) ? h.ogDescricao : '') || descricao;
+  const imagem = p.share?.imagem || h?.imagem || (h ? undefined : doHtml.ogImagem) || primeiraFoto(html);
+  const favicon = p.favicon || h?.favicon || doHtml.favicon;
+  return { titulo, descricao, ogTitulo, ogDescricao, imagem, favicon };
+}
+
 /**
  * Põe na página o título, a descrição, o favicon e as tags de compartilhamento.
  * Tira as que o HTML já tinha (para não duplicar) e coloca as finais no fim do <head>.
  */
-export function aplicarSeo(html: string, seo: Seo, ctx: ContextoSeo): string {
-  const interna = !!(ctx.cidade || ctx.etapa);
-  const troca = (s: string | undefined) =>
-    (s || '').replace(/\{cidade\}/gi, ctx.cidade || '').replace(/\{etapa\}/gi, ctx.etapa || '').replace(/\{evento\}/gi, seo.nomeEvento || '').replace(/\s+/g, ' ').trim();
-  const doHtml = lerSeo(html);
-  const nomePagina = [seo.nomeEvento, ctx.cidade, ctx.etapa].filter(Boolean).join(' · ');
-  const proprio = interna ? seo.interna : seo;
-  const titulo = troca(proprio?.titulo) || doHtml.titulo || nomePagina || '';
-  const descricao = troca(proprio?.descricao) || doHtml.descricao || resumir(primeiroParagrafo(html) || '');
-  const ogTitulo = troca(seo.share?.titulo) && !interna ? troca(seo.share?.titulo) : titulo;
-  const ogDescricao = (troca(seo.share?.descricao) && !interna ? troca(seo.share?.descricao) : '') || descricao;
-  const imagem = seo.share?.imagem || doHtml.ogImagem || primeiraFoto(html);
+export function aplicarSeo(html: string, seo: Seo, ctx: ContextoSeo, valores = resolverSeo(html, seo, ctx)): string {
+  const { titulo, descricao, ogTitulo, ogDescricao, imagem, favicon } = valores;
   const base = ctx.urlSite;
   const url = base ? base.replace(/\/?$/, '/') + (ctx.arquivo && ctx.arquivo !== 'index.html' ? ctx.arquivo : '') : undefined;
 
@@ -115,13 +143,13 @@ export function aplicarSeo(html: string, seo: Seo, ctx: ContextoSeo): string {
       const p = (atributo(m, 'property') || '').toLowerCase();
       return n === 'description' || n.startsWith('twitter:') || p.startsWith('og:') ? '' : m;
     });
-  if (seo.favicon) h = h.replace(/<link\b[^>]*>\s*/gi, (l) => (/(^|\s)(icon|apple-touch-icon)(\s|$)/i.test(atributo(l, 'rel') || '') ? '' : l));
+  if (favicon) h = h.replace(/<link\b[^>]*>\s*/gi, (l) => (/(^|\s)(icon|apple-touch-icon)(\s|$)/i.test(atributo(l, 'rel') || '') ? '' : l));
 
   const tags = [
     titulo && `<title>${esc(titulo)}</title>`,
     descricao && `<meta name="description" content="${esc(descricao)}">`,
-    seo.favicon && `<link rel="icon" href="${esc(seo.favicon)}"${tipoIcone(seo.favicon) ? ` type="${tipoIcone(seo.favicon)}"` : ''}>`,
-    seo.favicon && /\.(png|jpe?g)$/i.test(seo.favicon) && `<link rel="apple-touch-icon" href="${esc(seo.favicon)}">`,
+    favicon && `<link rel="icon" href="${esc(favicon)}"${tipoIcone(favicon) ? ` type="${tipoIcone(favicon)}"` : ''}>`,
+    favicon && /\.(png|jpe?g)$/i.test(favicon) && `<link rel="apple-touch-icon" href="${esc(favicon)}">`,
     `<meta property="og:type" content="website">`,
     ogTitulo && `<meta property="og:title" content="${esc(ogTitulo)}">`,
     ogDescricao && `<meta property="og:description" content="${esc(ogDescricao)}">`,

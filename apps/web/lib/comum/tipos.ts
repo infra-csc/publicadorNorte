@@ -93,8 +93,8 @@ export interface SeoEvento {
   descricao?: string;
   /** redes sociais (WhatsApp, Facebook, LinkedIn, X) */
   share?: { imagem?: string; titulo?: string; descricao?: string };
-  /** páginas das cidades/etapas ({cidade}, {etapa}, {evento}) */
-  interna?: { titulo?: string; descricao?: string };
+  /** cada cidade/etapa (pelo _id): o que ficar vazio herda da principal, com o nome na frente do título */
+  porPagina?: Record<string, { favicon?: string; titulo?: string; descricao?: string; share?: { imagem?: string; titulo?: string; descricao?: string } }>;
 }
 
 export interface Producao {

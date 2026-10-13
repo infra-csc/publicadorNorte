@@ -245,9 +245,9 @@ Os tapumes de cards fixos dos casos H1–H4 são fixtures sintéticos em `packag
 |---|---|---|
 | R1 | tudo vazio, HTML com title, description e favicon | título/descrição do HTML; og:title/og:description copiam; og:image = primeira foto (jpg/png/webp, não svg); favicon do HTML; tags sem duplicar |
 | R2 | HTML sem title nem description | título = nome do evento (na cidade: "evento · cidade"); descrição = primeiro parágrafo com 40+ caracteres, cortado em ~155 sem quebrar palavra, com "…" |
-| R3 | título, descrição, favicon e compartilhamento preenchidos; página de cidade com campos das cidades | valem os preenchidos, com {evento}/{cidade} trocados e aspas/< escapados; na cidade: título próprio, og:title = o da página, mesma imagem; favicon e imagem vão para o site |
+| R3 | título, descrição, favicon e compartilhamento preenchidos | valem os preenchidos, com {evento} trocado e aspas/< escapados; favicon e imagem vão para o site |
 | R4 | com endereço do site | og:image e og:url absolutos (index.html → raiz) |
-| R5 | gerar sem seo / com seo | sem seo o head fica como veio; com seo a página principal usa os campos gerais e as cidades os seus |
+| R5 | gerar sem seo / com seo; SP sem cadastro, RJ com cadastro próprio | sem seo o head fica como veio; SP herda da principal ("São Paulo - <título>", descrição, og:title com o nome na frente, imagem e favicon da principal; o `<title>` do HTML da praça não vale); RJ usa o seu título, imagem e favicon |
 
 ## S. Página "em breve" não abre no site
 

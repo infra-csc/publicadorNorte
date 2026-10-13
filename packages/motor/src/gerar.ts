@@ -9,7 +9,7 @@ import { abreviar, esc, slug, slugValor } from './texto';
 import { FORMATOS, NOME_PAGINA, type Aviso, type Formato, type Linha, type Modelos, type TipoItem, type TipoPagina, type Vars } from './tipos';
 import { ehMidia, trocarVars } from './variaveis';
 import { colocarModulos } from './modulos';
-import { aplicarSeo, type Seo } from './seo';
+import { aplicarSeo, resolverSeo, type ContextoSeo, type Seo, type ValoresSeo } from './seo';
 import { ocultasDaPagina, removerSecoes, reordenarSecoes, type EscolhaSecoes } from './secoes';
 import { colocarRodape, rodapeDaPagina, type EscolhaRodape } from './rodape';
 import { colocarPatrocinios, montarPatrocinios, patrocinadoresFora, type EntradaPatrocinios } from './patrocinios';
@@ -274,6 +274,7 @@ export function gerar(e: EntradaGerar): ResultadoGerar {
 
   const montador = new Montador(cad, e.formato, !!e.marcarEdicao);
   const arvores = new Map<TipoPagina, ReturnType<typeof lerBlocos>>();
+  let seoPrincipal: ValoresSeo | undefined;
   const add = (kind: TipoPagina, arquivo: string, titulo: string, ctx: Omit<Ctx, 'kind'>, nivel: 0 | 1) => {
     const modelo = e.modelos[kind];
     if (modelo == null) return;
@@ -300,13 +301,19 @@ export function gerar(e: EntradaGerar): ResultadoGerar {
     const linhaStatus = vs?.dono === 'etapa' ? ctx.etapa : vs?.dono === 'cidade' ? ctx.cidade : undefined;
     const fechada = !!e.fecharEmBreve && (kind === 'praca' || kind === 'etapa') && !!linhaStatus && !!det.opcoes.status && !vs?.ignorar && !vs?.excluida && cad.statusDe(linhaStatus) === 'breve';
     const montado = ajustarTagsMidia(colocarRodape(comPatro, rodapeDaPagina(e.rodape, linhasDaPagina)));
-    const html = e.seo
-      ? aplicarSeo(montado, e.seo, {
+    let html = montado;
+    if (e.seo) {
+      const sctx: ContextoSeo = {
         cidade: kind !== 'unica' && ctx.cidade ? cad.nomeItem('cidade', ctx.cidade) : undefined,
         etapa: ctx.etapa ? cad.nomeItem('etapa', ctx.etapa) : undefined,
-        urlSite: e.urlSite, arquivo,
-      })
-      : montado;
+        linha: kind === 'etapa' ? ctx.etapa?._id : kind === 'praca' ? ctx.cidade?._id : undefined,
+        herdado: seoPrincipal, urlSite: e.urlSite, arquivo,
+      };
+      const valores = resolverSeo(montado, e.seo, sctx);
+      // a página principal vem primeiro: as cidades herdam os valores dela
+      if (kind === 'tapume' || kind === 'unica') seoPrincipal = valores;
+      html = aplicarSeo(montado, e.seo, sctx, valores);
+    }
     const final = fechada ? paginaFechada(titulo) : html;
     for (const f of R.faltas) {
       if (!vazios.has(f.chave)) vazios.set(f.chave, new Set());

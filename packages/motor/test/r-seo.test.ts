@@ -35,17 +35,11 @@ describe('R. SEO e compartilhamento', () => {
     const seo = {
       nomeEvento: 'Cuidar', titulo: '{evento} <grátis>', descricao: 'Venha "já"',
       favicon: '_media/seo/icone.png', share: { imagem: '_media/seo/share.jpg', titulo: '{evento} chegou', descricao: '' },
-      interna: { titulo: '{evento} em {cidade}' },
     };
     const h = aplicarSeo(PAG, seo, {});
     const s = lerSeo(h);
     expect(s.titulo).toBe('Cuidar <grátis>');
     expect(h).toContain('<title>Cuidar &lt;grátis&gt;</title>');
-    // página da cidade: os campos das cidades; compartilhamento com o título da própria página, mesma imagem
-    const c = lerSeo(aplicarSeo(PAG, seo, { cidade: 'Cotia' }));
-    expect(c.titulo).toBe('Cuidar em Cotia');
-    expect(c.ogTitulo).toBe('Cuidar em Cotia');
-    expect(c.ogImagem).toBe('_media/seo/share.jpg');
     expect(h).toContain('content="Venha &quot;já&quot;"');
     expect(s.ogTitulo).toBe('Cuidar chegou');
     expect(s.ogDescricao).toBe('Venha "já"');
@@ -63,12 +57,27 @@ describe('R. SEO e compartilhamento', () => {
     expect(home).toContain('property="og:url" content="https://circuitocuidar.com.br/"');
   });
 
-  it('R5: no gerar, só com seo informado; a página interna usa os campos das cidades', () => {
+  it('R5: no gerar, só com seo informado; cada cidade herda da principal com o nome na frente, ou usa o seu cadastro', () => {
     const sp = linha({ cidade: 'São Paulo' });
-    const base = { formato: 'tapume_praca' as const, modelos: { tapume: '<html><head><title>T</title></head><body><p>x</p></body></html>', praca: '<html><head></head><body><h1>@cidade_1</h1></body></html>' }, cidades: [sp] };
+    const rj = linha({ cidade: 'Rio de Janeiro' });
+    const base = {
+      formato: 'tapume_praca' as const, cidades: [sp, rj],
+      modelos: { tapume: '<html><head><title>T</title><link rel="icon" href="_media/ico.png"></head><body><img src="_media/capa.jpg"><p>Quatro etapas, quatro medalhas que se encaixam e um hoodie exclusivo.</p></body></html>', praca: '<html><head><title>@cidade_1 velho</title></head><body><h1>@cidade_1</h1><img src="_media/praca.jpg"></body></html>' },
+    };
     expect(gerar(base).paginas[1].html).not.toContain('og:title');
-    const r = gerar({ ...base, seo: { nomeEvento: 'Combo', titulo: 'Combo 2027', interna: { titulo: 'Combo em {cidade}' } } });
-    expect(lerSeo(r.paginas[0].html).titulo).toBe('Combo 2027');
-    expect(lerSeo(r.paginas[1].html).titulo).toBe('Combo em São Paulo');
+    const r = gerar({ ...base, seo: { nomeEvento: 'Combo', titulo: 'Combo 2027', share: { titulo: 'Garanta o combo' }, porPagina: { [rj._id]: { titulo: 'Combo no Rio', share: { imagem: '_media/rio.jpg' }, favicon: '_media/rio.ico' } } } });
+    const [home, pSP, pRJ] = r.paginas.map((p) => lerSeo(p.html));
+    expect(home.titulo).toBe('Combo 2027');
+    // herda tudo da principal, com a cidade na frente do título (o <title> do HTML da praça não vale)
+    expect(pSP.titulo).toBe('São Paulo - Combo 2027');
+    expect(pSP.descricao).toBe(home.descricao);
+    expect(pSP.ogTitulo).toBe('São Paulo - Garanta o combo');
+    expect(pSP.ogImagem).toBe('_media/capa.jpg');
+    expect(pSP.favicon).toBe('_media/ico.png');
+    // o cadastro da cidade vale
+    expect(pRJ.titulo).toBe('Combo no Rio');
+    expect(pRJ.ogTitulo).toBe('Combo no Rio');
+    expect(pRJ.ogImagem).toBe('_media/rio.jpg');
+    expect(pRJ.favicon).toBe('_media/rio.ico');
   });
 });
