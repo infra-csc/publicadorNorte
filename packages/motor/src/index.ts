@@ -13,7 +13,7 @@ export {
 } from './detectar';
 export { avaliar, nomesFormula } from './formulas';
 export { Cadastro, novaLinha, COLUNAS_NOME, type DadosCadastro } from './cadastro';
-export { TEXTOS_PADRAO } from './detectar';
+export { TEXTOS_PADRAO, VARS_GALERIA, galeriasDe } from './detectar';
 export { estaRealizado, limiteRealizado, type Automacao } from './datas';
 export { ehData, ehPeriodo, formatoDeData, formatarData, periodo, lerData, paraISO, deISO, FORMATOS_DATA, type FormatoData } from './datas';
 export { converterMarcas, MARCA_INI, MARCA_MEIO, MARCA_FIM } from './edicao';
@@ -21,7 +21,7 @@ export {
   ajustarTagsMidia, refsDeArquivo, acharArquivo, normRef, opcoesMidia, padraoMidia, valorMidia, pastasMidia,
   versaoTela, caminhoMidia, OCULTA, midiaEscondida, arquivoDaEscolha, tirarMidiaOculta, secaoMidia, slotMidia, arquivoAceito, tipoArquivo, TIPOS_ARQUIVO, CSS_MIDIA, type OpcaoMidia,
 } from './midia';
-export { gerar, type EntradaGerar, type PaginaGerada, type ResultadoGerar } from './gerar';
+export { gerar, type EntradaGerar, type FotoGaleria, type PaginaGerada, type ResultadoGerar } from './gerar';
 export { temCardsFixos } from './cards-fixos';
 export type { ResultadoConversao, CardPreenchido } from './conversor';
 // converterCardsFixos usa um parser de HTML (linkedom): importe de '@norte/motor/conversor'

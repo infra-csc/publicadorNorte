@@ -266,3 +266,12 @@ Os tapumes de cards fixos dos casos H1–H4 são fixtures sintéticos em `packag
 | T2 | `<a href="@arquivo_material_aula">` com aula.pdf na pasta | href = o PDF (padrão pelo nome); o arquivo vai para o site; `<img>` vizinho segue imagem |
 | T3 | galeria dentro de `@repetir cidades`, subpastas `galeria/sao-paulo/`, `galeria/rio-de-janeiro/` | cada cidade pega as fotos da sua subpasta; espaço numerado sem arquivo de mesmo nome fica vazio e o `@se` tira (não repete a primeira foto) |
 
+## U. Galeria (`@repetir galeria`)
+
+| # | Entrada | Esperado |
+|---|---|---|
+| U1 | 4 fotos (SP, RJ, todas, SP) fora de cidade | todas na ordem; `@galeria_cidade` = nome (vazio na de todas); `@galeria_numero` 1…4; legenda opcional com `@se`; os arquivos vão para o site |
+| U2 | galeria dentro de `@repetir cidades` | cada cidade mostra as dela e as de todas |
+| U3 | página da cidade (praça); duas galerias (`galeria`, `galeria_bastidores`) | só as da cidade e as de todas; cada galeria com a sua lista |
+| U4 | detecção | `@galeria_*` não vira coluna; `galeriasDe` lista as galerias dos HTMLs |
+

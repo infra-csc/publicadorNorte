@@ -71,6 +71,7 @@ export function urlDoSite(e: Pick<Evento, 'producao' | 'publicacoes'>): string |
 export function gerarEvento(evento: Evento, modelos: Partial<Record<string, string>>, arquivos: ArquivoMidia[], banco?: BancoPatrocinios | null, opcoes?: { marcarEdicao?: boolean; agora?: Date; urlSite?: string; /** site publicado: cidade/etapa em breve não abre */ publicacao?: boolean }): ResultadoGerar {
   return gerar({
     marcarEdicao: opcoes?.marcarEdicao,
+    galerias: evento.galerias,
     seo: { ...evento.seo, nomeEvento: evento.nome },
     urlSite: opcoes?.urlSite || urlDoSite(evento),
     fecharEmBreve: opcoes?.publicacao,

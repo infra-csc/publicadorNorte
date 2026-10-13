@@ -3,7 +3,7 @@ import { ehPeriodo, formatarData, formatoDeData, periodo, type Automacao } from 
 import { converterMarcas, MARCA_INI, marcar } from './edicao';
 import { Cadastro } from './cadastro';
 import { temCardsFixos } from './cards-fixos';
-import { detectar, ehContagem, sincronizarVars, TEXTOS_PADRAO, type Deteccao } from './detectar';
+import { detectar, ehContagem, sincronizarVars, TEXTOS_PADRAO, VARS_GALERIA, type Deteccao } from './detectar';
 import { ajustarTagsMidia, opcoesMidia, pastasMidia, tirarMidiaOculta } from './midia';
 import { abreviar, esc, slug, slugValor } from './texto';
 import { FORMATOS, NOME_PAGINA, type Aviso, type Formato, type Linha, type Modelos, type TipoItem, type TipoPagina, type Vars } from './tipos';
@@ -45,6 +45,17 @@ export interface EntradaGerar {
   urlSite?: string;
   /** publicação: a página de cidade/etapa "em breve" não abre (leva para a home, sem indexar). A prévia mostra normal. */
   fecharEmBreve?: boolean;
+  /** fotos de cada galeria (`@repetir galeria`), na ordem; cada uma com a cidade (_id) ou para todas */
+  galerias?: Record<string, FotoGaleria[]>;
+}
+
+export interface FotoGaleria {
+  id: string;
+  /** caminho na mídia (_media/…) */
+  arquivo: string;
+  /** _id da cidade; vazio = aparece em todas */
+  cidade?: string;
+  legenda?: string;
 }
 
 export interface PaginaGerada {
@@ -79,6 +90,8 @@ interface Ctx {
   tipoItem?: TipoItem;
   grupo?: { col: string; valor: string };
   listaG?: Linha[];
+  /** dentro de @repetir galeria: a foto atual */
+  foto?: { f: FotoGaleria; n: number };
 }
 
 interface Rastro {
@@ -92,7 +105,26 @@ interface Rastro {
 class Montador {
   /** linha do cadastro de onde veio o último valor ('' = geral; null = não editável) */
   private linhaUsada: string | null = null;
-  constructor(private cad: Cadastro, private formato: Formato, private marcarEdicao = false) {}
+  constructor(private cad: Cadastro, private formato: Formato, private marcarEdicao = false, private galerias: Record<string, FotoGaleria[]> = {}) {}
+
+  /** fotos da galeria no lugar: dentro de uma cidade (lista ou página dela), as dela e as de todas; fora, todas */
+  private fotos(colecao: string, ctx: Ctx): FotoGaleria[] {
+    const lista = (this.galerias[colecao] || []).filter((f) => f.arquivo);
+    const c = ctx.item && ctx.tipoItem === 'cidade' ? ctx.item : ctx.item && ctx.tipoItem === 'etapa' ? this.cad.cidadeDa(ctx.item) : ctx.cidade;
+    return c ? lista.filter((f) => !f.cidade || f.cidade === c._id) : lista;
+  }
+
+  /** @galeria_foto, @galeria_legenda, @galeria_cidade, @galeria_numero */
+  private daFoto(base: string, ctx: Ctx): string | null {
+    if (!VARS_GALERIA.has(base)) return null;
+    const x = ctx.foto;
+    if (!x) return '';
+    if (base === 'galeria_foto') return x.f.arquivo;
+    if (base === 'galeria_legenda') return x.f.legenda || '';
+    if (base === 'galeria_numero') return String(x.n);
+    const c = x.f.cidade ? this.cad.cidades.find((l) => l._id === x.f.cidade) : undefined;
+    return c ? this.cad.nomeItem('cidade', c) : '';
+  }
 
   private get comEtapas() {
     return this.formato === 'tapume_etapa_praca';
@@ -112,7 +144,8 @@ class Montador {
 
   private renderNo(n: No, ctx: Ctx, R: Rastro): string {
     if (n.t === 'txt') return this.trocar(n.s, ctx, R);
-    if (n.t === 'repetir') return this.escopo(n.alvo, ctx).map((it) => this.render(n.filhos, { ...ctx, item: it, tipoItem: n.alvo }, R)).join('');
+    if (n.t === 'repetir' && n.alvo === 'galeria') return this.fotos(n.colecao || 'galeria', ctx).map((f, i) => this.render(n.filhos, { ...ctx, foto: { f, n: i + 1 } }, R)).join('');
+    if (n.t === 'repetir') { const alvo = n.alvo as TipoItem; return this.escopo(alvo, ctx).map((it) => this.render(n.filhos, { ...ctx, item: it, tipoItem: alvo }, R)).join(''); }
     if (n.t === 'agrupar') {
       const grupos = new Map<string, Linha[]>();
       for (const c of this.escopo('cidade', ctx)) {
@@ -149,6 +182,8 @@ class Montador {
 
   /** valor de uma coluna testada em @se */
   private valorCol(col: string, ctx: Ctx): string {
+    const daFoto = this.daFoto(col, ctx);
+    if (daFoto != null) return daFoto;
     const v = this.cad.vars[col];
     if (ctx.item && v?.dono !== 'geral' && (col in ctx.item || v?.formula || v?.dono === ctx.tipoItem)) return this.cad.valorDe(ctx.item, col);
     if (ctx.grupo && ctx.grupo.col === col) return ctx.grupo.valor;
@@ -170,6 +205,8 @@ class Montador {
 
   private trocar(src: string, ctx: Ctx, R: Rastro): string {
     return trocarVars(src, (base, num, tok) => {
+      const daFoto = this.daFoto(base, ctx);
+      if (daFoto != null) return esc(daFoto);
       const v = this.cad.vars[base];
       if (!v || v.ignorar) return null;
       this.linhaUsada = null;
@@ -272,7 +309,7 @@ export function gerar(e: EntradaGerar): ResultadoGerar {
     avisos.push({ codigo: 'sem-etapas', nivel: 'bloqueia', titulo: 'Nenhuma etapa cadastrada', detalhe: 'Neste formato, cada cidade tem as suas etapas.', passo: 'cadastro' });
   }
 
-  const montador = new Montador(cad, e.formato, !!e.marcarEdicao);
+  const montador = new Montador(cad, e.formato, !!e.marcarEdicao, e.galerias || {});
   const arvores = new Map<TipoPagina, ReturnType<typeof lerBlocos>>();
   let seoPrincipal: ValoresSeo | undefined;
   const add = (kind: TipoPagina, arquivo: string, titulo: string, ctx: Omit<Ctx, 'kind'>, nivel: 0 | 1) => {

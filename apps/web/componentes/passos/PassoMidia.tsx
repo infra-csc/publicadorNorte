@@ -1,5 +1,5 @@
 'use client';
-import { arquivoDaEscolha, ehMidia, FORMATOS, ordemFinal, midiaEscondida, NOME_PAGINA, OCULTA, opcoesMidia, pastasMidia, secaoMidia, sincronizarVars, slotMidia, type OpcaoMidia, type TipoPagina } from '@norte/motor';
+import { arquivoDaEscolha, ehMidia, galeriasDe, FORMATOS, ordemFinal, midiaEscondida, NOME_PAGINA, OCULTA, opcoesMidia, pastasMidia, secaoMidia, sincronizarVars, slotMidia, type OpcaoMidia, type TipoPagina } from '@norte/motor';
 import { useDeferredValue, useMemo, useState } from 'react';
 import { gerarEvento } from '@/lib/comum/montagem';
 import { api, json, urlArquivo } from '../api';
@@ -7,6 +7,7 @@ import { Cabecalho, NavPassos, useEditor } from '../Editor';
 import { enviarMidia, juntar, nomeLivre } from '../enviarMidia';
 import { Previa } from '../Previa';
 import { Alca, mover, useReordenar } from '../Reordenar';
+import { Galerias } from './GaleriaFotos';
 
 const ehVideo = (c: string) => /\.(mp4|webm)$/i.test(c);
 const ehImagem = (c: string) => /\.(webp|png|jpe?g|gif|avif|svg)$/i.test(c);
@@ -194,7 +195,8 @@ export function PassoMidia() {
       {msg('geral')}
       <div className="split">
         <div className="stack" style={{ minWidth: 0 }}>
-          {!secoes.length && <div className="card empty">Esta página não tem imagens ou vídeos trocáveis (variáveis @img_, @video_ ou @media_).</div>}
+          <Galerias />
+          {!secoes.length && !galeriasDe(modelos).length && <div className="card empty">Esta página não tem imagens ou vídeos trocáveis (variáveis @img_, @video_ ou @media_).</div>}
           {secoes.map(([s, bases], i) => (
             <section key={s} className={'img-sec' + (arrastando === 'secao:' + s ? ' drop-on' : '')} {...juntarAlvos(alvo(i), alvoDrop('secao:' + s, s, null))}>
               <div className="row between">

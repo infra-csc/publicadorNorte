@@ -4,7 +4,8 @@ import type { TipoItem } from './tipos';
 export const RX_MARCA = /<!--\s*@(repetir|agrupar|se|senao|fim)\b([\s\S]*?)-->/g;
 
 export interface NoTxt { t: 'txt'; s: string; ini: number }
-export interface NoRepetir { t: 'repetir'; alvo: TipoItem; filhos: No[]; ini: number }
+/** repetir cidades/etapas, ou as fotos de uma galeria (`@repetir galeria`, `@repetir galeria_bastidores`) */
+export interface NoRepetir { t: 'repetir'; alvo: TipoItem | 'galeria'; colecao?: string; filhos: No[]; ini: number }
 export interface NoAgrupar { t: 'agrupar'; col: string; filhos: No[]; ini: number }
 export interface NoSe {
   t: 'se';
@@ -41,7 +42,10 @@ export function lerBlocos(src: string): { raiz: No[]; erros: ErroBloco[] } {
     const kw = m[1];
     const arg = m[2].trim();
     if (kw === 'repetir') {
-      const n: NoRepetir = { t: 'repetir', alvo: /etapa/i.test(arg) ? 'etapa' : 'cidade', filhos: [], ini: m.index };
+      const gal = /^galeria\w*/i.exec(arg)?.[0].toLowerCase();
+      const n: NoRepetir = gal
+        ? { t: 'repetir', alvo: 'galeria', colecao: gal, filhos: [], ini: m.index }
+        : { t: 'repetir', alvo: /etapa/i.test(arg) ? 'etapa' : 'cidade', filhos: [], ini: m.index };
       destino(topo()).push(n);
       pilha.push(n);
     } else if (kw === 'agrupar') {

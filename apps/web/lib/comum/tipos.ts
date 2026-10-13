@@ -47,6 +47,8 @@ export interface Evento {
   publicacoes: Publicacao[];
   /** versão no ar no endereço de teste (null = nenhuma) */
   versaoAtiva: number | null;
+  /** fotos das galerias (`@repetir galeria` no HTML), cada uma com a cidade (_id) ou vazio = todas */
+  galerias?: Record<string, { id: string; arquivo: string; cidade?: string; legenda?: string }[]>;
   /** SEO e compartilhamento (vazio = automático) */
   seo?: SeoEvento;
   /** produção: o site no domínio próprio do evento (uma versão já publicada no teste) */

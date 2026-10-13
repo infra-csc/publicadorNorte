@@ -380,3 +380,11 @@ tr:last-child td { border-bottom: 0; }
 .seo-abas button[aria-selected='true'] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
 .seo-abas__ponto { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
 .thumb .thumb-arquivo { display: grid; place-items: center; height: 68px; border-radius: 6px; background: var(--line); color: var(--ink); font: 700 15px var(--f-mono); letter-spacing: .05em; }
+/* galeria: lista de fotos com a cidade de cada uma */
+.galeria-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.galeria-item { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--sunk); min-width: 0; }
+.galeria-item .inp { padding: 6px 8px; font-size: 13px; }
+.galeria-item__img { position: relative; aspect-ratio: 4 / 3; border-radius: 6px; overflow: hidden; background: var(--line); }
+.galeria-item__img img, .galeria-item__img video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.galeria-item__n { position: absolute; top: 6px; left: 6px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: rgba(0,0,0,.65); color: #fff; font-size: 12px; font-weight: 700; display: grid; place-items: center; }
+

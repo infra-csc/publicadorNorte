@@ -38,10 +38,20 @@ export interface Deteccao {
 function andar(nos: No[], laco: TipoItem | null, fn: (s: string, laco: TipoItem | null) => void, extra?: (n: No, laco: TipoItem | null) => void): void {
   for (const n of nos) {
     if (n.t === 'txt') fn(n.s, laco);
-    else if (n.t === 'repetir') andar(n.filhos, n.alvo, fn, extra);
+    else if (n.t === 'repetir') andar(n.filhos, n.alvo === 'galeria' ? laco : n.alvo, fn, extra);
     else if (n.t === 'agrupar') { extra?.(n, laco); andar(n.filhos, laco || 'cidade', fn, extra); }
     else if (n.t === 'se') { extra?.(n, laco); andar(n.filhos, laco, fn, extra); andar(n.senao, laco, fn, extra); }
   }
+}
+
+/** variáveis de cada foto dentro de @repetir galeria: o publicador preenche (não viram coluna nem campo) */
+export const VARS_GALERIA = new Set(['galeria_foto', 'galeria_legenda', 'galeria_cidade', 'galeria_numero']);
+
+/** nomes das galerias usadas nos HTMLs (`@repetir galeria`, `@repetir galeria_bastidores`) */
+export function galeriasDe(modelos: Partial<Record<string, string | null | undefined>>): string[] {
+  const out = new Set<string>();
+  for (const h of Object.values(modelos)) for (const m of String(h || '').matchAll(/<!--\s*@repetir\s+(galeria\w*)/gi)) out.add(m[1].toLowerCase());
+  return [...out];
 }
 
 export function acharVars(html: string): Ocorrencia[] {
@@ -49,9 +59,9 @@ export function acharVars(html: string): Ocorrencia[] {
   andar(
     lerBlocos(html).raiz,
     null,
-    (s, laco) => { for (const a of varsDoTexto(s)) out.push({ tok: a.tok, base: a.base, num: a.num, laco }); },
+    (s, laco) => { for (const a of varsDoTexto(s)) if (!VARS_GALERIA.has(a.base)) out.push({ tok: a.tok, base: a.base, num: a.num, laco }); },
     (n, laco) => {
-      if ((n.t === 'se' || n.t === 'agrupar') && n.col) {
+      if ((n.t === 'se' || n.t === 'agrupar') && n.col && !VARS_GALERIA.has(n.col)) {
         out.push({ tok: '@' + n.col, base: n.col, num: null, laco, sint: true, opc: n.t === 'se' && n.op ? n.val : null });
       }
     },

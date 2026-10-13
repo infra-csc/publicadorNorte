@@ -37,7 +37,7 @@ Não existe "texto genérico que não muda": se aparece na tela, vira variável.
   <!-- … até faq12 -->
 </ul>
 ```
-- Quantidades mínimas de espaços: dúvidas 12, equipe 8, galeria 12, depoimentos 8, temas/etapas 8, vídeos 6.
+- Quantidades mínimas de espaços: dúvidas 12, equipe 8, depoimentos 8, temas/etapas 8, vídeos 6. (Galeria não usa espaços fixos: seção 1.4.)
 - Pergunta das dúvidas que depende de dado (preço, cidades, duração) também é variável; a resposta usa o padrão do dado (preço da seção 12, `@repetir cidades` para a lista de cidades).
 
 ### 1.2 Links e arquivos para baixar
@@ -60,25 +60,33 @@ Não existe "texto genérico que não muda": se aparece na tela, vira variável.
 - **Todo arquivo citado no HTML vai junto na pasta `_media` entregue.** Nada de imagem de exemplo com texto, print de tela ou mensagem de erro: use a imagem real ou uma imagem neutra da cor do layout.
 - Ilustrações em camadas (personagem, ingredientes, fundo) são arquivos separados, cada um com sua variável.
 
-### 1.4 Galeria por cidade
-Quando cada cidade tem as suas fotos, a galeria fica **dentro de `@repetir cidades`**: as variáveis lá dentro viram da cidade, e no passo **Mídia** quem publica escolhe as fotos de cada cidade ("Por cidade"). Organize os arquivos em uma subpasta por cidade:
+### 1.4 Galeria (fotos por cidade)
+Galeria **não** é uma série de espaços fixos (`@img_galeria_foto1…12`). É uma lista: quem publica envia **quantas fotos quiser** no passo **Mídia**, várias de uma vez, e marca cada uma com a cidade (ou "Todas as cidades"). No HTML, escreva **um item só** entre `@repetir galeria` e `@fim`, com as variáveis da foto:
 
-```
-_media/pagina/galeria/sao-paulo/foto1.webp
-_media/pagina/galeria/rio-de-janeiro/foto1.webp
-```
+| Variável | O que vira |
+|---|---|
+| `@galeria_foto` | o arquivo da foto (use no `src`) |
+| `@galeria_legenda` | a legenda (pode ficar vazia: use `@se galeria_legenda`) |
+| `@galeria_cidade` | o nome da cidade da foto (vazio quando a foto é de todas) |
+| `@galeria_numero` | 1, 2, 3… na ordem da galeria |
+
 ```html
+<!-- Galeria com abas por cidade: um bloco por cidade, cada um com as fotos dela -->
 <!-- @repetir cidades -->
 <div class="galeria" data-cidade="@cidade">
-  <h3>@cidade</h3>
-  <!-- @se img_galeria_foto1 --><figure><img src="@img_galeria_foto1" alt="@galeria_foto1_legenda"><figcaption>@galeria_foto1_legenda</figcaption></figure><!-- @fim -->
-  <!-- @se img_galeria_foto2 --><figure><img src="@img_galeria_foto2" alt="@galeria_foto2_legenda"><figcaption>@galeria_foto2_legenda</figcaption></figure><!-- @fim -->
-  <!-- … até foto12 -->
+  <!-- @repetir galeria -->
+  <figure class="galeria__item">
+    <img src="@galeria_foto" alt="@galeria_legenda" loading="lazy">
+    <!-- @se galeria_legenda --><figcaption>@galeria_legenda</figcaption><!-- @fim -->
+  </figure>
+  <!-- @fim -->
 </div>
 <!-- @fim -->
 ```
-- Espaço numerado sem foto escolhida e sem arquivo de mesmo nome (`foto7`) fica vazio, e o `@se` tira o espaço.
-- Abas ou filtro por cidade (JavaScript) mostram um `.galeria` por vez, pelo `data-cidade`.
+- **Dentro de `@repetir cidades`** (ou na página da cidade), a galeria mostra as fotos daquela cidade e as marcadas para todas. **Fora**, mostra todas as fotos, e o `@galeria_cidade` serve para filtrar por JavaScript (`data-cidade="@galeria_cidade"`).
+- Mais de uma galeria na página: dê um nome depois de `galeria`, `<!-- @repetir galeria_bastidores -->`. Cada uma tem a sua lista no passo Mídia.
+- O CSS da galeria funciona com qualquer quantidade de fotos (0, 1, 3, 40): grade com `auto-fill`/`minmax` ou carrossel com rolagem. Se a cidade não tiver foto, o bloco fica vazio: esconda com `.galeria:empty { display: none }` ou mostre um aviso por CSS.
+- As variáveis de foto não aparecem no cadastro: quem publica cuida das fotos no passo Mídia.
 
 ### 1.5 Tudo conectado (botões e números sincronizados)
 - **A mesma ação usa a mesma variável e o mesmo `@se` em todo lugar**: o botão do topo, o botão fixo no rodapé do celular, o da seção de inscrição e o do card de compartilhar. Se a inscrição está "em breve", **todos** dizem "em breve"; se está aberta, **todos** levam ao `@link_inscricao`.
@@ -514,7 +522,7 @@ No passo **Seções**, quem publica pode esconder partes da página (no evento t
 - [ ] Todo link usa variável; PDF para baixar com `@arquivo_<secao>_<nome>` (seção 1.2)
 - [ ] Ícones e ilustrações são arquivos (`.svg` exportado, `.webp`) em `_media`, com variável `@img_`; nenhum `<svg>` de ícone escrito no HTML (seção 1.3)
 - [ ] Todo arquivo citado está na pasta `_media` entregue; nenhuma imagem de exemplo com texto ou print de tela
-- [ ] Galeria por cidade dentro de `@repetir cidades`, com subpasta por cidade (seção 1.4)
+- [ ] Galeria com **um item só** entre `@repetir galeria` e `@fim`, usando `@galeria_foto`, `@galeria_legenda`, `@galeria_cidade` (seção 1.4); nada de `@img_galeria_foto1…12`
 - [ ] Botões da mesma ação sincronizados: mesma variável e mesmo `@se status` no topo, no botão fixo, na inscrição e no compartilhar; contagens com `@total_…` (seção 1.5)
 - [ ] Animações de entrada com `IntersectionObserver`, funcionando ao abrir no meio da página e dentro de um quadro; `prefers-reduced-motion` respeitado (seção 1.6)
 - [ ] Conferido em 360, 390, 768, 1024, 1280 e 1440 px, sem rolagem horizontal (seção 1.7)
