@@ -6,6 +6,7 @@ import type { EstadoDominio } from '@/lib/servidor/cloudflare';
 import type { EstadoSite } from '@/lib/servidor/destino';
 import { api } from '../api';
 import { Cabecalho, NavPassos, useEditor } from '../Editor';
+import { SecaoAgendamento } from './Agendamento';
 import { Avisos } from './PassoConferir';
 
 const quando = (iso: string) => {
@@ -81,7 +82,7 @@ export function PassoPublicar() {
   const hist = [...evento.publicacoes].reverse();
   return (
     <>
-      <Cabecalho passo="publicar" titulo="Publicar">Publicar coloca o site no endereço de <b>teste</b>. Com a versão aprovada, leve-a para a <b>produção</b> (o domínio próprio do evento). Cada publicação vira uma versão: dá para voltar para uma anterior.</Cabecalho>
+      <Cabecalho passo="publicar" titulo="Publicar">Publicar coloca o site no endereço de <b>teste</b>. Com a versão aprovada, leve-a para a <b>produção</b> (o domínio próprio do evento). Cada publicação vira uma versão: dá para voltar para uma anterior. Também dá para agendar a publicação para uma data e hora.</Cabecalho>
 
       {ativa && (
         <section className="card stack">
@@ -96,6 +97,8 @@ export function PassoPublicar() {
       )}
 
       {ativa && <SecaoProducao ocupadoFora={!!ocupado} />}
+
+      <SecaoAgendamento bloqueado={r.bloqueado} ocupadoFora={!!ocupado} />
 
       {site && !site.ligado && evento.publicacoes.length > 0 && (
         <section className="card stack">

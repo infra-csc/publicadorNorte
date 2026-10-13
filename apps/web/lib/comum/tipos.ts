@@ -53,6 +53,10 @@ export interface Evento {
   seo?: SeoEvento;
   /** produção: o site no domínio próprio do evento (uma versão já publicada no teste) */
   producao?: Producao;
+  /** publicação agendada: na hora marcada, o que estiver salvo vai para o teste (e para a produção, se pedido) */
+  agendamento?: Agendamento;
+  /** resultado do último agendamento (some quando outro é marcado) */
+  ultimoAgendamento?: { em: string; ok: boolean; mensagem: string; versao?: number };
   criadoEm: string;
   atualizadoEm: string;
 }
@@ -115,6 +119,14 @@ export interface IndiceProducao {
   sites: Record<string, { slug: string; commit: string; versao: number; principal: string }>;
 }
 
+export interface Agendamento {
+  /** quando publicar (ISO, UTC) */
+  em: string;
+  /** levar também para a produção (precisa de domínio) */
+  producao: boolean;
+  criadoEm: string;
+}
+
 export interface ResumoEvento {
   slug: string;
   nome: string;
@@ -126,6 +138,10 @@ export interface ResumoEvento {
   pendente: boolean;
   /** domínio principal, se estiver em produção */
   producao?: string | null;
+  /** publicação agendada (ISO) */
+  agendado?: string | null;
+  /** modo automático (realizado) ligado */
+  automatico?: boolean;
 }
 
 export interface ArquivoMidia {

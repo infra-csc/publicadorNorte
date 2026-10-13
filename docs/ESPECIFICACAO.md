@@ -34,7 +34,7 @@ No formato com etapas, cada etapa pertence a uma cidade (campo interno `_cidade`
 
 ---
 
-**Status pelas datas** (Cadastro): manual ou automático. No automático, cada cidade/etapa vira `realizado` depois de 0h do último dia (`data_fim`, ou `data_inicio`) + N horas (padrão 8, horário de Brasília). Vale em todo lugar que usa o status (`@se status`, contagens). Como o site é estático, o cron da Cloudflare (Worker do publicador) chama `POST /api/automacao` de hora em hora; o publicador republica os eventos publicados em que a lista de realizados mudou desde a última publicação.
+**Status pelas datas** (Cadastro): manual ou automático. No automático, cada cidade/etapa vira `realizado` depois de 0h do último dia (`data_fim`, ou `data_inicio`) + N horas (padrão 8, horário de Brasília). Vale em todo lugar que usa o status (`@se status`, contagens). Como o site é estático, o cron da Cloudflare (Worker do publicador) chama `POST /api/automacao` a cada 5 minutos; o publicador republica os eventos publicados em que a lista de realizados mudou desde a última publicação.
 
 **Datas:** variável chamada `data` ou `data_…` é campo de data com calendário no Cadastro (guarda dd/mm/aaaa). O HTML escolhe o formato pelo fim do nome (`_dia`, `_mes`, `_mes_abrev`, `_mes_nome`, `_ano`, `_curta`, `_semana`, `_semana_abrev`, `_extenso`) e `@periodo` / `@periodo_extenso` juntam início e fim (guia, seção 4). Usar uma variação já cria a coluna da data.
 
@@ -335,6 +335,9 @@ Gera `.zip` com `index.html`, as páginas e só os arquivos referenciados, na me
 ### 11.0 Cidade "em breve" não abre
 
 Na publicação (teste, produção e .zip), a página de cada cidade com status **em breve** (ou de cada etapa, quando o status é das etapas) não mostra o conteúdo: o arquivo existe, mas leva direto para a página principal (`index.html`) e pede para não indexar. Quando o status vira **aberta** ou **realizado** e o evento é publicado de novo, a página abre normal. A prévia do publicador sempre mostra a página. Só vale se o HTML usa `status`. O passo Publicar lista essas páginas como "em breve: ainda não abre".
+
+### 11.0b Publicação agendada
+No passo Publicar, "Publicação agendada": data e hora (do computador de quem marca; no Brasil, horário de Brasília) e "Levar também para a produção" (só com domínio). Fica em `evento.agendamento`. A automação (cron a cada 5 minutos) publica, na primeira passada depois da hora, **o que estiver salvo naquele momento**: versão nova no teste e, se marcado, a mesma versão na produção. Depois o agendamento sai e o resultado fica em `ultimoAgendamento` (mostrado na tela). Se não der para publicar (itens que bloqueiam no Conferir), não publica, não tenta de novo e guarda o motivo. Um agendamento por evento; dá para cancelar antes da hora. Horário: no mínimo 1 minuto à frente e no máximo 12 meses.
 
 ### 11.1 Teste e produção (programa novo)
 

@@ -13,8 +13,10 @@ export class NaoPublicavel extends Error {
 /**
  * `acompanharProducao` (automação): se a produção estava na mesma versão do teste, ela vai junto para a nova
  * (o "realizado" automático chega ao domínio próprio). Publicar pelo botão só muda o teste.
+ * `producao` (agendamento): a produção vai junto sempre que o evento tiver domínio.
+ * `agendamento`: esta publicação é a do agendamento; ele sai do evento e o resultado fica em ultimoAgendamento.
  */
-export async function publicarEvento(armazenamento: Armazenamento, destino: DestinoPublicacao, slug: string, agora = new Date(), opcoes: { acompanharProducao?: boolean } = {}) {
+export async function publicarEvento(armazenamento: Armazenamento, destino: DestinoPublicacao, slug: string, agora = new Date(), opcoes: { acompanharProducao?: boolean; producao?: boolean; agendamento?: boolean } = {}) {
   const c = await armazenamento.ler(slug);
   if (!c) throw new NaoPublicavel('Evento não encontrado.');
   const { banco } = await armazenamento.lerBanco();
@@ -36,14 +38,20 @@ export async function publicarEvento(armazenamento: Armazenamento, destino: Dest
   const { commit } = await destino.publicar(slug, versao, arquivos);
   const pub: Publicacao = { versao, commit, em: agora.toISOString(), paginas: r.paginas.length, avisos: r.avisos.length, url: await destino.url(slug) };
   const realizados = realizadosAgora(c.evento, agora);
+  const p = c.evento.producao;
+  const temDominio = !!p?.dominios.length;
+  const junto = temDominio && (!!opcoes.producao || (!!opcoes.acompanharProducao && p?.versao != null && p.versao === c.evento.versaoAtiva));
   const registrar = (e: Evento) => {
     e.publicacoes.push(pub);
     e.versaoAtiva = versao;
     delete e.pendencia;
     if (e.automacao) e.automacao.realizados = realizados;
+    if (opcoes.agendamento) {
+      delete e.agendamento;
+      const onde = junto ? 'no teste e na produção' : 'no teste' + (opcoes.producao ? ' (a produção não foi: o evento não tem domínio)' : '');
+      e.ultimoAgendamento = { em: agora.toISOString(), ok: true, versao, mensagem: `Versão ${versao} publicada ${onde}.` };
+    }
   };
-  const p = c.evento.producao;
-  const junto = opcoes.acompanharProducao && p?.versao != null && p.versao === c.evento.versaoAtiva && p.dominios.length > 0;
   const salvo = junto
     ? await armazenamento.atualizarProducao(slug, (e) => { registrar(e); levarParaProducao(e, versao, agora); }, `Registra a publicação v${versao} de ${slug} (teste e produção)`)
     : await armazenamento.atualizar(slug, registrar, `Registra a publicação v${versao} de ${slug}`);

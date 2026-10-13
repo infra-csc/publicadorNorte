@@ -293,3 +293,12 @@ Os tapumes de cards fixos dos casos H1–H4 são fixtures sintéticos em `packag
 | W3 | variação opcional `faqN_resposta_gratuito` dentro de `@se gratuito = sim` | preenchida e gratuito: ela; vazia ou pago: `faqN_resposta` |
 | J15 | faq1 com `_resposta_gratuito`, faq2/faq3 com `_resposta` | problema `lista-desigual` dizendo o que falta em cada item |
 
+## X. Publicação agendada (apps/web, automacao.test.ts)
+
+| # | Entrada | Esperado |
+|---|---|---|
+| X1 | agendamento vencido, com produção e domínio | versão nova no teste e na produção; agendamento sai; `ultimoAgendamento` ok "no teste e na produção" |
+| X2 | agendamento no futuro | nada |
+| X3 | só teste com produção na mesma versão / pediu produção sem domínio | produção acompanha / só teste, com o aviso "não tem domínio" |
+| X4 | evento que não pode ser publicado | não publica, agendamento sai, motivo em `ultimoAgendamento` |
+

@@ -1,6 +1,6 @@
 // Entrada do Worker na Cloudflare: domínios dos sites em produção são servidos aqui (sem passar pelo
 // painel); o resto (publicador) vai para o Next.js gerado pelo OpenNext.
-// O cron (wrangler.jsonc → triggers) roda o modo automático de hora em hora.
+// O cron (wrangler.jsonc → triggers) roda a automação a cada 5 minutos (agendamentos e status "realizado").
 // @ts-ignore: .open-next/worker.js só existe depois do build (pnpm cf:build)
 import { default as next } from './.open-next/worker.js';
 import { chaveAutomacao } from './lib/servidor/automacaoChave';
