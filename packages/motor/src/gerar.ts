@@ -43,12 +43,16 @@ export interface EntradaGerar {
   seo?: Seo;
   /** endereço do site (https://dominio/): og:image e og:url absolutos */
   urlSite?: string;
+  /** publicação: a página de cidade/etapa "em breve" não abre (leva para a home, sem indexar). A prévia mostra normal. */
+  fecharEmBreve?: boolean;
 }
 
 export interface PaginaGerada {
   tipo: TipoPagina;
   arquivo: string;
   titulo: string;
+  /** cidade/etapa em breve na publicação: o arquivo só leva para a home */
+  fechada?: boolean;
   html: string;
   /** 0 = página de cidade/home, 1 = página de etapa (recuo na lista) */
   nivel: 0 | 1;
@@ -291,6 +295,10 @@ export function gerar(e: EntradaGerar): ResultadoGerar {
     // patrocinadores só nas internas: a página do One page, a praça (sem etapas) e cada etapa; o tapume nunca
     const chavePatro = kind === 'unica' ? 'unica' : kind === 'etapa' ? ctx.etapa?._id : kind === 'praca' && !comEtapas ? ctx.cidade?._id : undefined;
     const comPatro = e.patrocinios && chavePatro ? colocarPatrocinios(corpo, montarPatrocinios(e.patrocinios.porPagina[chavePatro], e.patrocinios)) : corpo;
+    // em breve não abre: a página do item (cidade ou etapa, conforme o dono do status) só leva para a home
+    const vs = cad.vars.status;
+    const linhaStatus = vs?.dono === 'etapa' ? ctx.etapa : vs?.dono === 'cidade' ? ctx.cidade : undefined;
+    const fechada = !!e.fecharEmBreve && (kind === 'praca' || kind === 'etapa') && !!linhaStatus && !!det.opcoes.status && !vs?.ignorar && !vs?.excluida && cad.statusDe(linhaStatus) === 'breve';
     const montado = ajustarTagsMidia(colocarRodape(comPatro, rodapeDaPagina(e.rodape, linhasDaPagina)));
     const html = e.seo
       ? aplicarSeo(montado, e.seo, {
@@ -299,6 +307,7 @@ export function gerar(e: EntradaGerar): ResultadoGerar {
         urlSite: e.urlSite, arquivo,
       })
       : montado;
+    const final = fechada ? paginaFechada(titulo) : html;
     for (const f of R.faltas) {
       if (!vazios.has(f.chave)) vazios.set(f.chave, new Set());
       vazios.get(f.chave)!.add(f.quem ?? titulo);
@@ -311,7 +320,7 @@ export function gerar(e: EntradaGerar): ResultadoGerar {
       });
     }
     paginas.push({
-      tipo: kind, arquivo, titulo, html, nivel, cidadeId: ctx.cidade?._id, etapaId: ctx.etapa?._id,
+      tipo: kind, arquivo, titulo, html: final, nivel, cidadeId: ctx.cidade?._id, etapaId: ctx.etapa?._id, ...(fechada ? { fechada } : {}),
       avisos: avisos.length - a0 + (R.faltas.length ? 1 : 0),
     });
   };
@@ -390,4 +399,12 @@ export function gerar(e: EntradaGerar): ResultadoGerar {
     });
   }
   return { paginas, avisos, bloqueado: avisos.some((a) => a.nivel === 'bloqueia'), deteccao: det, vars };
+}
+
+/** página de um item ainda "em breve": leva para a home e pede para não indexar */
+export function paginaFechada(titulo: string): string {
+  return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="robots" content="noindex">'
+    + '<meta http-equiv="refresh" content="0;url=index.html"><title>' + esc(titulo) + ' · em breve</title>'
+    + '<script>location.replace("index.html" + location.hash)</script></head>'
+    + '<body><p>Em breve. <a href="index.html">Ver a página principal</a></p></body></html>\n';
 }

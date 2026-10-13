@@ -11,7 +11,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
     const c = await armazenamento.ler(slug);
     if (!c) return erro(404, 'Evento não encontrado.');
     const { banco } = await armazenamento.lerBanco();
-    const r = gerarEvento(c.evento, c.modelos, c.arquivos, banco);
+    const r = gerarEvento(c.evento, c.modelos, c.arquivos, banco, { publicacao: true });
     if (r.bloqueado) return erro(409, 'Há itens que impedem a geração. Resolva no passo Conferir.');
     const pasta: Record<string, Uint8Array> = {};
     const enc = new TextEncoder();

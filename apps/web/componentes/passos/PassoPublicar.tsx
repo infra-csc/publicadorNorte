@@ -15,7 +15,7 @@ const quando = (iso: string) => {
 export function PassoPublicar() {
   const { evento, modelos, arquivos, salvarJa, substituir, banco } = useEditor();
   const ev = useDeferredValue(evento);
-  const r = useMemo(() => gerarEvento(ev, modelos, arquivos, banco), [ev, modelos, arquivos, banco]);
+  const r = useMemo(() => gerarEvento(ev, modelos, arquivos, banco, { publicacao: true }), [ev, modelos, arquivos, banco]);
   const [site, setSite] = useState<EstadoSite | null>(null);
   const [ocupado, setOcupado] = useState('');
   const [erro, setErro] = useState('');
@@ -133,7 +133,8 @@ export function PassoPublicar() {
         {r.bloqueado ? <Avisos avisos={r.avisos.filter((a) => a.nivel === 'bloqueia')} /> : r.avisos.length > 0 && (
           <div className="w-item warn"><span className="ic">!</span><div><b>{r.avisos.length} aviso(s) em aberto</b>Dá para publicar assim mesmo: as variáveis sem valor saem em branco. Veja no passo Conferir.</div></div>
         )}
-        <ul className="files">{r.paginas.map((p) => <li key={p.arquivo}>{p.arquivo}</li>)}</ul>
+        <ul className="files">{r.paginas.map((p) => <li key={p.arquivo}>{p.arquivo}{p.fechada && <span className="muted"> · em breve: ainda não abre (leva para a página principal)</span>}</li>)}</ul>
+        {r.paginas.some((p) => p.fechada) && <p className="small muted" style={{ margin: 0 }}>Páginas de cidades “em breve” não abrem no site: quem digitar o endereço vai para a página principal. Quando o status mudar para “aberta”, publique de novo.</p>}
       </section>
 
       <section className="stack">

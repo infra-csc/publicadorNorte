@@ -328,6 +328,10 @@ Cada aviso leva ao passo onde se corrige.
 
 Gera `.zip` com `index.html`, as páginas e só os arquivos referenciados, na mesma estrutura de pastas. Registra no evento: data, número de páginas, avisos e nome do arquivo. No programa novo isso vira publicação em URL (ROADMAP, fase 1), mantendo o zip como opção de download.
 
+### 11.0 Cidade "em breve" não abre
+
+Na publicação (teste, produção e .zip), a página de cada cidade com status **em breve** (ou de cada etapa, quando o status é das etapas) não mostra o conteúdo: o arquivo existe, mas leva direto para a página principal (`index.html`) e pede para não indexar. Quando o status vira **aberta** ou **realizado** e o evento é publicado de novo, a página abre normal. A prévia do publicador sempre mostra a página. Só vale se o HTML usa `status`. O passo Publicar lista essas páginas como "em breve: ainda não abre".
+
 ### 11.1 Teste e produção (programa novo)
 
 - **Teste:** "Publicar" gera as páginas e coloca a versão nova no GitHub Pages (`renanprates.github.io/publicadorNorte/<slug>/`). Cada publicação é uma versão; "Voltar o teste para esta versão" restaura uma anterior.

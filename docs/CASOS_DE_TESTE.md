@@ -249,3 +249,11 @@ Os tapumes de cards fixos dos casos H1–H4 são fixtures sintéticos em `packag
 | R4 | com endereço do site | og:image e og:url absolutos (index.html → raiz) |
 | R5 | gerar sem seo / com seo | sem seo o head fica como veio; com seo a página principal usa os campos gerais e as cidades os seus |
 
+## S. Página "em breve" não abre no site
+
+| # | Entrada | Esperado |
+|---|---|---|
+| S1 | publicação; SP aberta, RJ sem status (em breve), BH realizado | SP e BH normais; o arquivo de RJ existe, mas só leva para index.html (refresh + script) com robots noindex; o tapume continua listando todas |
+| S2 | prévia (sem fecharEmBreve) | a página de RJ aparece normal |
+| S3 | HTML sem status; formato com etapas e status das etapas | sem status nada fecha; com status das etapas, fecha só a etapa em breve (a praça da cidade abre) |
+

@@ -20,7 +20,7 @@ export async function publicarEvento(armazenamento: Armazenamento, destino: Dest
   // endereço completo do site nas tags de compartilhamento (redes sociais não aceitam caminho relativo):
   // o domínio de produção, senão o endereço de teste (já conhecido antes da primeira publicação)
   const urlSite = urlDoSite(c.evento) || (await destino.url(slug));
-  const r = gerarEvento(c.evento, c.modelos, c.arquivos, banco, { agora, urlSite });
+  const r = gerarEvento(c.evento, c.modelos, c.arquivos, banco, { agora, urlSite, publicacao: true });
   if (r.bloqueado) throw new NaoPublicavel('Há itens que impedem a publicação. Resolva no passo Conferir.', r.avisos);
   if (!r.paginas.length) throw new NaoPublicavel('Nenhuma página para publicar.');
   const usados = arquivosUsados(r.paginas.map((p) => p.html), [...c.arquivos, ...arquivosDoBanco(banco)]);
