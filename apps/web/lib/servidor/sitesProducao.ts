@@ -3,6 +3,7 @@
 // a pasta do evento no commit da versão escolhida (o mesmo conteúdo já publicado no teste).
 // Roda antes do Next (worker.ts): um domínio de site nunca abre o painel.
 import { hostDoPublicador } from '../comum/dominios';
+import { ARQ_PAGINAS, paraProducao, robotsTxt, sitemapXml, urlDaPagina } from '../comum/indexacao';
 import type { IndiceProducao } from '../comum/tipos';
 
 export interface AmbienteSites {
@@ -41,6 +42,7 @@ export async function lerIndice(env: AmbienteSites, agora = Date.now(), buscar: 
 function guardar(valor: IndiceProducao, em: number) { indiceGuardado = { em, valor }; return valor; }
 export const esquecerIndice = () => { indiceGuardado = null; };
 
+const texto = (t: string, tipo: string) => new Response(t, { headers: { 'Content-Type': tipo, 'Cache-Control': 'public, max-age=300' } });
 const pagina = (status: number, titulo: string, texto: string) =>
   new Response(`<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${titulo}</title><body style="font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:90vh;margin:0;color:#222"><div style="text-align:center"><h1 style="font-size:22px">${titulo}</h1><p style="color:#666">${texto}</p></div></body></html>`, {
     status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
@@ -78,11 +80,20 @@ export async function servirProducao(req: Request, env: AmbienteSites, buscar: t
   };
 
   let r = await pegar(caminho);
+  let arquivo = caminho;
   if (r.status === 404 && !extensao(caminho)) {
     // /cotia → /cotia/ (como o GitHub Pages)
     const dir = await pegar(caminho + '/index.html');
     if (dir.ok) return Response.redirect(`https://${host}/${caminho}/${url.search}`, 301);
     r = await pegar(caminho + '.html');
+    arquivo = caminho + '.html';
+  }
+  // Google: robots.txt e sitemap.xml automáticos (se o site não tiver os seus)
+  if (r.status === 404 && caminho === 'robots.txt') return texto(robotsTxt(host), 'text/plain; charset=utf-8');
+  if (r.status === 404 && caminho === 'sitemap.xml') {
+    const lista = await pegar(ARQ_PAGINAS);
+    const dados = lista.ok ? ((await lista.json().catch(() => null)) as { em?: string; paginas?: { arquivo: string }[] } | null) : null;
+    return texto(sitemapXml(host, dados?.paginas?.length ? dados.paginas : [{ arquivo: 'index.html' }], dados?.em), 'application/xml; charset=utf-8');
   }
   if (r.status === 404) return pagina(404, 'Página não encontrada', 'Confira o endereço.');
   if (!r.ok && r.status !== 206) return pagina(502, 'Site temporariamente indisponível', 'Tente de novo em alguns instantes.');
@@ -96,5 +107,10 @@ export async function servirProducao(req: Request, env: AmbienteSites, buscar: t
   });
   // sem content-length: a resposta pode vir comprimida e o fetch já entrega descomprimida
   for (const k of ['content-range', 'etag']) { const v = r.headers.get(k); if (v) cab.set(k, v); }
+  // página: tira o "noindex" do endereço de teste e põe o endereço oficial (canonical)
+  if ((ext === 'html' || ext === 'htm') && r.status === 200) {
+    const h = paraProducao(await r.text(), urlDaPagina(host, arquivo));
+    return new Response(req.method === 'HEAD' ? null : h, { status: 200, headers: cab });
+  }
   return new Response(req.method === 'HEAD' ? null : r.body, { status: r.status, headers: cab });
 }

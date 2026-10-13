@@ -1,5 +1,6 @@
 // Publicar um evento: gera as páginas com o que está salvo e manda como versão nova.
 // Usado pelo botão Publicar e pela automação (status "realizado" no modo automático).
+import { ARQ_PAGINAS, marcarTeste } from '../comum/indexacao';
 import type { Evento, Publicacao } from '../comum/tipos';
 import { arquivosDoBanco, arquivosUsados, gerarEvento, realizadosAgora, urlDoSite } from '../comum/montagem';
 import type { Armazenamento } from './armazenamento';
@@ -24,8 +25,11 @@ export async function publicarEvento(armazenamento: Armazenamento, destino: Dest
   if (r.bloqueado) throw new NaoPublicavel('Há itens que impedem a publicação. Resolva no passo Conferir.', r.avisos);
   if (!r.paginas.length) throw new NaoPublicavel('Nenhuma página para publicar.');
   const usados = arquivosUsados(r.paginas.map((p) => p.html), [...c.arquivos, ...arquivosDoBanco(banco)]);
+  // teste não é indexado (a produção tira a marca ao servir); a lista de páginas abertas vira o sitemap da produção
+  const abertas = r.paginas.filter((p) => !p.fechada).map((p) => ({ arquivo: p.arquivo }));
   const arquivos: ArquivoPublicado[] = [
-    ...r.paginas.map((p) => ({ caminho: p.arquivo, texto: p.html })),
+    ...r.paginas.map((p) => ({ caminho: p.arquivo, texto: p.fechada ? p.html : marcarTeste(p.html) })),
+    { caminho: ARQ_PAGINAS, texto: JSON.stringify({ em: agora.toISOString(), paginas: abertas }) },
     ...[...usados].map(([caminho, a]) => ({ caminho, sha: a.sha })),
   ];
   const versao = Math.max(0, ...c.evento.publicacoes.map((p) => p.versao)) + 1;

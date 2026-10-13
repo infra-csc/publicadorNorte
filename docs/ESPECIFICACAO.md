@@ -339,6 +339,7 @@ Na publicação (teste, produção e .zip), a página de cada cidade com status 
 - **Como o domínio é servido:** os domínios apontam para o próprio Worker do publicador na Cloudflare (Custom Domains). `apps/web/worker.ts` atende antes do Next: se o host não é do painel (`*.workers.dev`, `localhost` ou `PUBLICADOR_HOSTS`), procura o domínio no índice `producao/sites.json` do branch de dados e entrega a pasta do evento no commit da versão (conteúdo imutável, cache da Cloudflare). Um domínio de site nunca abre o painel. Mudanças de produção chegam ao domínio em até ~1 minuto.
 - **Ligar o domínio:** com `CLOUDFLARE_API_TOKEN` e `CLOUDFLARE_ACCOUNT_ID`, o publicador liga/desliga sozinho os domínios no Worker (a zona precisa estar na conta da Cloudflare da Norte). Sem a chave, o passo Publicar mostra o passo a passo manual.
 - O mesmo domínio não pode estar em dois eventos. Evento com domínio não pode ser renomeado nem excluído (tire os domínios antes).
+- **Google:** o endereço de teste não é indexado: cada página publicada leva `<meta name="robots" content="noindex" data-pub-teste>`. A produção serve os mesmos arquivos, e o Worker tira essa marca, põe `<link rel="canonical">` com o endereço oficial e gera `robots.txt` e `sitemap.xml` (se o site não tiver os seus) a partir de `_pub/paginas.json`, gravado na publicação com as páginas abertas (sem as "em breve", que seguem com noindex).
 - **Modo automático:** quando a automação republica (status "realizado"), a produção vai junto **se estava na mesma versão do teste**. Publicar pelo botão muda só o teste.
 
 ---
