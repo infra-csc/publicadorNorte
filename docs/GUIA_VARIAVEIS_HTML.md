@@ -7,18 +7,96 @@ Quem monta o HTML (designer ou Claude) segue este guia. Isso inclui imagens e v�
 
 ---
 
-## 1. O que vira variável
+## 1. Tudo editável, tudo conectado, tudo responsivo
 
-Pergunte: **"isso muda de uma cidade para outra, ou vai mudar até o evento acontecer?"**
+Esta é a regra mais importante do guia. O HTML é um **modelo**: quem publica precisa conseguir trocar **qualquer texto, link, imagem ou ícone** pelo publicador, sem abrir o código. O que fica escrito direto no HTML não aparece no cadastro e não pode ser corrigido por quem publica.
 
-| Vira variável | Fica fixo no HTML |
+| Vira variável (aparece no cadastro ou no passo Mídia) | Fica no código |
 |---|---|
-| Cidade, UF, região, local, datas, horários | Textos institucionais e de marca |
-| Preços, parcelas, descontos, "gratuito" | Títulos de seção, FAQ genérico |
-| Links de inscrição, status da inscrição | Imagens, ícones, cores, animações |
-| Qualquer dado que muda por cidade ou etapa | O que é igual em todas as cidades e não muda |
+| **Todo texto que aparece na tela**: títulos, subtítulos, parágrafos, rótulos, legendas, texto de botão, perguntas e respostas das dúvidas, avisos | Estrutura: tags, classes, CSS, JavaScript |
+| Dados da cidade e do evento: cidade, local, datas, horários, preços, status | Setas, "+", "×" e outros sinais de interface (feitos em CSS ou texto, não imagem) |
+| **Todos os links**: inscrição, WhatsApp, e-mail, redes sociais, vídeos, arquivos para baixar (PDF) | |
+| **Todas as imagens, ícones e ilustrações** (como arquivos em `_media`, seção 9) | |
 
-Na dúvida, vira variável. Uma variável a mais não atrapalha; um dado fixo errado vai para todas as páginas.
+Não existe "texto genérico que não muda": se aparece na tela, vira variável. Uma variável a mais não atrapalha; um texto fixo errado vai para o ar e ninguém consegue corrigir sem pedir um HTML novo.
+
+### 1.1 Textos
+- Nome = `<seção>_<parte>`, sem número quando é igual em todas as páginas: `@sobre_titulo`, `@sobre_texto`, `@duvidas_titulo`, `@duvidas_sub`, `@inscricao_botao`, `@material_titulo`.
+- Listas de itens parecidos são **séries numeradas**, cada item dentro do seu `@se`, com mais espaços do que o necessário hoje (o que sobrar some). No publicador elas aparecem em blocos, com + e − para mostrar ou tirar um item:
+
+```html
+<ul class="qa">
+  <!-- @se faq1_pergunta -->
+  <li><details><summary><img src="@img_duvidas_icone1" alt=""><span>@faq1_pergunta</span></summary>
+    <div class="a"><p>@faq1_resposta</p></div></details></li>
+  <!-- @fim -->
+  <!-- @se faq2_pergunta -->
+  <li><details><summary><img src="@img_duvidas_icone2" alt=""><span>@faq2_pergunta</span></summary>
+    <div class="a"><p>@faq2_resposta</p></div></details></li>
+  <!-- @fim -->
+  <!-- … até faq12 -->
+</ul>
+```
+- Quantidades mínimas de espaços: dúvidas 12, equipe 8, galeria 12, depoimentos 8, temas/etapas 8, vídeos 6.
+- Pergunta das dúvidas que depende de dado (preço, cidades, duração) também é variável; a resposta usa o padrão do dado (preço da seção 12, `@repetir cidades` para a lista de cidades).
+
+### 1.2 Links e arquivos para baixar
+- Links: `@link_inscricao` (base), `@link_whatsapp`, `@link_email`, `@link_instagram`, `@link_youtube`, `@link_regulamento`… Todo `<a href>` que leva para fora usa uma variável.
+- **Arquivo para baixar (PDF)**: use uma variável `@arquivo_<seção>_<nome>`. O PDF fica em `_media/<pagina>/<secao>/` e quem publica escolhe ou envia o arquivo no passo **Mídia**:
+
+```html
+<!-- @se arquivo_material_aula -->
+<a class="btn" href="@arquivo_material_aula" download>@material_botao</a>
+<span>@material_paginas páginas · @material_tamanho</span>
+<!-- @senao -->
+<span class="btn btn--off">Disponível em breve</span>
+<!-- @fim -->
+```
+
+### 1.3 Imagens, ícones e ilustrações
+- **Toda imagem é um arquivo** dentro de `_media/<pagina>/<secao>/` (seção 9), com uma variável `@img_<secao>_<nome>` quando quem publica pode querer trocar. Isso vale para foto, ilustração, ícone, selo e capa.
+- **Ícones em SVG, como arquivo**: exporte cada ícone como um `.svg` próprio (com `viewBox`, sem `width`/`height` fixos) na pasta da seção ou em `_media/<pagina>/icones/`, e use `<img src="@img_icones_preco" alt="">`. **Não escreva `<svg>…</svg>` dentro do HTML** para ícones e ilustrações: assim eles não podem ser trocados.
+- Se o ícone precisa mudar de cor pelo CSS, use `mask-image`/`-webkit-mask-image` com o arquivo `.svg` e `background-color` no CSS.
+- **Todo arquivo citado no HTML vai junto na pasta `_media` entregue.** Nada de imagem de exemplo com texto, print de tela ou mensagem de erro: use a imagem real ou uma imagem neutra da cor do layout.
+- Ilustrações em camadas (personagem, ingredientes, fundo) são arquivos separados, cada um com sua variável.
+
+### 1.4 Galeria por cidade
+Quando cada cidade tem as suas fotos, a galeria fica **dentro de `@repetir cidades`**: as variáveis lá dentro viram da cidade, e no passo **Mídia** quem publica escolhe as fotos de cada cidade ("Por cidade"). Organize os arquivos em uma subpasta por cidade:
+
+```
+_media/pagina/galeria/sao-paulo/foto1.webp
+_media/pagina/galeria/rio-de-janeiro/foto1.webp
+```
+```html
+<!-- @repetir cidades -->
+<div class="galeria" data-cidade="@cidade">
+  <h3>@cidade</h3>
+  <!-- @se img_galeria_foto1 --><figure><img src="@img_galeria_foto1" alt="@galeria_foto1_legenda"><figcaption>@galeria_foto1_legenda</figcaption></figure><!-- @fim -->
+  <!-- @se img_galeria_foto2 --><figure><img src="@img_galeria_foto2" alt="@galeria_foto2_legenda"><figcaption>@galeria_foto2_legenda</figcaption></figure><!-- @fim -->
+  <!-- … até foto12 -->
+</div>
+<!-- @fim -->
+```
+- Espaço numerado sem foto escolhida e sem arquivo de mesmo nome (`foto7`) fica vazio, e o `@se` tira o espaço.
+- Abas ou filtro por cidade (JavaScript) mostram um `.galeria` por vez, pelo `data-cidade`.
+
+### 1.5 Tudo conectado (botões e números sincronizados)
+- **A mesma ação usa a mesma variável e o mesmo `@se` em todo lugar**: o botão do topo, o botão fixo no rodapé do celular, o da seção de inscrição e o do card de compartilhar. Se a inscrição está "em breve", **todos** dizem "em breve"; se está aberta, **todos** levam ao `@link_inscricao`.
+- Contagens nunca são digitadas: `@total_cidades`, `@total_aberta`, `@total_breve`. "2 cidades" escrito no HTML fica errado na terceira cidade.
+- Texto que repete um dado (ex.: "a partir de 16 anos" no FAQ e na inscrição) usa **a mesma variável** nos dois lugares.
+
+### 1.6 Animações
+- Animação de entrada (aparecer deslizando, contar números, desenhar ilustração) começa quando o elemento **entra na tela** (`IntersectionObserver`), inclusive o que já está visível quando a página abre. Não dependa só do evento `load` da janela ou do `scroll`.
+- Sem JavaScript, o conteúdo aparece (o estado "escondido antes de animar" é colocado pelo próprio script, com uma classe).
+- Funciona dentro da prévia do publicador (a página roda num quadro) e quando a página abre já rolada no meio.
+- Respeite `prefers-reduced-motion: reduce` (sem movimento, conteúdo visível).
+- Imagens fora do topo com `loading="lazy"`; a do topo sem lazy.
+
+### 1.7 Responsivo
+- Monte primeiro para celular e confira em **360, 390, 768, 1024, 1280 e 1440 px** de largura. Nenhuma largura pode ter rolagem horizontal.
+- Textos com `clamp()`, imagens com `max-width:100%` e `height:auto` (ou `object-fit` na classe), grades com `auto-fit`/`minmax`.
+- Áreas de toque com pelo menos 44 × 44 px; botão fixo no rodapé do celular não cobre conteúdo (deixe espaço no fim da página).
+- Textos longos (nomes de cidade grandes, valores com centavos) não podem estourar cards e botões.
 
 ---
 
@@ -346,6 +424,7 @@ _media/
 | **Imagem ou vídeo** (recomendado) | `@media_<secao>_<nome>` | imagens e vídeos da pasta da seção |
 | Só imagem | `@img_<secao>_<nome>` | só imagens da pasta da seção |
 | Só vídeo | `@video_<secao>_<nome>` | só vídeos da pasta da seção |
+| Arquivo para baixar (PDF) | `@arquivo_<secao>_<nome>` | PDFs (e imagens) da pasta da seção, num `<a href>` |
 
 Use `@media_` em todo lugar que pode ter foto **ou** vídeo (topo, banners, destaques). Assim quem publica escolhe no passo Mídia o que preferir para aquele lugar. Use `@img_` só onde vídeo não faz sentido (ícone, foto de produto, selo).
 
@@ -383,7 +462,7 @@ Escreva sempre uma tag `<img>` com a variável `@media_`. Se for escolhido um v�
 - Não coloque `@media_` dentro de `<picture>` nem use `<source srcset>` para foto/vídeo trocável: use um `<img>` simples. Se o arquivo escolhido for vídeo, o publicador troca a tag inteira por `<video autoplay muted loop playsinline>`, mantendo `class`, `id` e `style`. Por isso o CSS do espaço deve mirar a **classe** (ex.: `.hero-midia{width:100%;height:100%;object-fit:cover}`), nunca `img` ou `.hero img`, senão o vídeo perde o tamanho.
 - A classe da tag (`hero__bg`) precisa servir para `<img>` e para `<video>`: use `object-fit: cover`, largura e altura no CSS da classe, não no seletor `img`.
 - Imagem de fundo por CSS (`background-image:url(@img_kit_foto)`) só aceita imagem: use `@img_`, não `@media_`.
-- Arquivo que nunca vai ser trocado (ícone, logo fixo) pode usar o caminho direto, sem variável, mas sempre dentro de `_media`: `<img src="_media/praca/marca/logo.webp">`.
+- Prefira sempre uma variável `@img_` (seção 1.3). Caminho direto, sem variável, só para o que nunca vai ser trocado, e sempre dentro de `_media`: `<img src="_media/praca/marca/logo.webp">`.
 
 ### No publicador
 - No passo **Páginas**, envie a pasta `_media` (ou a pasta do site que contém a `_media`). Imagens e vídeos vão juntos.
@@ -430,6 +509,15 @@ No passo **Seções**, quem publica pode esconder partes da página (no evento t
 
 ## 11. Checklist antes de entregar
 
+- [ ] **Todo texto visível é variável** (títulos, parágrafos, botões, perguntas e respostas das dúvidas, legendas): procure no `<body>` frases sem `@` (seção 1)
+- [ ] Listas (dúvidas, equipe, galeria, vídeos, temas) são séries numeradas com `@se` e espaços sobrando (seção 1.1)
+- [ ] Todo link usa variável; PDF para baixar com `@arquivo_<secao>_<nome>` (seção 1.2)
+- [ ] Ícones e ilustrações são arquivos (`.svg` exportado, `.webp`) em `_media`, com variável `@img_`; nenhum `<svg>` de ícone escrito no HTML (seção 1.3)
+- [ ] Todo arquivo citado está na pasta `_media` entregue; nenhuma imagem de exemplo com texto ou print de tela
+- [ ] Galeria por cidade dentro de `@repetir cidades`, com subpasta por cidade (seção 1.4)
+- [ ] Botões da mesma ação sincronizados: mesma variável e mesmo `@se status` no topo, no botão fixo, na inscrição e no compartilhar; contagens com `@total_…` (seção 1.5)
+- [ ] Animações de entrada com `IntersectionObserver`, funcionando ao abrir no meio da página e dentro de um quadro; `prefers-reduced-motion` respeitado (seção 1.6)
+- [ ] Conferido em 360, 390, 768, 1024, 1280 e 1440 px, sem rolagem horizontal (seção 1.7)
 - [ ] Nenhum dado de cidade ficou digitado direto no HTML
 - [ ] Nomes da base usados sem variação (seção 3)
 - [ ] Preços com "R$" no HTML e variável só com número
@@ -549,6 +637,10 @@ Não use `@total_` para outra coisa. Para o número de categorias, use um nome s
 | Testar o status contra `aberto`, `abertas` ou `open` | O valor é `aberta` |
 | Calcular status, "próxima parada" ou "realizado" por JavaScript com a data do navegador | O publicador decide pelo modo automático; use `@se status = realizado` |
 | `elemento.scrollIntoView(…)` no JavaScript (ex.: trazer a aba ativa à vista) | Rola a página inteira até o elemento: o site abre no meio, não no topo. Role só a barra: `barra.scrollTo({ left: aba.offsetLeft - 16 })` |
+| Texto visível escrito direto no HTML (título, FAQ, botão, legenda) | Não aparece no cadastro: ninguém consegue corrigir sem pedir HTML novo. Use variáveis (seção 1) |
+| `<svg>…</svg>` de ícone ou ilustração escrito dentro do HTML | Não pode ser trocado no passo Mídia. Exporte `.svg` para `_media` e use `<img src="@img_…">` |
+| Botões da mesma ação com textos ou links diferentes (topo "aberta", rodapé "em breve") | Todos usam a mesma variável e o mesmo `@se status` |
+| "2 cidades", "3 etapas" escritos no HTML | Use `@total_cidades`, `@total_etapas` |
 
 
 ### 12.5 Conferência antes de entregar o HTML

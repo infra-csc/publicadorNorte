@@ -12,13 +12,13 @@ const ehVideo = (c: string) => /\.(mp4|webm)$/i.test(c);
 const ehImagem = (c: string) => /\.(webp|png|jpe?g|gif|avif|svg)$/i.test(c);
 const PASTA_PAG: Record<TipoPagina, string> = { tapume: 'tapume', praca: 'praca', etapa: 'etapa', unica: 'pagina' };
 
-/** que arquivos cada lugar aceita: @img_ só imagem, @video_ só vídeo, @media_ (e a seção) os dois */
+/** que arquivos cada lugar aceita: @img_ só imagem, @video_ só vídeo, @arquivo_ PDF (download), @media_ (e a seção) imagem e vídeo */
 function aceita(base: string | null) {
   const t = base?.split('_')[0];
   return {
-    ok: (nome: string) => (t === 'img' ? ehImagem(nome) : t === 'video' ? ehVideo(nome) : ehImagem(nome) || ehVideo(nome)),
-    accept: t === 'img' ? 'image/*' : t === 'video' ? 'video/*' : 'image/*,video/*',
-    texto: t === 'img' ? 'imagens' : t === 'video' ? 'vídeos' : 'imagens ou vídeos',
+    ok: (nome: string) => (t === 'img' ? ehImagem(nome) : t === 'video' ? ehVideo(nome) : t === 'arquivo' ? /\.(pdf|png|jpe?g|webp|gif|svg|zip|docx?|xlsx?|pptx?)$/i.test(nome) : ehImagem(nome) || ehVideo(nome)),
+    accept: t === 'img' ? 'image/*' : t === 'video' ? 'video/*' : t === 'arquivo' ? '.pdf,application/pdf,image/*' : 'image/*,video/*',
+    texto: t === 'img' ? 'imagens' : t === 'video' ? 'vídeos' : t === 'arquivo' ? 'arquivos (PDF)' : 'imagens ou vídeos',
   };
 }
 
@@ -155,7 +155,7 @@ export function PassoMidia() {
     return (
       <div key={o.caminho} className={'thumbw' + (escondida ? ' escondida' : '')}>
         <button type="button" role="radio" className="thumb" aria-checked={marcada} disabled={desativada} onClick={() => escolher(b, o.caminho)} title={o.caminho}>
-          {ehVideo(o.caminho) ? <video src={src} preload="metadata" muted /> : <img src={src} alt="" loading="lazy" />}
+          {ehVideo(o.caminho) ? <video src={src} preload="metadata" muted /> : ehImagem(o.caminho) ? <img src={src} alt="" loading="lazy" /> : <span className="thumb-arquivo">{(o.caminho.split('.').pop() || '').toUpperCase()}</span>}
           <span>{escondida ? 'escondida' : nome}</span>
         </button>
         <span className="thumb-icones">
@@ -200,7 +200,7 @@ export function PassoMidia() {
               <div className="row between">
                 <h2 style={{ fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}><Alca i={i} total={secoes.length} alca={alca} mover={reordenar} rotulo={s} />{s} <span className="mono small muted">_media/{PASTA_PAG[pag]}/{s}/</span></h2>
                 <label className="btn sm ghost">+ Adicionar à pasta
-                  <input type="file" multiple accept="image/*,video/*" className="sr" onChange={(e) => { receber(e.target.files, s, null); e.target.value = ''; }} />
+                  <input type="file" multiple accept="image/*,video/*,.pdf,application/pdf" className="sr" onChange={(e) => { receber(e.target.files, s, null); e.target.value = ''; }} />
                 </label>
               </div>
               {arrastando === 'secao:' + s && <p className="small" style={{ color: 'var(--accent)' }}>Solte para adicionar na pasta {s}/</p>}

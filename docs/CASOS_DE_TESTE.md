@@ -164,6 +164,7 @@ Os tapumes de cards fixos dos casos H1–H4 são fixtures sintéticos em `packag
 | J11 | `<img src="assets/foto.webp">` | problema: mídia fora de `_media/` |
 | J12 | `@total_categorias_1`, `<!-- @se gratuito_1 == "sim" -->` | problemas: `total_` próprio; sintaxe do `@se` |
 | J13 | `<script>tab.scrollIntoView(…)</script>` | problema: rolagem da página inteira (o site abre no meio); `barra.scrollTo({ left })` não é problema |
+| J14 | `<h2>`, `<p>` com frases fixas (3 ou mais); `<svg><path>` no HTML | problemas: "texto-fixo" (com contagem e exemplos) e "svg-embutido"; texto dentro de `@se…@fim` e com variável não conta; `<svg><use>` não conta |
 
 ## K. Seções (esconder e mostrar)
 
@@ -256,4 +257,12 @@ Os tapumes de cards fixos dos casos H1–H4 são fixtures sintéticos em `packag
 | S1 | publicação; SP aberta, RJ sem status (em breve), BH realizado | SP e BH normais; o arquivo de RJ existe, mas só leva para index.html (refresh + script) com robots noindex; o tapume continua listando todas |
 | S2 | prévia (sem fecharEmBreve) | a página de RJ aparece normal |
 | S3 | HTML sem status; formato com etapas e status das etapas | sem status nada fecha; com status das etapas, fecha só a etapa em breve (a praça da cidade abre) |
+
+## T. Arquivo para baixar e galeria por cidade
+
+| # | Entrada | Esperado |
+|---|---|---|
+| T1 | `@arquivo_material_aula` | é variável de mídia; opções = arquivos da pasta da seção (PDF e imagens, sem fontes) |
+| T2 | `<a href="@arquivo_material_aula">` com aula.pdf na pasta | href = o PDF (padrão pelo nome); o arquivo vai para o site; `<img>` vizinho segue imagem |
+| T3 | galeria dentro de `@repetir cidades`, subpastas `galeria/sao-paulo/`, `galeria/rio-de-janeiro/` | cada cidade pega as fotos da sua subpasta; espaço numerado sem arquivo de mesmo nome fica vazio e o `@se` tira (não repete a primeira foto) |
 

@@ -80,7 +80,8 @@ export class Cadastro {
         if (midiaEscondida(escolha)) return MARCA_OCULTA;
         if (valorMidia(base, escolha, this.det, this.arquivos) === escolha) return escolha;
       }
-      return valorMidia(base, undefined, this.det, this.arquivos);
+      // padrão da cidade: a subpasta com o nome dela (galeria/sao-paulo/), se existir
+      return valorMidia(base, undefined, this.det, this.arquivos, geral ? undefined : slug(it!.cidade || it!.etapa || '') || undefined);
     }
     if (vistos?.has(base)) return '';
     // modo automático: passou do fim, o status é "realizado" (em todo lugar que usa o status)

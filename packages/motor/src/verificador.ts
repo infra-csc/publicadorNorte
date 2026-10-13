@@ -12,6 +12,8 @@ export type CodigoProblema =
   | 'preco-antes-do-gratuito'
   | 'decisao-em-script'
   | 'rolagem-em-script'
+  | 'texto-fixo'
+  | 'svg-embutido'
   | 'decisao-em-atributo'
   | 'a-confirmar-fixo'
   | 'status-invalido'
@@ -124,6 +126,33 @@ export function verificarHtml(html: string, _tipo?: TipoPagina): Problema[] {
     const s = html.slice(a, b);
     const m = s.match(/\bgratuit[oa]s?\b|a confirmar|@\{?(?:gratuito|status|preco_vista|valor_parcelado)(?:_\d+)?\b/i);
     if (m) add('decisao-em-script', a + m.index!, 'Preço, gratuito ou status decidido dentro de <script>. O publicador não roda JavaScript: use @se.', trechoEm(a + m.index!));
+  }
+  // texto visível escrito direto no HTML (não aparece no cadastro): frases de 3+ palavras sem variável
+  {
+    const svgs = faixas(html, /<svg\b[\s\S]*?<\/svg>/gi);
+    // texto dentro de @se…@fim (status, preço, "A confirmar") faz parte do padrão do guia: não conta
+    const condicionais: [number, number][] = [];
+    const pilha: number[] = [];
+    for (const m of html.matchAll(/<!--\s*@(se|repetir|agrupar|fim)\b/gi)) {
+      const k = m[1].toLowerCase();
+      if (k === 'fim') { const ini = pilha.pop(); if (ini != null && ini >= 0) condicionais.push([ini, m.index!]); }
+      else pilha.push(k === 'se' ? m.index! : -1);
+    }
+    const corpo = html.search(/<body\b/i);
+    const fixos: { pos: number; t: string }[] = [];
+    for (const m of html.matchAll(/>([^<>]+)</g)) {
+      const pos = m.index! + 1;
+      if (pos < corpo || foraDoTexto(pos) || dentro(svgs, pos) || condicionais.some(([a, b]) => pos > a && pos < b)) continue;
+      const t = m[1].replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+      if (!t || t.includes('@') || (t.match(/\p{L}{2,}/gu) || []).length < 3) continue;
+      fixos.push({ pos, t });
+    }
+    if (fixos.length >= 3) {
+      add('texto-fixo', fixos[0].pos, `${fixos.length} textos escritos direto no HTML (sem variável), como "${fixos.slice(0, 3).map((f) => f.t.slice(0, 40)).join('", "')}". Eles não aparecem no cadastro: todo texto visível precisa ser variável (guia, seção 1).`, fixos[0].t.slice(0, 80));
+    }
+    // ícone/ilustração desenhado dentro do HTML: não pode ser trocado no passo Mídia
+    const desenhos = [...html.matchAll(/<svg\b[^>]*>([\s\S]*?)<\/svg>/gi)].filter((m) => /<(path|circle|rect|polygon|polyline|ellipse|line)\b/i.test(m[1]) && !foraDoTexto(m.index!));
+    if (desenhos.length) add('svg-embutido', desenhos[0].index!, `${desenhos.length} ícone(s) ou ilustração(ões) em <svg> escrito dentro do HTML. Exporte cada um como arquivo .svg em _media e use <img src="@img_…"> (guia, seção 1.3).`);
   }
   // scrollIntoView rola também a janela (e o publicador em volta da prévia): o site abre no meio
   for (const [a, b] of scripts) {

@@ -84,3 +84,15 @@ describe('J. Verificador de HTML', () => {
     ]);
   });
 });
+
+describe('J. Tudo editável', () => {
+  it('J14: textos fixos (3+) e ícones <svg> desenhados no HTML viram aviso; texto em @se e com variável não conta', () => {
+    const corpo = (x: string) => `<html><head><title>t</title></head><body>${x}</body></html>`;
+    const fixo = corpo('<h2>Dúvidas rápidas sobre tudo</h2><p>Toque na pergunta para ver.</p><p>Qualquer pessoa a partir de 16 anos.</p>');
+    expect(verificarHtml(fixo, 'praca').map((p) => p.codigo)).toEqual(['texto-fixo']);
+    const ok = corpo('<h2>@duvidas_titulo</h2><p>@duvidas_sub</p><!-- @se gratuito = sim --><p>Sem custo de inscrição aqui.</p><!-- @senao --><p>Valor divulgado na abertura.</p><!-- @fim -->');
+    expect(verificarHtml(ok, 'praca').map((p) => p.codigo)).toEqual([]);
+    const svg = corpo('<p>@x</p><svg viewBox="0 0 10 10"><path d="M0 0h10"/></svg><svg><use href="#i"/></svg>');
+    expect(verificarHtml(svg, 'praca').map((p) => p.codigo)).toEqual(['svg-embutido']);
+  });
+});

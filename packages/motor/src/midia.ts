@@ -49,7 +49,8 @@ export function opcoesMidia(base: string, det: Deteccao, arquivos: Iterable<stri
   const t = tipoMidia(base);
   for (const k of arquivos) {
     const c = caminhoMidia(k);
-    const tipoOk = t === 'video' ? ehVideoArq(c) : t === 'img' ? ehImagemArq(c) : ehVideoArq(c) || ehImagemArq(c);
+    // arquivo_: qualquer arquivo da pasta (PDF, imagem…), para links de download
+    const tipoOk = t === 'video' ? ehVideoArq(c) : t === 'img' ? ehImagemArq(c) : t === 'arquivo' ? !/^font\//.test(tipoArquivo(c) || '') : ehVideoArq(c) || ehImagemArq(c);
     const pasta = pastas.find((p) => c.startsWith(p));
     const vSlot = versaoTela(slotMidia(base));
     const vArq = versaoTela(c.slice(pasta?.length || 0));
@@ -59,19 +60,26 @@ export function opcoesMidia(base: string, det: Deteccao, arquivos: Iterable<stri
   return out.sort((a, b) => (a.caminho < b.caminho ? -1 : a.caminho > b.caminho ? 1 : 0));
 }
 
-/** arquivo padrão: o de nome igual ao fim da variável (preferindo imagem); senão a primeira imagem; senão o primeiro */
-export function padraoMidia(base: string, ops: OpcaoMidia[]): string {
+/**
+ * Arquivo padrão: o de nome igual ao fim da variável (preferindo imagem); senão a primeira imagem; senão o primeiro.
+ * Espaço numerado (…foto7) sem arquivo de mesmo nome fica vazio (galeria: não repete a primeira foto).
+ * `subpasta`: a da cidade (galeria/sao-paulo/), preferida quando existe.
+ */
+export function padraoMidia(base: string, ops: OpcaoMidia[], subpasta?: string): string {
   const nome = slotMidia(base);
+  const daCidade = subpasta ? ops.filter((o) => o.caminho.includes('/' + subpasta + '/')) : [];
+  if (daCidade.length) ops = daCidade;
   const img = (o: OpcaoMidia) => ehImagemArq(o.caminho);
   const mesmos = ops.filter((o) => o.caminho.split('/').pop()!.replace(/\.[^.]+$/, '').toLowerCase() === nome);
+  if (!mesmos.length && /\d$/.test(nome)) return '';
   return (mesmos.find(img) || mesmos[0] || ops.find(img) || ops[0])?.caminho || '';
 }
 
 /** caminho escolhido (se ainda é uma opção válida) ou o padrão */
-export function valorMidia(base: string, escolhido: string | undefined, det: Deteccao, arquivos: Iterable<string>): string {
+export function valorMidia(base: string, escolhido: string | undefined, det: Deteccao, arquivos: Iterable<string>, subpasta?: string): string {
   const ops = opcoesMidia(base, det, arquivos);
   if (escolhido && ops.some((o) => o.caminho === escolhido)) return escolhido;
-  return padraoMidia(base, ops);
+  return padraoMidia(base, ops, subpasta);
 }
 
 // ---- mídia escondida num lugar ----

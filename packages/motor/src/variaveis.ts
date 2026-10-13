@@ -80,4 +80,5 @@ export function trocarVars(src: string, fn: (base: string, num: number | null, t
 }
 
 /** @img_<secao>_<nome>, @video_<secao>_<nome>, @media_<secao>_<nome> */
-export const ehMidia = (base: string): boolean => /^(img|video|media)_[a-z0-9]+/.test(base);
+/** variável de arquivo do _media: imagem, vídeo, imagem ou vídeo, ou qualquer arquivo (PDF para link de download) */
+export const ehMidia = (base: string): boolean => /^(img|video|media|arquivo)_[a-z0-9]+/.test(base);
