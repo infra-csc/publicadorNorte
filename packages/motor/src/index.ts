@@ -37,3 +37,4 @@ export {
   type Patrocinador, type Cota, type Tamanho, type BlocoPatrocinio, type ComposicaoPatrocinio, type EstiloPatrocinio, type EntradaPatrocinios, type OrdemBloco,
 } from './patrocinios';
 export { verificarHtml, SINONIMOS, type Problema, type CodigoProblema } from './verificador';
+export { separarSeries, faltasNaSerie, type Serie } from './series';

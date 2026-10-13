@@ -284,3 +284,12 @@ Os tapumes de cards fixos dos casos H1–H4 são fixtures sintéticos em `packag
 | V3 | enviar `valores-iniciais.csv` (`variavel;valor`) | vai para os gerais; cidades não mudam (apps/web, planilha.test.ts) |
 | V4 | enviar planilha com linhas só de id | não viram cidade; as vazias atuais saem contadas ("N sem nada preenchido") |
 
+## W. Séries numeradas
+
+| # | Entrada | Esperado |
+|---|---|---|
+| W1 | faq1…3, equipe1…2 (mesmos campos), material_capa_linha1…2, destaque1 + destaque2_gratuito, carreta_ponto1…3 + hero_ponto1 | listas: faq, equipe, carreta_ponto; o resto fica solto |
+| W2 | itens com campos diferentes | campos na ordem do item 1; cada item diz o que falta ("O HTML não tem, neste item: …" no Cadastro) |
+| W3 | variação opcional `faqN_resposta_gratuito` dentro de `@se gratuito = sim` | preenchida e gratuito: ela; vazia ou pago: `faqN_resposta` |
+| J15 | faq1 com `_resposta_gratuito`, faq2/faq3 com `_resposta` | problema `lista-desigual` dizendo o que falta em cada item |
+

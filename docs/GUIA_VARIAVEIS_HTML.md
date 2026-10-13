@@ -37,6 +37,18 @@ Não existe "texto genérico que não muda": se aparece na tela, vira variável.
   <!-- … até faq12 -->
 </ul>
 ```
+- **Todos os itens de uma série têm os mesmos campos** (mesmo molde). Se uma dúvida tem link, todas têm `@faqN_link` (dentro de `@se faqN_link`). Nada de dúvida 1 com `_resposta_gratuito`/`_resposta_preco` e dúvida 2 só com `_resposta`, nem de passo 2 com `_texto_gratuito` e passo 3 sem: no publicador cada item vira um formulário diferente e quem preenche não entende. O verificador acusa (`lista-desigual`).
+- Texto que muda conforme o evento (gratuito, preço, em breve) é um **campo opcional que existe em todos os itens**; vazio, vale o campo normal:
+
+```html
+<!-- em TODAS as dúvidas (faq1 … faq12), igual: -->
+<div class="a"><p>
+  <!-- @se gratuito = sim --><!-- @se faq1_resposta_gratuito -->@faq1_resposta_gratuito<!-- @senao -->@faq1_resposta<!-- @fim -->
+  <!-- @senao -->@faq1_resposta<!-- @fim -->
+</p>
+<!-- @se faq1_link --><a class="btn" href="#datas">@faq1_link</a><!-- @fim --></div>
+```
+  Resposta que mostra dado do cadastro (preço, lista de cidades) continua com o padrão do dado **depois** do texto do campo, no item que precisa; os campos continuam os mesmos em todos os itens.
 - Quantidades mínimas de espaços: dúvidas 12, equipe 8, depoimentos 8, temas/etapas 8, vídeos 6. (Galeria não usa espaços fixos: seção 1.4.)
 - Pergunta das dúvidas que depende de dado (preço, cidades, duração) também é variável; a resposta usa o padrão do dado (preço da seção 12, `@repetir cidades` para a lista de cidades).
 
@@ -519,6 +531,7 @@ No passo **Seções**, quem publica pode esconder partes da página (no evento t
 
 - [ ] **Todo texto visível é variável** (títulos, parágrafos, botões, perguntas e respostas das dúvidas, legendas): procure no `<body>` frases sem `@` (seção 1)
 - [ ] Listas (dúvidas, equipe, galeria, vídeos, temas) são séries numeradas com `@se` e espaços sobrando (seção 1.1)
+- [ ] Todos os itens de cada série têm **os mesmos campos** (variações como `_gratuito` são opcionais e existem em todos os itens)
 - [ ] Todo link usa variável; PDF para baixar com `@arquivo_<secao>_<nome>` (seção 1.2)
 - [ ] Ícones e ilustrações são arquivos (`.svg` exportado, `.webp`) em `_media`, com variável `@img_`; nenhum `<svg>` de ícone escrito no HTML (seção 1.3)
 - [ ] Todo arquivo citado está na pasta `_media` entregue; nenhuma imagem de exemplo com texto ou print de tela

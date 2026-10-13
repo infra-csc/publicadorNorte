@@ -1,14 +1,18 @@
 'use client';
 // Galeria (`@repetir galeria` no HTML): uma lista de fotos, cada uma com a cidade dela (ou "Todas").
 // Envio de várias de uma vez para a cidade escolhida; trocar a cidade, legenda e ordem de cada foto.
+// Seleção: clique escolhe uma, Ctrl/⌘+clique junta, Shift+clique pega o intervalo; arrastar a seleção para a aba
+// de uma cidade (ou usar "Mover para…") troca a cidade de todas.
 import { galeriasDe, type FotoGaleria } from '@norte/motor';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { urlArquivo } from '../api';
 import { lerSoltos, temArquivos } from '../arrastarPasta';
 import { useEditor } from '../Editor';
 import { enviarMidia, juntar, nomeLivre } from '../enviarMidia';
+import { Escolha } from '../Escolha';
 
 const ACEITA = /\.(webp|png|jpe?g|gif|avif|svg|mp4|webm)$/i;
+const TIPO_ARRASTO = 'application/x-pub-fotos';
 const ehVideo = (c: string) => /\.(mp4|webm)$/i.test(c);
 const nomeGaleria = (g: string) => (g === 'galeria' ? 'Galeria' : 'Galeria ' + g.replace(/^galeria_?/, '').replace(/_/g, ' '));
 
@@ -26,14 +30,31 @@ function Galeria({ colecao }: { colecao: string }) {
   const [msg, setMsg] = useState('');
   const [arrastando, setArrastando] = useState(false);
   const [confirmar, setConfirmar] = useState<string | null>(null);
+  const [sel, setSel] = useState<Set<string>>(new Set());
+  const [ancora, setAncora] = useState<string | null>(null);
+  const [alvo, setAlvo] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
   const porCaminho = new Map(arquivos.map((a) => [a.caminho, a]));
   const nomeCidade = (id?: string) => {
     const c = id ? evento.cidades.find((x) => x._id === id) : undefined;
     return c ? cad.nomeItem('cidade', c) : 'Todas as cidades';
   };
+  const cidades = [...evento.cidades.map((c) => ({ valor: c._id, rotulo: cad.nomeItem('cidade', c) })), { valor: '', rotulo: 'Todas as cidades' }];
   const mudar = (fn: (lista: FotoGaleria[]) => FotoGaleria[]) =>
     alterar((e) => { e.galerias = { ...(e.galerias || {}), [colecao]: fn([...(e.galerias?.[colecao] || [])]) }; });
+  const moverPara = (ids: Iterable<string>, cidade: string) => {
+    const s = new Set(ids);
+    mudar((l) => l.map((x) => (s.has(x.id) ? { ...x, cidade } : x)));
+    setMsg(`${s.size} foto(s) agora em ${nomeCidade(cidade)}.`);
+  };
+
+  // Esc limpa a seleção
+  useEffect(() => {
+    if (!sel.size) return;
+    const f = (e: KeyboardEvent) => { if (e.key === 'Escape') setSel(new Set()); };
+    document.addEventListener('keydown', f);
+    return () => document.removeEventListener('keydown', f);
+  }, [sel.size]);
 
   async function enviar(itens: { file: File; rel: string }[]) {
     const ok = itens.filter((x) => ACEITA.test(x.file.name));
@@ -59,6 +80,34 @@ function Galeria({ colecao }: { colecao: string }) {
   const contar = (id: string) => fotos.filter((f) => (id === '' ? !f.cidade : f.cidade === id)).length;
   const mover = (i: number, d: -1 | 1) => mudar((l) => { const j = i + d; if (j < 0 || j >= l.length) return l; [l[i], l[j]] = [l[j], l[i]]; return l; });
 
+  /** clique: só esta; Ctrl/⌘: junta ou tira; Shift: intervalo desde a última clicada */
+  function clicar(e: { ctrlKey: boolean; metaKey: boolean; shiftKey: boolean }, id: string) {
+    const ordem = visiveis.map((v) => v.f.id);
+    const junta = e.ctrlKey || e.metaKey;
+    if (e.shiftKey && ancora && ordem.includes(ancora)) {
+      const [a, b] = [ordem.indexOf(ancora), ordem.indexOf(id)].sort((x, y) => x - y);
+      setSel((s) => new Set([...(junta ? s : []), ...ordem.slice(a, b + 1)]));
+      return;
+    }
+    setAncora(id);
+    if (junta) setSel((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+    else setSel((s) => (s.size === 1 && s.has(id) ? new Set() : new Set([id])));
+  }
+  // abas de cidade recebem as fotos arrastadas
+  const temFotos = (e: React.DragEvent) => e.dataTransfer.types.includes(TIPO_ARRASTO);
+  const alvoDe = (cidade: string) => ({
+    onDragOver: (e: React.DragEvent) => { if (temFotos(e)) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setAlvo(cidade); } },
+    onDragLeave: () => setAlvo((a) => (a === cidade ? null : a)),
+    onDrop: (e: React.DragEvent) => {
+      if (!temFotos(e)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setAlvo(null);
+      moverPara(JSON.parse(e.dataTransfer.getData(TIPO_ARRASTO) || '[]') as string[], cidade);
+    },
+    'data-alvo': alvo === cidade || undefined,
+  });
+
   return (
     <section
       className={'card stack galeria-ed' + (arrastando ? ' card-soltar' : '')}
@@ -75,10 +124,7 @@ function Galeria({ colecao }: { colecao: string }) {
 
       <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
         <span className="small">Enviar fotos para</span>
-        <select className="inp" style={{ width: 'auto', padding: '6px 10px' }} value={cidadeEnvio} onChange={(e) => setCidadeEnvio(e.target.value)} aria-label="Cidade das fotos enviadas">
-          {evento.cidades.map((c) => <option key={c._id} value={c._id}>{cad.nomeItem('cidade', c)}</option>)}
-          <option value="">Todas as cidades</option>
-        </select>
+        <Escolha valor={cidadeEnvio} opcoes={cidades} mudar={setCidadeEnvio} rotulo="Cidade das fotos enviadas" />
         <button className="btn sm pri" type="button" onClick={() => input.current?.click()}>+ Escolher fotos</button>
         <span className="small muted">ou arraste várias fotos (ou uma pasta) para cá</span>
         <input ref={input} type="file" multiple accept="image/*,video/mp4,video/webm" hidden onChange={(e) => { const l = [...(e.target.files || [])].map((file) => ({ file, rel: file.name })); e.target.value = ''; enviar(l); }} />
@@ -88,10 +134,24 @@ function Galeria({ colecao }: { colecao: string }) {
       {fotos.length > 0 && (
         <div className="seo-abas" role="tablist" aria-label="Filtrar por cidade">
           <button type="button" role="tab" aria-selected={filtro === '*'} onClick={() => setFiltro('*')}>Todas as fotos ({fotos.length})</button>
-          {evento.cidades.map((c) => <button key={c._id} type="button" role="tab" aria-selected={filtro === c._id} onClick={() => setFiltro(c._id)}>{cad.nomeItem('cidade', c)} ({contar(c._id)})</button>)}
-          <button type="button" role="tab" aria-selected={filtro === ''} onClick={() => setFiltro('')}>Em todas ({contar('')})</button>
+          {evento.cidades.map((c) => <button key={c._id} type="button" role="tab" aria-selected={filtro === c._id} onClick={() => setFiltro(c._id)} {...alvoDe(c._id)}>{cad.nomeItem('cidade', c)} ({contar(c._id)})</button>)}
+          <button type="button" role="tab" aria-selected={filtro === ''} onClick={() => setFiltro('')} {...alvoDe('')}>Em todas ({contar('')})</button>
         </div>
       )}
+      {fotos.length > 0 && (sel.size ? (
+        <div className="galeria-sel">
+          <b>{sel.size} selecionada{sel.size === 1 ? '' : 's'}</b>
+          <span className="small muted">arraste para a aba de uma cidade ou</span>
+          <Escolha valor="*" opcoes={cidades} vazio="Mover para…" rotulo="Mover as selecionadas para" compacto mudar={(c) => moverPara(sel, c)} />
+          {confirmar === '*sel' ? (
+            <span className="row" style={{ gap: 4 }}>
+              <button className="btn sm danger-fill" type="button" onClick={() => { const s = sel; mudar((l) => l.filter((x) => !s.has(x.id))); setSel(new Set()); setConfirmar(null); }}>Tirar {sel.size}</button>
+              <button className="btn sm ghost" type="button" onClick={() => setConfirmar(null)}>Não</button>
+            </span>
+          ) : <button className="btn sm ghost" type="button" onClick={() => setConfirmar('*sel')}>Tirar</button>}
+          <button className="btn sm ghost" type="button" onClick={() => setSel(new Set())} title="Esc">Limpar seleção</button>
+        </div>
+      ) : <p className="small muted" style={{ margin: 0 }}>Clique numa foto para escolher; Ctrl+clique escolhe várias (Shift+clique, um intervalo). Depois arraste para a aba da cidade.</p>)}
 
       {!fotos.length ? (
         <div className="drop" onClick={() => input.current?.click()} role="button" tabIndex={0}>
@@ -103,16 +163,23 @@ function Galeria({ colecao }: { colecao: string }) {
           {visiveis.map(({ f, i }) => {
             const a = porCaminho.get(f.arquivo);
             const src = a ? urlArquivo(a.sha, a.caminho) : '';
+            const marcada = sel.has(f.id);
             return (
-              <div key={f.id} className="galeria-item">
-                <div className="galeria-item__img">
-                  {ehVideo(f.arquivo) ? <video src={src} muted preload="metadata" /> : <img src={src} alt="" loading="lazy" />}
+              <div key={f.id} className={'galeria-item' + (marcada ? ' sel' : '')}>
+                <div className="galeria-item__img" role="checkbox" aria-checked={marcada} aria-label={`Foto ${i + 1}`} tabIndex={0} draggable
+                  onClick={(e) => clicar(e, f.id)}
+                  onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); clicar({ ctrlKey: true, metaKey: false, shiftKey: e.shiftKey }, f.id); } }}
+                  onDragStart={(e) => {
+                    const ids = marcada ? [...sel] : [f.id];
+                    if (!marcada) setSel(new Set([f.id]));
+                    e.dataTransfer.setData(TIPO_ARRASTO, JSON.stringify(ids));
+                    e.dataTransfer.effectAllowed = 'move';
+                  }}>
+                  {ehVideo(f.arquivo) ? <video src={src} muted preload="metadata" draggable={false} /> : <img src={src} alt="" loading="lazy" draggable={false} />}
                   <span className="galeria-item__n">{i + 1}</span>
+                  {marcada && <span className="galeria-item__ok" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2.5 6.2 5 8.5l4.5-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg></span>}
                 </div>
-                <select className="inp" value={f.cidade || ''} aria-label="Cidade da foto" onChange={(e) => mudar((l) => l.map((x) => (x.id === f.id ? { ...x, cidade: e.target.value } : x)))}>
-                  {evento.cidades.map((c) => <option key={c._id} value={c._id}>{cad.nomeItem('cidade', c)}</option>)}
-                  <option value="">Todas as cidades</option>
-                </select>
+                <Escolha valor={f.cidade || ''} opcoes={cidades} rotulo="Cidade da foto" compacto mudar={(c) => moverPara(marcada ? sel : [f.id], c)} />
                 <input className="inp" value={f.legenda || ''} placeholder="Legenda (opcional)" aria-label="Legenda" onChange={(e) => mudar((l) => l.map((x) => (x.id === f.id ? { ...x, legenda: e.target.value } : x)))} />
                 <div className="row between" style={{ gap: 4 }}>
                   <span className="row" style={{ gap: 2 }}>

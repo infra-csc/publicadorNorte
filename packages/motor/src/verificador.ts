@@ -2,6 +2,7 @@
 // mostrados no passo Páginas. Não bloqueia a publicação.
 import { lerBlocos, type No, type NoSe } from './blocos';
 import { ehImagemArq, ehVideoArq, normRef, refsDeArquivo } from './midia';
+import { faltasNaSerie, separarSeries } from './series';
 import { slug, slugValor } from './texto';
 import type { TipoPagina } from './tipos';
 import { dentro, faixas, varsDoTexto, zonas } from './variaveis';
@@ -14,6 +15,7 @@ export type CodigoProblema =
   | 'rolagem-em-script'
   | 'texto-fixo'
   | 'svg-embutido'
+  | 'lista-desigual'
   | 'decisao-em-atributo'
   | 'a-confirmar-fixo'
   | 'status-invalido'
@@ -153,6 +155,17 @@ export function verificarHtml(html: string, _tipo?: TipoPagina): Problema[] {
     // ícone/ilustração desenhado dentro do HTML: não pode ser trocado no passo Mídia
     const desenhos = [...html.matchAll(/<svg\b[^>]*>([\s\S]*?)<\/svg>/gi)].filter((m) => /<(path|circle|rect|polygon|polyline|ellipse|line)\b/i.test(m[1]) && !foraDoTexto(m.index!));
     if (desenhos.length) add('svg-embutido', desenhos[0].index!, `${desenhos.length} ícone(s) ou ilustração(ões) em <svg> escrito dentro do HTML. Exporte cada um como arquivo .svg em _media e use <img src="@img_…"> (guia, seção 1.3).`);
+  }
+  // série numerada com itens de molde diferente (faq1 com _resposta_gratuito, faq2 só com _resposta): no Cadastro cada item fica diferente
+  const primeira = new Map<string, number>();
+  for (const v of varsDoTexto(html)) if (!foraDoTexto(v.ini) && !primeira.has(v.base)) primeira.set(v.base, v.ini);
+  for (const s of separarSeries([...primeira.keys()]).series) {
+    const faltas = faltasNaSerie(s);
+    if (!faltas.size) continue;
+    const [n0] = faltas.keys();
+    const nome = (c: string, n: number) => c.replace('#', String(n));
+    const lista = [...faltas].slice(0, 4).map(([n, cs]) => `${s.raiz}${n} não tem ${cs.map((c) => '@' + nome(c, n)).join(', ')}`).join('; ');
+    add('lista-desigual', primeira.get([...s.itens.get(n0)!.values()][0])!, `Os itens da lista "${s.chave}" têm campos diferentes (${lista}${faltas.size > 4 ? '…' : ''}). Use os mesmos campos em todos os itens, os que nem sempre aparecem dentro de @se (guia, seção 1.1).`);
   }
   // scrollIntoView rola também a janela (e o publicador em volta da prévia): o site abre no meio
   for (const [a, b] of scripts) {

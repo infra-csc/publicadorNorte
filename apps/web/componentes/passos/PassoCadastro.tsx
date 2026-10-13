@@ -1,5 +1,5 @@
 'use client';
-import { deISO, ehData, estaRealizado, FORMULAS_PADRAO, lerData, limiteRealizado, linhaVazia, novaLinha, paraISO, slugValor, sincronizarVars, type Linha, type TipoItem } from '@norte/motor';
+import { deISO, ehData, estaRealizado, faltasNaSerie, separarSeries, type Serie, FORMULAS_PADRAO, lerData, limiteRealizado, linhaVazia, novaLinha, paraISO, slugValor, sincronizarVars, type Linha, type TipoItem } from '@norte/motor';
 import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { gerarEvento } from '@/lib/comum/montagem';
 import type { Evento } from '@/lib/comum/tipos';
@@ -408,37 +408,9 @@ const semAcento = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-�
 const bate = (busca: string, ...textos: string[]) => !busca || textos.some((t) => semAcento(t).includes(semAcento(busca)));
 
 /**
- * Variáveis gerais numeradas viram blocos: tema1_titulo, tema1_texto, tema2_titulo… → bloco "tema" com itens 1, 2…
- * O número tem que estar colado num pedaço do nome (tema1, faq10, patrocinio2).
+ * Variáveis gerais numeradas viram blocos (separarSeries do motor): tema1_titulo, tema2_titulo… → bloco "tema".
+ * Item com campos diferentes dos outros (o HTML não seguiu o mesmo molde) mostra o que falta.
  */
-type Serie = { chave: string; raiz: string; campos: string[]; itens: Map<number, Map<string, string>> };
-function separarSeries(gerais: string[]): { soltas: string[]; series: Serie[] } {
-  const porRaiz = new Map<string, Serie>();
-  const de = new Map<string, { chave: string; raiz: string; n: number; campo: string }>();
-  for (const g of gerais) {
-    const partes = g.split('_');
-    const i = partes.findIndex((p) => /^[a-z]+\d+$/.test(p));
-    if (i < 0) continue;
-    const [, raiz, num] = /^([a-z]+)(\d+)$/.exec(partes[i])!;
-    const campo = [...partes.slice(0, i), raiz + '#', ...partes.slice(i + 1)].join('_');
-    const chave = [...partes.slice(0, i), raiz].join('_');
-    de.set(g, { chave, raiz, n: Number(num), campo });
-  }
-  for (const [g, { chave, raiz, n, campo }] of de) {
-    const s: Serie = porRaiz.get(chave) || { chave, raiz, campos: [], itens: new Map() };
-    porRaiz.set(chave, s);
-    if (!s.campos.includes(campo)) s.campos.push(campo);
-    if (!s.itens.has(n)) s.itens.set(n, new Map());
-    s.itens.get(n)!.set(campo, g);
-  }
-  // só é lista com três números ou mais, ou com dois que têm os mesmos campos (equipe1_nome/_funcao, equipe2_nome/_funcao);
-  // titulo_linha1 + titulo_linha2 ou destaque1 + destaque2_gratuito são textos diferentes e ficam soltos
-  const mesmos = (s: Serie) => s.campos.length > 1 && [...s.itens.values()].every((m) => m.size === s.campos.length);
-  const series = [...porRaiz.values()].filter((s) => s.itens.size > 2 || (s.itens.size === 2 && mesmos(s)));
-  const naSerie = new Set(series.flatMap((s) => [...s.itens.values()].flatMap((m) => [...m.values()])));
-  for (const s of series) s.itens = new Map([...s.itens].sort((a, b) => a[0] - b[0]));
-  return { soltas: gerais.filter((g) => !naSerie.has(g)), series };
-}
 const nomeRaiz = (r: string) => r.charAt(0).toUpperCase() + r.slice(1);
 const nomeCampo = (c: string, raiz: string) => c.replace(new RegExp(`_?${raiz}#_?`), ' ').replace(/_/g, ' ').trim() || raiz;
 
@@ -446,6 +418,7 @@ function BlocoSerie({ s, busca }: { s: Serie; busca: string }) {
   const { evento, cad, alterar } = useEditor();
   const valor = (g: string) => evento.gerais[g] ?? '';
   const nums = [...s.itens.keys()];
+  const faltas = faltasNaSerie(s);
   const temValor = (n: number) => [...s.itens.get(n)!.values()].some((g) => String(valor(g)).trim());
   // visíveis: os preenchidos, os que a pessoa abriu e, com busca, os que batem
   const [abertos, setAbertos] = useState<Set<number>>(new Set());
@@ -509,6 +482,7 @@ function BlocoSerie({ s, busca }: { s: Serie; busca: string }) {
               </label>
             ))}
           </div>
+          {faltas.get(n) && <p className="small muted" style={{ margin: 0 }}>O HTML não tem, neste item: {faltas.get(n)!.map((c) => nomeCampo(c, s.raiz)).join(', ')}.</p>}
         </div>
         )
       ))}

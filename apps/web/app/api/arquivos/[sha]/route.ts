@@ -6,6 +6,8 @@ import { erro, responder } from '@/lib/servidor/rotas';
  * Conteúdo de um arquivo guardado, para a prévia. O sha identifica o conteúdo, então pode ficar em cache.
  * Rota pública: a prévia roda isolada e não envia o cookie; o sha (40 caracteres) não dá para adivinhar.
  * Aceita pedidos por partes (Range), que os navegadores usam para tocar vídeo.
+ * CORS aberto: a prévia tem origem própria ("null"), e mask-image, fetch() e imagens desenhadas em
+ * canvas/WebGL (card de compartilhar, 3D) só carregam com Access-Control-Allow-Origin.
  */
 export async function GET(req: Request, { params }: { params: Promise<{ sha: string }> }) {
   return responder(req, async () => {
@@ -17,6 +19,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ sha: str
       'Content-Type': tipoArquivo(nome) || 'application/octet-stream',
       'Cache-Control': 'private, max-age=31536000, immutable',
       'Accept-Ranges': 'bytes',
+      'Access-Control-Allow-Origin': '*',
+      'Cross-Origin-Resource-Policy': 'cross-origin',
     };
     const m = /^bytes=(\d*)-(\d*)$/.exec(req.headers.get('range') || '');
     if (m && (m[1] || m[2])) {
@@ -25,7 +29,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ sha: str
       let fim = m[1] && m[2] ? Number(m[2]) : total - 1;
       ini = Math.max(0, ini);
       fim = Math.min(fim, total - 1);
-      if (ini > fim) return new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${total}` } });
+      if (ini > fim) return new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${total}`, 'Access-Control-Allow-Origin': '*' } });
       return new Response(bytes.slice(ini, fim + 1) as unknown as BodyInit, {
         status: 206,
         headers: { ...cab, 'Content-Range': `bytes ${ini}-${fim}/${total}`, 'Content-Length': String(fim - ini + 1) },

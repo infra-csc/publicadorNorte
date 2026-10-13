@@ -96,4 +96,12 @@ describe('J. Tudo editável', () => {
     const svg = corpo('<p>@x</p><svg viewBox="0 0 10 10"><path d="M0 0h10"/></svg><svg><use href="#i"/></svg>');
     expect(verificarHtml(svg, 'praca').map((p) => p.codigo)).toEqual(['svg-embutido']);
   });
+
+  it('J15: lista numerada com itens de campos diferentes', () => {
+    const p = so('<p>@faq1_pergunta @faq1_resposta_gratuito</p><p>@faq2_pergunta @faq2_resposta</p><p>@faq3_pergunta @faq3_resposta</p>', 'lista-desigual');
+    expect(p).toHaveLength(1);
+    expect(p[0].mensagem).toContain('faq1 não tem @faq1_resposta');
+    expect(p[0].mensagem).toContain('faq2 não tem @faq2_resposta_gratuito');
+    expect(so('<p>@faq1_pergunta @faq1_resposta</p><p>@faq2_pergunta @faq2_resposta</p><p>@faq3_pergunta @faq3_resposta</p>', 'lista-desigual')).toEqual([]);
+  });
 });
