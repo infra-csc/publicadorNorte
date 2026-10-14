@@ -18,6 +18,16 @@ export interface Publicacao {
   url: string;
 }
 
+/** última consulta ao Odoo (preços e links dos combos) */
+export interface ResultadoOdoo {
+  em: string;
+  ok: boolean;
+  /** células que mudaram no cadastro */
+  mudou: number;
+  mensagem: string;
+  cidades: { id: string; nome: string; combo: number | null; ok: boolean; mensagem: string }[];
+}
+
 export interface Evento {
   id: string;
   slug: string;
@@ -41,6 +51,8 @@ export interface Evento {
   /** mudanças feitas fora do evento (ex.: na aba Patrocínios) que ainda não foram publicadas */
   pendencia?: { desde: string; motivos: string[] };
   /** modo automático: depois do último dia (+ horas) a cidade/etapa vira "realizado" e o site é republicado sozinho */
+  /** preços, links e distâncias de cada cidade vindos do Odoo (lib/servidor/odoo.ts); a automação confere a cada 30 minutos */
+  odoo?: { ativo: boolean; ultima?: ResultadoOdoo };
   automacao?: { ativo: boolean; horas: number; /** linhas que já saíram como "realizado" na última publicação */ realizados?: string[] };
   /** ordem dos blocos de mídia na tela do publicador, por página (não muda o site) */
   ordemMidia?: Partial<Record<TipoPagina, string[]>>;
@@ -144,6 +156,7 @@ export interface ResumoEvento {
   agendado?: string | null;
   /** modo automático (realizado) ligado */
   automatico?: boolean;
+  odoo?: boolean;
 }
 
 export interface ArquivoMidia {

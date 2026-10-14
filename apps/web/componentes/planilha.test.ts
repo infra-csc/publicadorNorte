@@ -24,6 +24,12 @@ describe('planilha', () => {
     expect(p.resumo[0]).toMatchObject({ atualizadas: 1, novas: 0, removidas: ['2 sem nada preenchido'] });
   });
 
+  it('cabeçalho como no HTML (cidade_1, @local_1) vale como a coluna', async () => {
+    const p = await lerPlanilha(csv('cidade_1;@local_1;id (não altere)\nFortaleza;Praia;a\n'), evento, cad);
+    expect(p.cidades[0]).toMatchObject({ cidade: 'Fortaleza', local: 'Praia' });
+    expect(p.avisos.join(' ')).not.toContain('ignorada');
+  });
+
   it('aba sem nenhuma coluna do cadastro: erro em vez de criar cidades vazias', async () => {
     await expect(lerPlanilha(csv('foo;bar\n1;2\n'), evento, cad)).rejects.toThrow(/nenhuma coluna/);
   });

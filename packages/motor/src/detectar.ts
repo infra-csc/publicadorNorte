@@ -87,11 +87,21 @@ export function raizAbrev(base: string, existe: (b: string) => boolean): string 
   return existe(r) ? r : null;
 }
 
+/** nomes fixos da base: dados de cada cidade (num @se, sempre da cidade) */
+export const NOMES_BASE = new Set([
+  'cidade', 'uf', 'regiao', 'status', 'local', 'data_inicio', 'data_fim', 'gratuito', 'preco_vista', 'parcelamento', 'valor_parcelado',
+  'porcentagem_desconto', 'preco_comum', 'desconto_em_reais', 'link_inscricao', 'preco_prime', 'preco_prime_parcelado',
+  'valor_adicional_prime', 'link_inscricao_prime',
+]);
+
 /** detecção consolidada de todas as páginas do evento */
 export function detectar(modelos: Modelos, formato: Formato): Deteccao {
   const mapa = new Map<string, VarDetectada>();
   const opc: Record<string, Set<string>> = {};
   const erros: Deteccao['erros'] = {};
+  // @se x fora de laço sem @x_1 em lugar nenhum: segue o texto. Se @x aparece solto (sem _1), é igual em todas as páginas
+  const soNoSe = new Set<string>();
+  const solta = new Set<string>();
   const paginas = [...FORMATOS[formato].paginas, ...FORMATOS[formato].pos];
   // a página do One page funciona como uma praça (com a linha única do cadastro); o pós-evento vem depois
   for (const k of ['praca', 'unica', 'etapa', 'tapume', 'pos_praca', 'pos_unica', 'pos_etapa'] as TipoPagina[]) {
@@ -102,13 +112,16 @@ export function detectar(modelos: Modelos, formato: Formato): Deteccao {
       let d = mapa.get(o.base);
       if (!d) { d = { base: o.base, por: {}, numerada: false, laco: null, nums: [] }; mapa.set(o.base, d); }
       d.por[k] = (d.por[k] || 0) + (o.sint ? 0 : 1);
-      // coluna de bloco fora de laço é da linha da página (como @x_1)
-      if (o.num != null || (o.sint && !o.laco)) d.numerada = true;
+      // coluna de bloco fora de laço é da linha da página (como @x_1), a não ser que o texto dela seja @x (sem _1)
+      if (o.num != null) d.numerada = true;
+      else if (o.sint && !o.laco) soNoSe.add(o.base);
+      else if (!o.laco) solta.add(o.base);
       if (o.num != null && !d.nums.includes(o.num)) d.nums.push(o.num);
       if (o.laco) d.laco = d.laco || o.laco;
       if (o.opc) (opc[o.base] = opc[o.base] || new Set()).add(o.opc);
     }
   }
+  for (const b of soNoSe) if (!solta.has(b) || NOMES_BASE.has(b)) mapa.get(b)!.numerada = true;
   // variações de data (@data_inicio_dia, @periodo…) precisam da data guardada: a coluna vem sozinha
   for (const d of [...mapa.values()]) {
     const fd = formatoDeData(d.base);

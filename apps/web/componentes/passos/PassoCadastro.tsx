@@ -6,6 +6,7 @@ import type { Evento } from '@/lib/comum/tipos';
 import { Cabecalho, NavPassos, useEditor } from '../Editor';
 import { baixarPlanilha, lerPlanilha, type Proposta } from '../planilha';
 import { Previa } from '../Previa';
+import { SecaoOdoo } from './Odoo';
 
 const novoId = () => crypto.randomUUID().slice(0, 8);
 const lista = (e: Evento, t: TipoItem) => (t === 'etapa' ? e.etapas : e.cidades);
@@ -371,7 +372,7 @@ function StatusPelasDatas() {
             {feitas.length ? `Já realizado: ${feitas.map(nome).join(', ')}.` : 'Nenhuma cidade realizada ainda.'}
             {proxima && ` Próxima: ${nome(proxima.l)} em ${quando(proxima.t)}.`}
             {comData.length < linhas.length && ` ${linhas.length - comData.length} sem data completa (não mudam).`}
-            {' '}O site é conferido de hora em hora e republicado quando alguma cidade muda.
+            {' '}O site é conferido a cada 5 minutos e republicado quando alguma cidade muda.
           </p>
         </>
       )}
@@ -652,6 +653,7 @@ export function PassoCadastro() {
             <input className="inp busca-cad" type="search" placeholder="Buscar campo ou valor…" aria-label="Buscar no cadastro" value={busca} onChange={(e) => setBusca(e.target.value)} />
           </div>
           {!busca && <StatusPelasDatas />}
+          {!busca && <SecaoOdoo />}
           <Gerais busca={busca} />
           {unica ? temLista && <ListaEmBlocos busca={busca} /> : <Tabela tipo="cidade" foco={foco} setFoco={setFoco} busca={busca} />}
           {evento.formato === 'tapume_etapa_praca' && <Tabela tipo="etapa" foco={foco} setFoco={setFoco} busca={busca} />}

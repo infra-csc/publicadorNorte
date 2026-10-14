@@ -1,8 +1,9 @@
-// Automação (lib/servidor/automacao.ts): publicações agendadas e modo automático ("realizado").
+// Automação (lib/servidor/automacao.ts): publicações agendadas, preços do Odoo e modo automático ("realizado").
 // Chamada a cada 5 minutos pelo cron da Cloudflare (worker.ts → scheduled) com Authorization: Bearer <chaveAutomacao>.
 import { chaveAutomacao } from '@/lib/servidor/automacaoChave';
 import { rodarAutomacao } from '@/lib/servidor/automacao';
 import { servicos } from '@/lib/servidor/config';
+import { configOdoo } from '@/lib/servidor/odoo';
 import { erro, responder } from '@/lib/servidor/rotas';
 
 export async function POST(req: Request) {
@@ -12,6 +13,6 @@ export async function POST(req: Request) {
     if (req.headers.get('authorization') !== `Bearer ${chave}`) return erro(401, 'Chave da automação inválida.');
     const { armazenamento, destino } = servicos();
     const agora = new Date();
-    return Response.json({ em: agora.toISOString(), feitos: await rodarAutomacao(armazenamento, destino, agora) });
+    return Response.json({ em: agora.toISOString(), feitos: await rodarAutomacao(armazenamento, destino, agora, (() => { const cfg = configOdoo(); return cfg ? { cfg } : null; })()) });
   }, { publico: true });
 }

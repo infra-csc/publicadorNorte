@@ -8,6 +8,9 @@ const COL_CIDADE = 'cidade da etapa';
 const novoId = () => crypto.randomUUID().slice(0, 8);
 const limpo = (s: string) => s.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/^@/, '');
 
+/** cabeçalho escrito como no HTML (`cidade_1`, `@preco_vista_1`) vale como a coluna (`cidade`) */
+const semNum = (s: string) => limpo(s).replace(/_1$/, '');
+
 const nomeAba = (_evento: Pick<Evento, 'formato'>, tipo: TipoItem) => (tipo === 'etapa' ? 'Etapas' : 'Cidades');
 
 export async function baixarPlanilha(evento: Evento, cad: Cadastro) {
@@ -112,7 +115,7 @@ export async function lerPlanilha(arquivo: File, evento: Evento, cad: Cadastro):
   const colsGerais = new Map(cad.colunas('geral').map((g) => [limpo(g), g]));
   for (const [campo, v] of (abas.get('gerais') || []).slice(1)) {
     if (!campo?.trim()) continue;
-    const g = colsGerais.get(limpo(campo));
+    const g = colsGerais.get(limpo(campo)) ?? colsGerais.get(semNum(campo));
     if (g) gerais[g] = v ?? '';
     else avisos.push(`Gerais: “${campo}” não existe no cadastro e foi ignorado.`);
   }
@@ -122,13 +125,14 @@ export async function lerPlanilha(arquivo: File, evento: Evento, cad: Cadastro):
     const cols = cad.colunas(tipo);
     const porNome = new Map(cols.map((c) => [limpo(c), c]));
     const cab = (tab[0] || []).map((h) => h.trim());
-    if (!cab.some((h) => porNome.has(limpo(h)))) throw new Error(`A aba “${aba}” não tem nenhuma coluna do cadastro (${cols.slice(0, 4).join(', ')}…). Confira a primeira linha.`);
+    const coluna = (h: string) => porNome.get(limpo(h)) ?? porNome.get(semNum(h));
+    if (!cab.some((h) => coluna(h))) throw new Error(`A aba “${aba}” não tem nenhuma coluna do cadastro (${cols.slice(0, 4).join(', ')}…). Confira a primeira linha.`);
     const mapa = cab.map((h) => {
       const k = limpo(h);
       if (!k) return null;
       if (k.startsWith('id')) return '_id';
       if (tipo === 'etapa' && k === limpo(COL_CIDADE)) return '_cidade';
-      const c = porNome.get(k);
+      const c = coluna(h);
       if (!c) avisos.push(`${aba}: a coluna “${h}” não existe no cadastro e foi ignorada.`);
       return c || null;
     });

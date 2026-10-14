@@ -37,6 +37,7 @@ Notação: **Entrada** (HTML-modelo e/ou cadastro) → **Esperado**.
 | B6 | `@media_*`, `@img_*`, `@video_*` | grupo mídia, nunca coluna de texto |
 | B7 | Formato com etapas, `<!-- @se noturna = sim -->` só no HTML da etapa | etapa (coluna de bloco segue a regra de `_1`) |
 | B8 | HTML trocado por versão com seções novas | cadastro, donos movidos à mão e escolhas de mídia continuam valendo; variáveis novas entram com dono inferido |
+| B9 | Praça com `<!-- @se faq1_pergunta -->@faq1_pergunta<!-- @fim -->` (texto sem `_1`); `<!-- @se noturna = sim -->` sem texto; `@se status` com `@status` | `faq1_pergunta` geral (o `@se` segue o texto); `noturna` da cidade; nomes da base (`status`, preço…) sempre da cidade |
 
 ## C. Preço e gratuito (padrão do guia)
 
@@ -292,6 +293,17 @@ Os tapumes de cards fixos dos casos H1–H4 são fixtures sintéticos em `packag
 | W2 | itens com campos diferentes | campos na ordem do item 1; cada item diz o que falta ("O HTML não tem, neste item: …" no Cadastro) |
 | W3 | variação opcional `faqN_resposta_gratuito` dentro de `@se gratuito = sim` | preenchida e gratuito: ela; vazia ou pago: `faqN_resposta` |
 | J15 | faq1 com `_resposta_gratuito`, faq2/faq3 com `_resposta` | problema `lista-desigual` dizendo o que falta em cada item |
+
+## Z. Preços do Odoo (apps/web, odoo.test.ts, Odoo simulado)
+
+| # | Entrada | Esperado |
+|---|---|---|
+| Z1 | link `…/shop/cde27combo4sp-…-346`, link sem código `…-belo-horizonte-410?x=1`, link de outro site | 346; 410; nenhum |
+| Z2 | combo R$ 799, 12x, Prime 10% | parcela 66,58 (para baixo), Prime 719,10 e 59,92; distâncias por etapa; mês da estação |
+| Z3 | combo de Recife com etapas de Salvador; ingresso sem "km" no nome; Prime sem regra | etapas de Salvador fora (aviso); ingresso ignorado; sem Prime |
+| Z4 | combo sem código no padrão | preço e link vêm; distâncias não (aviso) |
+| Z5 | sincronizar duas vezes sem mudança; combo que não existe | grava na primeira, não na segunda; cidade sem link intocada; aviso "não existe" |
+| Z6 | automação com o preço mudado e evento publicado; fora da janela de 30 min; desligado | grava e republica; nada; nada |
 
 ## X. Publicação agendada (apps/web, automacao.test.ts)
 

@@ -128,6 +128,7 @@ Galeria **não** é uma série de espaços fixos (`@img_galeria_foto1…12`). É
 | Só letras, números e `_`. Nada de acento, `-`, `$` ou espaço | `@desconto_em_reais_1`, **não** `@desconto-em-R$` |
 | Na página da cidade (praça) e da etapa, toda variável da cidade termina em `_1` | `@cidade_1`, `@preco_vista_1` |
 | Variável igual em todas as páginas não tem número | `@evento`, `@ano` |
+| Num `@se` fora de `@repetir`, vale o que o texto usa: `<!-- @se faq1_pergunta -->@faq1_pergunta…` é igual em todas; com `@x_1` (ou sem texto, como `@se noturna = sim`), muda em cada cidade. Nomes da base (`status`, `gratuito`, preços) são sempre da cidade | `<!-- @se compra_item1 -->@compra_item1<!-- @fim -->` |
 | Texto colado logo depois da variável: use chaves | `@{parcelamento_1}x` → "12x" |
 | Unidade e símbolo ficam no HTML; a variável leva só o valor | `R$@preco_vista_1`, `@porcentagem_desconto_1% OFF` |
 | Trecho que só aparece se houver valor: comentários `@se` e `@fim` | ver seção 4 |
@@ -191,6 +192,8 @@ O publicador aceita qualquer forma: digite o preço à vista, ou as parcelas, ou
 | `@preco_prime_1` | Preço à vista com O2 Prime | digitado |
 | `@preco_prime_parcelado_1` | Parcela com O2 Prime | **automático** |
 | `@valor_adicional_prime_1` | Quanto o Prime soma | **automático** |
+
+Com os **preços do Odoo** ligados (passo Cadastro), o O2 Prime é desconto de assinante: `@preco_prime_1` é o preço do combo para assinante, e `@porcentagem_desconto_prime_1` o desconto (ex.: `10`). Nesse caso, não use `@valor_adicional_prime_1`. O Odoo também preenche `@etapa1_distancias_1`… (“5, 10, 13”) e, se o nome da etapa tiver a estação, `@mes_outono_1` / `@mes_outono_abrev_1`.
 | `@link_inscricao_prime_1` | Link do checkout com Prime | digitado |
 
 Evento sem O2 Prime: simplesmente não use estas variáveis.
@@ -519,7 +522,7 @@ Depois do evento, a página pode trocar de HTML **no mesmo endereço** (resultad
 O tapume (home) não muda. Regras:
 - Segue **o mesmo guia** (seções 1 a 9): todo texto visível é variável, imagens e ícones como arquivo, responsivo, `@se` para o que pode faltar.
 - As variáveis da base valem do mesmo jeito (`@evento`, `@cidade_1`, `@data_inicio_1`, `@local_1`…) e vêm do Cadastro.
-- As variáveis **próprias** do pós-evento começam com `pos_`: `@pos_titulo`, `@pos_texto`, `@pos_botao`, `@link_pos_resultados`. Elas aparecem no passo Pós-evento (não no Cadastro). Como na praça, `@pos_x` é igual em todas as páginas e `@pos_x_1` (ou dentro de `@se`) é de cada cidade/etapa.
+- As variáveis **próprias** do pós-evento começam com `pos_`: `@pos_titulo`, `@pos_texto`, `@pos_botao`, `@link_pos_resultados`. Elas aparecem no passo Pós-evento (não no Cadastro). Como na praça, `@pos_x` é igual em todas as páginas e `@pos_x_1` é de cada cidade/etapa.
 - Imagens do pós-evento: `@img_<secao>_<nome>` com arquivos em `_media/pos/<secao>/` (ex.: `@img_resultados_podio` → `_media/pos/resultados/podio.webp`).
 - Fotos do evento por cidade: galeria própria, `<!-- @repetir galeria_pos -->…<!-- @fim -->` (seção 1.4). Cada cidade mostra as fotos dela.
 - Entregue o HTML de pós-evento como `pos-evento.html`, com o bloco de documentação no fim (seção 10).

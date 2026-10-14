@@ -77,7 +77,7 @@ export class ArmazenamentoGitHub implements Armazenamento {
       [...todos].filter(([p]) => p.startsWith(PASTA) && p.endsWith('/' + ARQ_EVENTO) && p.split('/').length === 3).map(async ([, a]) => {
         const e = JSON.parse(await this.gh.lerTexto(a.sha)) as Evento;
         const ativa = e.publicacoes.find((p) => p.versao === e.versaoAtiva);
-        out.push({ slug: e.slug, nome: e.nome, formato: e.formato, cidades: e.cidades.length, atualizadoEm: e.atualizadoEm, url: ativa?.url || null, pendente: !!e.pendencia?.motivos.length, producao: e.producao?.versao != null ? e.producao.dominios[0] || null : null, agendado: e.agendamento?.em || null, automatico: !!e.automacao?.ativo });
+        out.push({ slug: e.slug, nome: e.nome, formato: e.formato, cidades: e.cidades.length, atualizadoEm: e.atualizadoEm, url: ativa?.url || null, pendente: !!e.pendencia?.motivos.length, producao: e.producao?.versao != null ? e.producao.dominios[0] || null : null, agendado: e.agendamento?.em || null, automatico: !!e.automacao?.ativo, odoo: !!e.odoo?.ativo });
       }),
     );
     return out.sort((a, b) => (a.atualizadoEm < b.atualizadoEm ? 1 : -1));

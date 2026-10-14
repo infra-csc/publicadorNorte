@@ -71,6 +71,17 @@ describe('B. Dono', () => {
     expect(depois.local.dono).toBe('cidade');
   });
 
+  it('B9: @se x com o texto @x (sem _1) na praça: igual em todas; sem texto solto ou com @x_1: da cidade; nomes da base sempre da cidade', () => {
+    const det = detectar({ tapume: '', praca: [
+      '<!-- @se faq1_pergunta --><b>@faq1_pergunta</b><p>@faq1_resposta</p><!-- @fim -->',
+      '<!-- @se horario --><b>@horario_1</b><!-- @senao -->A confirmar<!-- @fim -->',
+      '<!-- @se noturna = sim -->noite<!-- @fim -->',
+      '<!-- @se status = aberta --><b>@status</b><!-- @fim -->',
+    ].join('') }, 'tapume_praca');
+    const d = inferirDonos(det);
+    expect([d.faq1_pergunta, d.faq1_resposta, d.horario, d.noturna, d.status]).toEqual(['geral', 'geral', 'cidade', 'cidade', 'cidade']);
+  });
+
   it('B6: @media_*, @img_*, @video_* são mídia, nunca coluna de texto', () => {
     const det = detectar({ tapume: '', praca: '<img src="@media_hero_desktop_1"><img src="@img_kit_foto"><img src="@video_arena_cena_1"><p>@cidade_1</p>' }, 'tapume_praca');
     const vars = sincronizarVars(det);
