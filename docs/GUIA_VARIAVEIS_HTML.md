@@ -523,6 +523,7 @@ O tapume (home) não muda. Regras:
 - Imagens do pós-evento: `@img_<secao>_<nome>` com arquivos em `_media/pos/<secao>/` (ex.: `@img_resultados_podio` → `_media/pos/resultados/podio.webp`).
 - Fotos do evento por cidade: galeria própria, `<!-- @repetir galeria_pos -->…<!-- @fim -->` (seção 1.4). Cada cidade mostra as fotos dela.
 - Entregue o HTML de pós-evento como `pos-evento.html`, com o bloco de documentação no fim (seção 10).
+- Passo a passo completo, com exemplo e checklist: `docs/POS_EVENTO.md`.
 
 ## 10. Bloco de documentação (obrigatório no fim de cada HTML)
 
