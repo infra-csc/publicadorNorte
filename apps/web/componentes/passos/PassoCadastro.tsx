@@ -297,7 +297,7 @@ function Tabela({ tipo, foco, setFoco, busca }: { tipo: TipoItem; foco: string |
 
 /** baixar o cadastro em planilha e enviar de volta (mostra o que muda antes de aplicar) */
 function Planilha() {
-  const { evento, cad, alterar } = useEditor();
+  const { evento, cad, det, alterar } = useEditor();
   const [proposta, setProposta] = useState<Proposta | null>(null);
   const [msg, setMsg] = useState('');
 
@@ -315,6 +315,10 @@ function Planilha() {
     if (!proposta) return;
     const p = proposta;
     alterar((e) => {
+      if (p.paraGeral.length) {
+        e.vars = sincronizarVars(det, e.vars);
+        for (const c of p.paraGeral) e.vars[c] = { ...e.vars[c], dono: 'geral', manual: true };
+      }
       e.gerais = { ...e.gerais, ...p.gerais };
       e.cidades = p.cidades;
       if (p.etapas) e.etapas = p.etapas;

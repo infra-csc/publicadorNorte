@@ -1,6 +1,6 @@
 // Cadastro em planilha: baixar (.xlsx) e enviar (.xlsx ou .csv).
 // Enviar não grava direto: devolve uma proposta (o que muda) para a pessoa conferir e aplicar.
-import { COLUNAS_NOME, linhaVazia, type Cadastro, type Linha, type TipoItem } from '@norte/motor';
+import { COLUNAS_NOME, linhaVazia, type Cadastro, type Linha, type TipoItem, NOMES_BASE } from '@norte/motor';
 import type { Evento } from '@/lib/comum/tipos';
 
 const COL_ID = 'id (não altere)';
@@ -47,6 +47,8 @@ export interface Proposta {
   etapas: Linha[] | null;
   resumo: { aba: string; novas: number; atualizadas: number; removidas: string[] }[];
   avisos: string[];
+  /** campos que estavam como coluna da cidade/etapa e vieram na aba de gerais: passam a valer igual em todas as páginas */
+  paraGeral: string[];
 }
 
 type Tabela = string[][];
@@ -113,12 +115,19 @@ export async function lerPlanilha(arquivo: File, evento: Evento, cad: Cadastro):
   // gerais: campo | valor
   const gerais: Record<string, string> = {};
   const colsGerais = new Map(cad.colunas('geral').map((g) => [limpo(g), g]));
+  // texto igual para todos que o HTML usa dentro do card repetido (ex.: a etiqueta "inscreva-se"): o publicador
+  // tinha posto como coluna da cidade; vindo na aba de gerais, passa a ser geral (os nomes da base, não)
+  const colsItem = new Map([...cad.colunas('cidade'), ...cad.colunas('etapa')].filter((c) => !NOMES_BASE.has(c)).map((c) => [limpo(c), c]));
+  const paraGeral: string[] = [];
   for (const [campo, v] of (abas.get('gerais') || []).slice(1)) {
     if (!campo?.trim()) continue;
     const g = colsGerais.get(limpo(campo)) ?? colsGerais.get(semNum(campo));
+    const item = g ? undefined : colsItem.get(limpo(campo)) ?? colsItem.get(semNum(campo));
     if (g) gerais[g] = v ?? '';
+    else if (item) { gerais[item] = v ?? ''; paraGeral.push(item); }
     else avisos.push(`Gerais: “${campo}” não existe no cadastro e foi ignorado.`);
   }
+  if (paraGeral.length) avisos.push(`Gerais: ${paraGeral.length} campo(s) que estavam como coluna da cidade passam a valer igual em todas as páginas (${paraGeral.map((c) => '@' + c).join(', ')}).`);
 
   function tabela(tipo: TipoItem, tab: Tabela, atuais: Linha[], cidadesNovas: Linha[]): Linha[] {
     const aba = nomeAba(evento, tipo);
@@ -177,5 +186,5 @@ export async function lerPlanilha(arquivo: File, evento: Evento, cad: Cadastro):
   if (comEtapas && tabEtapas) etapas = tabela('etapa', tabEtapas, evento.etapas, cidades);
   // etapas que apontavam para cidades removidas ficam sem cidade
   if (comEtapas) for (const et of etapas || []) if (et._cidade && !cidades.some((c) => c._id === et._cidade)) delete et._cidade;
-  return { gerais, cidades, etapas, resumo, avisos };
+  return { gerais, cidades, etapas, resumo, avisos, paraGeral };
 }

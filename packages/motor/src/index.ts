@@ -8,7 +8,7 @@ export { RX_VAR, ehMidia, varsDoTexto } from './variaveis';
 export { lerBlocos, RX_MARCA, type No, type NoSe, type ErroBloco } from './blocos';
 export {
   acharVars, detectar, inferirDono, inferirDonos, sincronizarVars, colunas, ehContagem, raizAbrev,
-  FORMULAS_PADRAO, ORDEM_PADRAO, STATUS_CONHECIDOS,
+  FORMULAS_PADRAO, ORDEM_PADRAO, STATUS_CONHECIDOS, NOMES_BASE,
   type Deteccao, type VarDetectada, type Ocorrencia,
 } from './detectar';
 export { avaliar, nomesFormula } from './formulas';

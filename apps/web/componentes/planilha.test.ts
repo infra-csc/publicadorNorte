@@ -30,6 +30,16 @@ describe('planilha', () => {
     expect(p.avisos.join(' ')).not.toContain('ignorada');
   });
 
+  it('texto do card repetido (coluna da cidade) que vem na aba de gerais passa a ser geral; nome da base, não', async () => {
+    const h = '<!-- @repetir cidades --><a>@cidade <span>@tag_aberta</span></a><!-- @fim -->';
+    const d = detectar({ unica: h }, 'unica');
+    const ev = { formato: 'unica', gerais: {}, cidades: [], etapas: [] } as unknown as Evento;
+    const p = await lerPlanilha(csv('variavel;valor\ntag_aberta;inscreva-se\ncidade;Rio\n'), ev, new Cadastro(d, { vars: sincronizarVars(d, {}), cidades: [] }));
+    expect(p.gerais).toEqual({ tag_aberta: 'inscreva-se' });
+    expect(p.paraGeral).toEqual(['tag_aberta']);
+    expect(p.avisos.join(' ')).toContain('“cidade” não existe');
+  });
+
   it('aba sem nenhuma coluna do cadastro: erro em vez de criar cidades vazias', async () => {
     await expect(lerPlanilha(csv('foo;bar\n1;2\n'), evento, cad)).rejects.toThrow(/nenhuma coluna/);
   });
