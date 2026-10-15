@@ -135,6 +135,15 @@ describe('Odoo', () => {
     expect(r[0].resultado).toContain('publicado v2');
     // fora da janela de 30 minutos: não consulta
     expect(await rodarAutomacao(m.arm, m.dest, new Date('2026-10-14T12:10:00Z'), { cfg: CFG, fetch: odooFalso(649).f })).toEqual([]);
+    // "Buscar agora" gravou e não publicou: a automação publica mesmo sem mudança nova; publicado, não repete
+    const b = memoria(evento({ publicacoes: [v1], versaoAtiva: 1 }));
+    await sincronizarOdoo(b.arm, 'combo', CFG, AGORA, { fetch: odooFalso(599).f, sempre: true, ligar: true });
+    expect(b.atual().odoo?.pendente).toBe(true);
+    const rb = await rodarAutomacao(b.arm, b.dest, AGORA, { cfg: CFG, fetch: odooFalso(599).f });
+    expect(b.publicados).toEqual([2]);
+    expect(rb[0].resultado).toContain('publicado v2');
+    expect(b.atual().odoo?.pendente).toBeUndefined();
+    expect(await rodarAutomacao(b.arm, b.dest, new Date('2026-10-14T12:30:00Z'), { cfg: CFG, fetch: odooFalso(599).f })).toEqual([]);
     const d = memoria(evento({ odoo: { ativo: false } }));
     expect(await rodarAutomacao(d.arm, d.dest, AGORA, { cfg: CFG, fetch: odooFalso(599).f })).toEqual([]);
   });

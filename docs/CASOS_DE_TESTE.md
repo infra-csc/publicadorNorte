@@ -304,6 +304,7 @@ Os tapumes de cards fixos dos casos H1–H4 são fixtures sintéticos em `packag
 | Z4 | combo sem código no padrão | preço e link vêm; distâncias não (aviso) |
 | Z5 | sincronizar duas vezes sem mudança; combo que não existe | grava na primeira, não na segunda; cidade sem link intocada; aviso "não existe" |
 | Z6 | automação com o preço mudado e evento publicado; fora da janela de 30 min; desligado | grava e republica; nada; nada |
+| Z7 | "Buscar agora" gravou valores novos sem publicar; automação seguinte sem mudança no Odoo | publica (e tira o `pendente`); na próxima, nada |
 
 ## X. Publicação agendada (apps/web, automacao.test.ts)
 

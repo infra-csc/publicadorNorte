@@ -206,7 +206,7 @@ export async function sincronizarOdoo(armazenamento: Armazenamento, slug: string
   if (!mudou && mesmoResultado && !opcoes.sempre) return { resultado, evento: lido.evento, versao: null };
   const r = await armazenamento.atualizar(slug, (e) => {
     for (const l of e.cidades) Object.assign(l, novos.get(l._id) || {});
-    e.odoo = { ativo: opcoes.ligar || !!e.odoo?.ativo, ultima: resultado };
+    e.odoo = { ativo: opcoes.ligar || !!e.odoo?.ativo, ultima: resultado, ...(mudou || e.odoo?.pendente ? { pendente: true } : {}) };
   }, mudou ? `Odoo: ${mudou} valor(es) de ${slug}` : `Odoo: confere ${slug}`);
   return { resultado, ...r };
 }

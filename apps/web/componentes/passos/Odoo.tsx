@@ -57,7 +57,7 @@ export function SecaoOdoo() {
       {o?.ativo && (
         <div className="row" style={{ gap: 8 }}>
           <button className="btn sm" type="button" disabled={ocupado} onClick={() => enviar({})}>{ocupado ? 'Consultando…' : 'Buscar agora'}</button>
-          <span className="small muted">Buscar agora atualiza o cadastro. Para ir ao site, publique (ou espere a automação).</span>
+          <span className="small muted">{o.pendente && evento.versaoAtiva != null ? 'Valores novos do Odoo ainda não estão no site: a automação publica em até 30 minutos, ou publique agora.' : 'Buscar agora atualiza o cadastro; se algo mudar, o site é publicado sozinho em até 30 minutos.'}</span>
         </div>
       )}
       {u && (

@@ -61,7 +61,8 @@ async function publicarAgendado(armazenamento: Armazenamento, destino: DestinoPu
 async function atualizarDoOdoo(armazenamento: Armazenamento, destino: DestinoPublicacao, slug: string, agora: Date, odoo: { cfg: ConfigOdoo; fetch?: typeof fetch }): Promise<FeitoAutomacao | null> {
   try {
     const { resultado, evento } = await sincronizarOdoo(armazenamento, slug, odoo.cfg, agora, { fetch: odoo.fetch });
-    if (!resultado.mudou) return resultado.ok ? null : { slug, resultado: 'Odoo: ' + resultado.mensagem };
+    // publica o que mudou agora e o que veio antes ("Buscar agora") e ainda não foi para o site
+    if (!resultado.mudou && !evento.odoo?.pendente) return resultado.ok ? null : { slug, resultado: 'Odoo: ' + resultado.mensagem };
     if (evento.versaoAtiva == null) return { slug, resultado: 'Odoo: ' + resultado.mensagem + ' (ainda não publicado)' };
     try {
       const p = await publicarEvento(armazenamento, destino, slug, agora, { acompanharProducao: true });

@@ -52,7 +52,7 @@ export interface Evento {
   pendencia?: { desde: string; motivos: string[] };
   /** modo automático: depois do último dia (+ horas) a cidade/etapa vira "realizado" e o site é republicado sozinho */
   /** preços, links e distâncias de cada cidade vindos do Odoo (lib/servidor/odoo.ts); a automação confere a cada 30 minutos */
-  odoo?: { ativo: boolean; ultima?: ResultadoOdoo };
+  odoo?: { ativo: boolean; ultima?: ResultadoOdoo; /** valores do Odoo gravados no cadastro que ainda não foram para o site */ pendente?: boolean };
   automacao?: { ativo: boolean; horas: number; /** linhas que já saíram como "realizado" na última publicação */ realizados?: string[] };
   /** ordem dos blocos de mídia na tela do publicador, por página (não muda o site) */
   ordemMidia?: Partial<Record<TipoPagina, string[]>>;

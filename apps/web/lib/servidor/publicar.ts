@@ -45,6 +45,7 @@ export async function publicarEvento(armazenamento: Armazenamento, destino: Dest
     e.publicacoes.push(pub);
     e.versaoAtiva = versao;
     delete e.pendencia;
+    if (e.odoo) delete e.odoo.pendente;
     if (e.automacao) e.automacao.realizados = realizados;
     if (opcoes.agendamento) {
       delete e.agendamento;
