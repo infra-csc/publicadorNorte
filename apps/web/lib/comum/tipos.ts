@@ -18,6 +18,9 @@ export interface Publicacao {
   url: string;
 }
 
+export type IntervaloOdoo = 2 | 6 | 24;
+export const INTERVALOS_ODOO: IntervaloOdoo[] = [2, 6, 24];
+
 /** última consulta ao Odoo (preços e links dos combos) */
 export interface ResultadoOdoo {
   em: string;
@@ -52,7 +55,14 @@ export interface Evento {
   pendencia?: { desde: string; motivos: string[] };
   /** modo automático: depois do último dia (+ horas) a cidade/etapa vira "realizado" e o site é republicado sozinho */
   /** preços, links e distâncias de cada cidade vindos do Odoo (lib/servidor/odoo.ts); a automação confere a cada 30 minutos */
-  odoo?: { ativo: boolean; ultima?: ResultadoOdoo; /** valores do Odoo gravados no cadastro que ainda não foram para o site */ pendente?: boolean };
+  odoo?: {
+    ativo: boolean;
+    /** de quantas em quantas horas a automação confere (padrão 6) */
+    intervalo?: IntervaloOdoo;
+    ultima?: ResultadoOdoo;
+    /** valores do Odoo gravados no cadastro que ainda não foram para o site */
+    pendente?: boolean;
+  };
   automacao?: { ativo: boolean; horas: number; /** linhas que já saíram como "realizado" na última publicação */ realizados?: string[] };
   /** ordem dos blocos de mídia na tela do publicador, por página (não muda o site) */
   ordemMidia?: Partial<Record<TipoPagina, string[]>>;
@@ -157,6 +167,10 @@ export interface ResumoEvento {
   /** modo automático (realizado) ligado */
   automatico?: boolean;
   odoo?: boolean;
+  /** horas entre as conferências do Odoo */
+  odooHoras?: number;
+  /** valores do Odoo no cadastro esperando ir para o site */
+  odooPendente?: boolean;
 }
 
 export interface ArquivoMidia {

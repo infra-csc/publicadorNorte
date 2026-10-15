@@ -1,6 +1,6 @@
 // D. Status e contagens
 import { describe, expect, it } from 'vitest';
-import { colunas, detectar, novaLinha, sincronizarVars } from '../src/index';
+import { colunas, detectar, gerar, novaLinha, sincronizarVars } from '../src/index';
 import { linha, praca, tapume } from './ajuda';
 
 const SE_ABERTA = '<!-- @se status = aberta -->Aberta<!-- @senao -->Em breve<!-- @fim -->';
@@ -38,7 +38,17 @@ describe('D. Status e contagens', () => {
 
   it('D5: opções de status com HTML testando só "aberta"', () => {
     const det = detectar({ tapume: '', praca: SE_ABERTA }, 'tapume_praca');
-    expect(det.opcoes.status).toEqual(['em breve', 'aberta', 'realizado']);
+    expect(det.opcoes.status).toEqual(['em breve', 'aberta', 'realizado', 'esgotado']);
+  });
+
+  it('D12: "esgotado" segue o bloco da "aberta" onde o HTML não trata esgotado; com @se status = esgotado, vale o próprio', () => {
+    const html = '<p>@cidade_1</p><!-- @se status = aberta --><a>comprar</a><!-- @senao -->em breve<!-- @fim -->'
+      + '<!-- @se status = esgotado -->ESGOTADO<!-- @senao -->R$ 10<!-- @fim -->';
+    const pag = (status: string) => gerar({ formato: 'tapume_praca', modelos: { tapume: '<p>x</p>', praca: html }, cidades: [linha({ cidade: 'Rio', status })] }).paginas.find((p) => p.tipo === 'praca')!.html;
+    expect(pag('esgotado')).toContain('<a>comprar</a>ESGOTADO');
+    expect(pag('aberta')).toContain('<a>comprar</a>R$ 10');
+    expect(pag('')).toContain('em breveR$ 10');
+    expect(gerar({ formato: 'tapume_praca', modelos: { tapume: '<p>@total_esgotado @total_aberta</p>', praca: html }, cidades: [linha({ cidade: 'A', status: 'esgotado' }), linha({ cidade: 'B', status: 'aberta' })] }).paginas[0].html).toContain('1 1');
   });
 
   it('D6: linha nova copiada de uma linha "aberta" volta ao status padrão', () => {

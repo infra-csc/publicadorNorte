@@ -636,13 +636,14 @@ Troque só o miolo do preço. O gratuito continua vindo antes:
 
 ### 12.3 Status da cidade
 
-O status tem três valores:
+O status tem quatro valores:
 
 | Valor na tabela | Significado |
 |---|---|
 | `em breve` (padrão, quando ninguém escolheu) | Inscrições ainda não abertas |
 | `aberta` | Inscrições abertas |
 | `realizado` | A etapa já aconteceu |
+| `esgotado` | As vendas acabaram depois de abertas (vem dos **preços do Odoo**). A página continua aberta e os botões continuam levando para a compra; só o preço muda |
 
 No **modo automático** do evento (passo Cadastro → "Status pelas datas"), cada cidade vira `realizado` sozinha depois do último dia (`data_fim`, ou `data_inicio` se for um dia só), mais as horas configuradas. O site é republicado sozinho. No modo manual, a equipe escolhe.
 
@@ -660,8 +661,19 @@ No HTML, trate **os três** casos, com `realizado` primeiro:
 
 - **Não calcule o status (nem "próxima parada", "acontecendo agora", "realizado") por JavaScript** comparando datas com o relógio do navegador: o publicador decide e a página já sai pronta. Use `@se status = …`.
 - Tudo o que muda quando a etapa acontece (selo, botão de inscrição, texto da data) fica dentro desses blocos, para mudar junto.
+- **Esgotado:** onde o HTML testa `@se status = aberta`, uma cidade esgotada entra no bloco da aberta (link, página e botão de compra). Para mostrar o esgotado, teste-o **antes**, só onde muda (preço, etiqueta do card no tapume):
 
-Contagens automáticas: `@total_aberta`, `@total_breve`, `@total_realizado`, `@total_cidades`.
+```html
+<!-- @se status = esgotado -->
+  <b class="preco">@preco_esgotado</b>
+<!-- @senao -->
+  … preço normal …
+<!-- @fim -->
+```
+
+Com os **preços do Odoo** ligados, o status vem sozinho: com preço à venda, `aberta`; sem preço, `em breve`; saiu de venda depois de ter vendido, `esgotado`. A equipe ainda pode trocar à mão (vale até a próxima mudança no Odoo).
+
+Contagens automáticas: `@total_aberta`, `@total_breve`, `@total_realizado`, `@total_esgotado`, `@total_cidades` (`@total_aberta` não conta as esgotadas).
 Não use `@total_` para outra coisa. Para o número de categorias, use um nome sem esse prefixo, como `@qtd_categorias_1`.
 
 

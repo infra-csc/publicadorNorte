@@ -1,4 +1,5 @@
-// Odoo: liga/desliga os preços vindos do Odoo e consulta na hora (a automação confere sozinha a cada 30 minutos).
+// Odoo: liga/desliga os preços vindos do Odoo e consulta na hora (a automação confere no intervalo do evento).
+import { chaveAvisoOdoo } from '@/lib/servidor/automacaoChave';
 import { servicos } from '@/lib/servidor/config';
 import { configOdoo, sincronizarOdoo } from '@/lib/servidor/odoo';
 import { erro, responder } from '@/lib/servidor/rotas';
@@ -10,7 +11,10 @@ export async function GET(req: Request) {
   return responder(req, async () => {
     const cfg = configOdoo();
     const faltam = ['ODOO_URL', 'ODOO_API_KEY'].filter((k) => !process.env[k]);
-    return Response.json({ configurado: !!cfg, url: cfg?.url || null, faltam });
+    // endereço do aviso, para o pessoal de desenvolvimento do Odoo (só quem entrou com a senha da equipe vê)
+    const chave = await chaveAvisoOdoo({ ODOO_AVISO_TOKEN: process.env.ODOO_AVISO_TOKEN, GITHUB_TOKEN: process.env.GITHUB_TOKEN });
+    const aviso = chave ? `${new URL(req.url).origin}/api/odoo/aviso?chave=${chave}` : null;
+    return Response.json({ configurado: !!cfg, url: cfg?.url || null, faltam, aviso });
   });
 }
 

@@ -35,7 +35,7 @@ export interface Problema {
 }
 
 const PRECO = new Set(['preco_vista', 'valor_parcelado']);
-const CONTAGENS = new Set(['total_cidades', 'total_pracas', 'total_etapas', 'total_aberta', 'total_breve', 'total_em_breve']);
+const CONTAGENS = new Set(['total_cidades', 'total_pracas', 'total_etapas', 'total_aberta', 'total_breve', 'total_em_breve', 'total_esgotado', 'total_realizado']);
 /** nomes que já têm uma variável base: nome errado → nome certo */
 export const SINONIMOS: Record<string, string> = {
   valor: 'preco_vista', preco: 'preco_vista', preco_avista: 'preco_vista', valor_vista: 'preco_vista', valor_avista: 'preco_vista',
@@ -81,8 +81,8 @@ export function verificarHtml(html: string, _tipo?: TipoPagina): Problema[] {
     if (/==|["']/.test(n.arg) || /^@/.test(n.arg) || /^@?[A-Za-z]\w*_\d+\b/.test(n.arg)) {
       add('sintaxe-se', n.ini, `Escreva o @se sem "@", sem número e com um "=" só, sem aspas (ex.: @se gratuito = sim).`);
     }
-    if (n.col === 'status' && n.op && !['aberta', 'breve', 'realizado'].includes(slugValor(n.val))) {
-      add('status-invalido', n.ini, `O status testado é "${n.val}". Use "aberta", "em breve" ou "realizado".`);
+    if (n.col === 'status' && n.op && !['aberta', 'breve', 'realizado', 'esgotado'].includes(slugValor(n.val))) {
+      add('status-invalido', n.ini, `O status testado é "${n.val}". Use "aberta", "em breve", "esgotado" ou "realizado".`);
     }
     if (SINONIMOS[n.col]) add('nome-fora-da-base', n.ini, `@se ${n.col}: use o nome da base @${SINONIMOS[n.col]}.`);
   };

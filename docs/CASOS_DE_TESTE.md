@@ -71,13 +71,14 @@ Modelo:
 | D2 | cidades: [aberta, vazio, vazio] | `@total_aberta` = 1, `@total_breve` = 2 |
 | D3 | `<!-- @se status = em breve -->` e status vazio | verdadeiro |
 | D4 | status `em breve` digitado, `@total_breve` | conta 1 |
-| D5 | opções de status com HTML testando só `aberta` | [em breve, aberta, realizado]; padrão em breve |
+| D5 | opções de status com HTML testando só `aberta` | [em breve, aberta, realizado, esgotado]; padrão em breve |
 | D6 | linha nova copiada de uma linha `aberta` | status volta ao padrão |
 | D7 | `@agrupar por regiao` com Sudeste [2 cidades], Nordeste [1] | `@total_cidades` = 2 no grupo Sudeste, 1 no Nordeste |
 | D8 | status "aberto" numa cidade e HTML testa "aberta" | aviso "valor que o HTML não conhece" |
 | D9 | `@total_breve` num tapume sem nenhum `@se status` | cidades sem status contam como breve |
 | D10 | linha sem a coluna `status` (nunca preenchida) e `@se status = em breve` | verdadeiro (igual a status vazio) |
 | D11 | status "em breve" digitado e HTML testa "aberta" | sem aviso de valor desconhecido |
+| D12 | status `esgotado`; HTML com `@se status = aberta` e com `@se status = esgotado` | o bloco da aberta vale (página e botões abertos); o `@se status = esgotado` vale onde existe; `@total_esgotado` conta à parte |
 
 ## E. Blocos
 
@@ -304,7 +305,10 @@ Os tapumes de cards fixos dos casos H1–H4 são fixtures sintéticos em `packag
 | Z4 | combo sem código no padrão | preço e link vêm; distâncias não (aviso) |
 | Z5 | sincronizar duas vezes sem mudança; combo que não existe | grava na primeira, não na segunda; cidade sem link intocada; aviso "não existe" |
 | Z6 | automação com o preço mudado e evento publicado; fora da janela de 30 min; desligado | grava e republica; nada; nada |
-| Z7 | "Buscar agora" gravou valores novos sem publicar; automação seguinte sem mudança no Odoo | publica (e tira o `pendente`); na próxima, nada |
+| Z7 | "Buscar agora" gravou valores novos sem publicar; automação seguinte sem mudança no Odoo | publica na passada seguinte, fora da hora do intervalo (e tira o `pendente`); na próxima, nada |
+| Z8 | intervalo 2, 6 e 24 h | confere só na passada do começo do intervalo, contado da 0h de Brasília (padrão 6 h) |
+| Z9 | combo à venda / nunca vendeu e fora de venda / vendeu e saiu de venda; status trocado à mão | aberta / em breve / esgotado (preços ficam); a troca à mão fica até o Odoo mudar de situação |
+| Z10 | combo com `sale_ok` falso numa cidade que já vendeu, evento publicado | esgotado, preço anterior mantido, motivo no resultado, site republicado |
 
 ## X. Publicação agendada (apps/web, automacao.test.ts)
 

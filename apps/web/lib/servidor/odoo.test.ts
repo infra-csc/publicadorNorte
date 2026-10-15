@@ -3,15 +3,17 @@ import { describe, expect, it } from 'vitest';
 import { idDoCombo } from '@/lib/comum/odoo';
 import type { Evento, EventoCompleto, ResumoEvento } from '@/lib/comum/tipos';
 import { BANCO_VAZIO, type Armazenamento } from './armazenamento';
-import { rodarAutomacao } from './automacao';
+import { horaDoOdoo, rodarAutomacao } from './automacao';
 import type { DestinoPublicacao } from './destino';
-import { clienteOdoo, consultarCombo, sincronizarOdoo, valoresDoCombo, type ConfigOdoo } from './odoo';
+import { clienteOdoo, consultarCombo, sincronizarOdoo, statusPeloOdoo, valoresDoCombo, type ComboOdoo, type ConfigOdoo } from './odoo';
 
 const CFG: ConfigOdoo = { url: 'https://loja.test', db: 'db', chave: 'k', listaPrime: 4 };
 const AGORA = new Date('2026-10-14T12:00:00Z');
+/** 12h em Brasília: hora de conferir no intervalo padrão (6 h) */
+const HORA = new Date('2026-10-14T15:00:00Z');
 
 /** Odoo de mentira: responde search_read pelos dados abaixo */
-function odooFalso(preco = 549, opcoes: { semCodigo?: boolean } = {}) {
+function odooFalso(preco = 549, opcoes: { semCodigo?: boolean; foraDeVenda?: boolean } = {}) {
   const chamadas: string[] = [];
   const f = (async (url: string, init: RequestInit) => {
     const [modelo] = url.replace(CFG.url + '/json/2/', '').split('/');
@@ -20,7 +22,7 @@ function odooFalso(preco = 549, opcoes: { semCodigo?: boolean } = {}) {
     const corpo = JSON.parse(String(init.body));
     const r: Record<string, unknown> = {
       'product.template': corpo.domain[0][2] === 415
-        ? [{ id: 415, name: 'Combo CT', default_code: opcoes.semCodigo ? false : 'CDE27COMBO4CT', list_price: preco, x_max_parcelas: 12, categ_id: [9, 'Combos'], website_url: '/shop/cde27combo4ct-combo-curitiba-415' }]
+        ? [{ id: 415, name: 'Combo CT', default_code: opcoes.semCodigo ? false : 'CDE27COMBO4CT', list_price: preco, x_max_parcelas: 12, sale_ok: !opcoes.foraDeVenda, is_published: true, active: true, categ_id: [9, 'Combos'], website_url: '/shop/cde27combo4ct-combo-curitiba-415' }]
         : [],
       'event.event.ticket': [
         { name: 'Combo 10 km', event_id: [2, 'Inverno'], seats_max: 0, seats_available: 0 },
@@ -40,7 +42,7 @@ function memoria(e: Evento) {
   const publicados: number[] = [];
   const gravar = (fn: (e: Evento) => void) => { const n = structuredClone(atual); fn(n); atual = n; return { evento: n, versao: 'v' }; };
   const arm = {
-    listar: async (): Promise<ResumoEvento[]> => [{ slug: atual.slug, nome: atual.nome, formato: atual.formato, cidades: 0, atualizadoEm: '', url: null, pendente: false, odoo: !!atual.odoo?.ativo }],
+    listar: async (): Promise<ResumoEvento[]> => [{ slug: atual.slug, nome: atual.nome, formato: atual.formato, cidades: 0, atualizadoEm: '', url: null, pendente: false, odoo: !!atual.odoo?.ativo, odooHoras: atual.odoo?.intervalo, odooPendente: !!atual.odoo?.pendente }],
     ler: async (): Promise<EventoCompleto> => ({ evento: structuredClone(atual), modelos: { tapume: '<p>x</p>', praca: '<p>@cidade_1 R$@preco_vista_1</p>' }, arquivos: [], versao: 'v' } as unknown as EventoCompleto),
     lerBanco: async () => ({ banco: BANCO_VAZIO(), versao: '' }),
     atualizar: async (_s: string, fn: (e: Evento) => void) => gravar(fn),
@@ -129,12 +131,12 @@ describe('Odoo', () => {
   it('automação: preço mudou no Odoo e o evento já foi publicado → grava e republica; desligado, nada', async () => {
     const v1 = { versao: 1, commit: 'c1', em: '', paginas: 2, avisos: 0, url: 'https://teste/combo/' };
     const m = memoria(evento({ publicacoes: [v1], versaoAtiva: 1 }));
-    const r = await rodarAutomacao(m.arm, m.dest, AGORA, { cfg: CFG, fetch: odooFalso(599).f });
+    const r = await rodarAutomacao(m.arm, m.dest, HORA, { cfg: CFG, fetch: odooFalso(599).f });
     expect(m.atual().cidades[0].preco_vista).toBe('599');
     expect(m.publicados).toEqual([2]);
     expect(r[0].resultado).toContain('publicado v2');
-    // fora da janela de 30 minutos: não consulta
-    expect(await rodarAutomacao(m.arm, m.dest, new Date('2026-10-14T12:10:00Z'), { cfg: CFG, fetch: odooFalso(649).f })).toEqual([]);
+    // fora da hora do intervalo: não consulta
+    expect(await rodarAutomacao(m.arm, m.dest, new Date('2026-10-14T15:10:00Z'), { cfg: CFG, fetch: odooFalso(649).f })).toEqual([]);
     // "Buscar agora" gravou e não publicou: a automação publica mesmo sem mudança nova; publicado, não repete
     const b = memoria(evento({ publicacoes: [v1], versaoAtiva: 1 }));
     await sincronizarOdoo(b.arm, 'combo', CFG, AGORA, { fetch: odooFalso(599).f, sempre: true, ligar: true });
@@ -145,6 +147,40 @@ describe('Odoo', () => {
     expect(b.atual().odoo?.pendente).toBeUndefined();
     expect(await rodarAutomacao(b.arm, b.dest, new Date('2026-10-14T12:30:00Z'), { cfg: CFG, fetch: odooFalso(599).f })).toEqual([]);
     const d = memoria(evento({ odoo: { ativo: false } }));
-    expect(await rodarAutomacao(d.arm, d.dest, AGORA, { cfg: CFG, fetch: odooFalso(599).f })).toEqual([]);
+    expect(await rodarAutomacao(d.arm, d.dest, HORA, { cfg: CFG, fetch: odooFalso(599).f })).toEqual([]);
+  });
+
+  it('intervalo: a passada do cron no começo do intervalo, contado da meia-noite de Brasília', () => {
+    expect(horaDoOdoo(new Date('2026-10-14T05:02:00Z'), 2)).toBe(true); // 02h02 em Brasília
+    expect(horaDoOdoo(new Date('2026-10-14T05:02:00Z'), 6)).toBe(false);
+    expect(horaDoOdoo(new Date('2026-10-14T09:00:00Z'), 6)).toBe(true); // 06h
+    expect(horaDoOdoo(new Date('2026-10-14T03:04:00Z'), 24)).toBe(true); // 00h04
+    expect(horaDoOdoo(new Date('2026-10-14T15:00:00Z'), 24)).toBe(false);
+    expect(horaDoOdoo(new Date('2026-10-14T15:00:00Z'))).toBe(true); // padrão 6 h
+  });
+
+  it('status pelo Odoo: à venda = aberta; nunca vendeu = em breve; saiu de venda depois de vender = esgotado; troca à mão vale até o Odoo mudar', () => {
+    const c = (aVenda: boolean) => ({ aVenda }) as ComboOdoo;
+    expect(statusPeloOdoo({ _id: 'a' }, c(false))).toEqual({ status: '', _odooStatus: '' });
+    expect(statusPeloOdoo({ _id: 'a', status: 'aberta' }, c(true))).toEqual({ status: 'aberta', _odooStatus: 'aberta', _odooVendeu: 'sim' });
+    expect(statusPeloOdoo({ _id: 'a', status: 'aberta', _odooStatus: 'aberta', _odooVendeu: 'sim' }, c(false))).toEqual({ status: 'esgotado', _odooStatus: 'esgotado' });
+    // alguém pôs "em breve" à mão com o combo ainda à venda: fica, até o Odoo mudar de situação
+    expect(statusPeloOdoo({ _id: 'a', status: '', _odooStatus: 'aberta', _odooVendeu: 'sim' }, c(true))).toEqual({});
+    expect(statusPeloOdoo({ _id: 'a', status: '', _odooStatus: 'aberta', _odooVendeu: 'sim' }, c(false))).toEqual({ status: 'esgotado', _odooStatus: 'esgotado' });
+  });
+
+  it('combo fora de venda: preços ficam como estavam, a cidade que já vendeu vira esgotado e o site é republicado', async () => {
+    const v1 = { versao: 1, commit: 'c1', em: '', paginas: 2, avisos: 0, url: 'https://teste/combo/' };
+    const m = memoria(evento({ publicacoes: [v1], versaoAtiva: 1 }));
+    await sincronizarOdoo(m.arm, 'combo', CFG, AGORA, { fetch: odooFalso(549).f });
+    expect(m.atual().cidades[0]).toMatchObject({ status: 'aberta', preco_vista: '549', _odooVendeu: 'sim' });
+    const r = await rodarAutomacao(m.arm, m.dest, HORA, { cfg: CFG, fetch: odooFalso(0, { foraDeVenda: true }).f });
+    expect(m.atual().cidades[0]).toMatchObject({ status: 'esgotado', preco_vista: '549' });
+    expect(m.atual().odoo?.ultima?.cidades[0].mensagem).toContain('não está à venda');
+    expect(r[0].resultado).toContain('publicado');
+    const nova = memoria(evento());
+    await sincronizarOdoo(nova.arm, 'combo', CFG, AGORA, { fetch: odooFalso(549, { foraDeVenda: true }).f });
+    expect(nova.atual().cidades[0]).toMatchObject({ status: '' });
+    expect(nova.atual().cidades[0].preco_vista).toBeUndefined();
   });
 });

@@ -1,6 +1,7 @@
 // Tarefas que o cron da Cloudflare roda a cada 5 minutos (worker.ts → scheduled → /api/automacao):
 // 1. publicação agendada: na hora marcada, publica o que estiver salvo no teste (e na produção, se pedido);
-// 2. Odoo (a cada 30 minutos): preços, links e distâncias dos combos; se algo mudou, grava e republica (a produção acompanha o teste);
+// 2. Odoo (a cada 2, 6 ou 24 horas, escolhido no evento): preços, links, distâncias e status dos combos; se algo mudou,
+//    grava e republica (a produção acompanha o teste). O aviso do Odoo (/api/odoo/aviso) faz o mesmo na hora;
 // 3. modo automático: republica quando alguma cidade/etapa passou a "realizado" (a produção acompanha o teste).
 import { realizadosAgora } from '@/lib/comum/montagem';
 import type { Armazenamento } from './armazenamento';
@@ -10,8 +11,14 @@ import { NaoPublicavel, publicarEvento } from './publicar';
 
 export interface FeitoAutomacao { slug: string; resultado: string }
 
-/** de quanto em quanto tempo o Odoo é consultado (o cron roda a cada 5 minutos) */
-export const MINUTOS_ODOO = 30;
+/** horas entre as conferências do Odoo, quando o evento não escolheu */
+export const HORAS_ODOO_PADRAO = 6;
+
+/** a passada do cron (a cada 5 minutos) que cai no começo do intervalo, contado da meia-noite de Brasília */
+export function horaDoOdoo(agora: Date, horas: number = HORAS_ODOO_PADRAO): boolean {
+  const brasilia = agora.getTime() - 3 * 3600e3;
+  return ((brasilia % (horas * 3600e3)) + horas * 3600e3) % (horas * 3600e3) < 5 * 60e3;
+}
 
 export async function rodarAutomacao(armazenamento: Armazenamento, destino: DestinoPublicacao, agora: Date, odoo?: { cfg: ConfigOdoo; fetch?: typeof fetch } | null): Promise<FeitoAutomacao[]> {
   const feitos: FeitoAutomacao[] = [];
@@ -20,7 +27,8 @@ export async function rodarAutomacao(armazenamento: Armazenamento, destino: Dest
       feitos.push({ slug: r.slug, resultado: await publicarAgendado(armazenamento, destino, r.slug, agora) });
       continue; // a publicação agendada já leva os "realizado" do momento
     }
-    if (r.odoo && odoo && agora.getUTCMinutes() % MINUTOS_ODOO < 5) {
+    // na hora do intervalo do evento, ou já, se "Buscar agora" trouxe valores que ainda não foram para o site
+    if (r.odoo && odoo && (horaDoOdoo(agora, r.odooHoras) || r.odooPendente)) {
       const f = await atualizarDoOdoo(armazenamento, destino, r.slug, agora, odoo);
       if (f) { feitos.push(f); if (f.resultado.includes('publicado')) continue; }
     }
@@ -58,7 +66,7 @@ async function publicarAgendado(armazenamento: Armazenamento, destino: DestinoPu
 }
 
 /** consulta o Odoo; se algum valor mudou e o evento já foi publicado, republica (a produção acompanha o teste) */
-async function atualizarDoOdoo(armazenamento: Armazenamento, destino: DestinoPublicacao, slug: string, agora: Date, odoo: { cfg: ConfigOdoo; fetch?: typeof fetch }): Promise<FeitoAutomacao | null> {
+export async function atualizarDoOdoo(armazenamento: Armazenamento, destino: DestinoPublicacao, slug: string, agora: Date, odoo: { cfg: ConfigOdoo; fetch?: typeof fetch }): Promise<FeitoAutomacao | null> {
   try {
     const { resultado, evento } = await sincronizarOdoo(armazenamento, slug, odoo.cfg, agora, { fetch: odoo.fetch });
     // publica o que mudou agora e o que veio antes ("Buscar agora") e ainda não foi para o site

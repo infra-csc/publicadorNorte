@@ -2,7 +2,7 @@
 // O ID do combo é o número no fim do link de inscrição da cidade (/shop/…-415). Só fetch: roda no Worker.
 // Variáveis de ambiente (nunca no repositório): ODOO_URL, ODOO_API_KEY, ODOO_PRIME_PRICELIST_ID (padrão 4) e,
 // só se o servidor tiver mais de um banco, ODOO_DB (nome errado faz o Odoo responder 404).
-import { fmtBR } from '@norte/motor';
+import { fmtBR, type Linha } from '@norte/motor';
 import { idDoCombo } from '@/lib/comum/odoo';
 import type { Evento, ResultadoOdoo } from '@/lib/comum/tipos';
 import type { Armazenamento } from './armazenamento';
@@ -28,6 +28,9 @@ export interface ComboOdoo {
   prime: { descontoPct: number; preco: number; valorParcela: number } | null;
   url: string;
   etapas: { nome: string; data: string | null; distancias: { nome: string; esgotado: boolean }[] }[];
+  /** à venda: ativo, vendável, publicado na loja, com preço e com ingresso sobrando; senão, o motivo */
+  aVenda: boolean;
+  foraDeVenda?: string;
   aviso?: string;
 }
 
@@ -53,15 +56,15 @@ export function clienteOdoo(cfg: ConfigOdoo, f: typeof fetch = fetch): Chamar {
 const arred = (v: number) => Math.round(v * 100) / 100;
 const parcela = (v: number, n: number) => Math.floor(Math.round(v * 100) / n) / 100;
 
-type Template = { id: number; name: string; default_code: string | false; list_price: number; x_max_parcelas?: number | false; categ_id: [number, string] | false; website_url: string };
+type Template = { id: number; name: string; default_code: string | false; list_price: number; x_max_parcelas?: number | false; categ_id: [number, string] | false; website_url: string; sale_ok?: boolean; is_published?: boolean; active?: boolean };
 type Ingresso = { name: string; event_id: [number, string]; seats_max: number; seats_available: number };
 type EventoOdoo = { id: number; name: string; date_begin: string | false };
 
 export async function consultarCombo(cfg: ConfigOdoo, chamar: Chamar, id: number): Promise<ComboOdoo> {
   // 1) produto do combo
   const [combo] = await chamar<Template[]>('product.template', 'search_read', {
-    domain: [['id', '=', id]],
-    fields: ['name', 'default_code', 'list_price', 'x_max_parcelas', 'categ_id', 'website_url'],
+    domain: [['id', '=', id], ['active', 'in', [true, false]]],
+    fields: ['name', 'default_code', 'list_price', 'x_max_parcelas', 'categ_id', 'website_url', 'sale_ok', 'is_published', 'active'],
   });
   if (!combo) throw new ErroOdoo(`O combo ${id} não existe no Odoo.`);
 
@@ -103,6 +106,14 @@ export async function consultarCombo(cfg: ConfigOdoo, chamar: Chamar, id: number
     eventos = daCidade;
   }
   const preco = arred(combo.list_price);
+  // ingressos do combo nesta cidade: todos sem vaga = esgotado
+  const daqui = ingressos.filter((t) => eventos.some((ev) => ev.id === t.event_id[0]));
+  const foraDeVenda = combo.active === false ? 'arquivado no Odoo'
+    : combo.sale_ok === false ? 'não está à venda no Odoo'
+    : combo.is_published === false ? 'não está publicado na loja'
+    : !(preco > 0) ? 'sem preço no Odoo'
+    : daqui.length && daqui.every((t) => t.seats_max > 0 && t.seats_available <= 0) ? 'ingressos esgotados'
+    : undefined;
   const parcelas = combo.x_max_parcelas || 1;
   const precoPrime = arred(preco * (1 - pct / 100));
   return {
@@ -119,6 +130,8 @@ export async function consultarCombo(cfg: ConfigOdoo, chamar: Chamar, id: number
       data: ev.date_begin ? new Date(ev.date_begin.replace(' ', 'T') + 'Z').toISOString() : null,
       distancias: ingressos.filter((t) => t.event_id[0] === ev.id).map((t) => ({ nome: t.name, esgotado: t.seats_max > 0 && t.seats_available <= 0 })),
     })),
+    aVenda: !foraDeVenda,
+    ...(foraDeVenda ? { foraDeVenda } : {}),
     ...(aviso ? { aviso } : {}),
   };
 }
@@ -163,6 +176,22 @@ export function valoresDoCombo(c: ComboOdoo): Record<string, string> {
 }
 
 /**
+ * Status da cidade pelo Odoo: à venda = "aberta"; fora de venda depois de já ter vendido = "esgotado"; nunca vendeu = em breve.
+ * `_odooVendeu` guarda que já houve venda; `_odooStatus`, o último status que o Odoo pôs. O status só muda quando a
+ * situação no Odoo muda: quem trocar à mão (ex.: de volta para em breve) fica assim até a próxima mudança lá.
+ */
+export function statusPeloOdoo(l: Linha, c: ComboOdoo): Record<string, string> {
+  const vendeu = c.aVenda || l._odooVendeu === 'sim';
+  const novo = c.aVenda ? 'aberta' : vendeu ? 'esgotado' : '';
+  const out: Record<string, string> = {};
+  if (c.aVenda && l._odooVendeu !== 'sim') out._odooVendeu = 'sim';
+  if ((l._odooStatus ?? null) !== novo) { out.status = novo; out._odooStatus = novo; }
+  return out;
+}
+
+const NOME_STATUS: Record<string, string> = { aberta: 'aberta', esgotado: 'esgotado', '': 'em breve' };
+
+/**
  * Consulta o combo de cada cidade (pelo link de inscrição) e grava o que mudou no cadastro.
  * Grava também quando o resultado muda (ou se `sempre`), para a tela mostrar o último resultado; `ligar` liga o Odoo no evento.
  */
@@ -180,14 +209,18 @@ export async function sincronizarOdoo(armazenamento: Armazenamento, slug: string
     if (!cache.has(id)) cache.set(id, consultarCombo(cfg, chamar, id));
     try {
       const c = await cache.get(id)!;
-      novos.set(l._id, valoresDoCombo(c));
-      cidades.push({ id: l._id, nome, combo: id, ok: true, mensagem: `R$ ${fmtBR(c.preco)}${c.prime ? ` · Prime R$ ${fmtBR(c.prime.preco)}` : ''}${c.aviso ? ` · ${c.aviso}` : ''}` });
+      // fora de venda: os preços ficam como estavam (a página mostra esgotado ou em breve); só o status muda
+      const st = statusPeloOdoo(l, c);
+      novos.set(l._id, { ...(c.aVenda ? valoresDoCombo(c) : {}), ...st });
+      const status = NOME_STATUS[st.status ?? String(l._odooStatus ?? '')] ?? String(l.status || 'em breve');
+      cidades.push({ id: l._id, nome, combo: id, ok: true, mensagem: (c.aVenda ? `R$ ${fmtBR(c.preco)}${c.prime ? ` · Prime R$ ${fmtBR(c.prime.preco)}` : ''}` : `fora de venda (${c.foraDeVenda})`) + ` · ${status}${c.aviso ? ` · ${c.aviso}` : ''}` });
     } catch (x) {
       cidades.push({ id: l._id, nome, combo: id, ok: false, mensagem: x instanceof ErroOdoo ? x.message : 'sem resposta do Odoo (' + String((x as Error)?.message || x).slice(0, 120) + ')' });
     }
   }
-  let mudou = 0;
-  for (const l of lido.evento.cidades) for (const [k, v] of Object.entries(novos.get(l._id) || {})) if (String(l[k] ?? '') !== v) mudou++;
+  // mudou: valores que aparecem no site; os marcadores (_odoo…) também são gravados, mas não pedem publicação
+  let mudou = 0, marcadores = 0;
+  for (const l of lido.evento.cidades) for (const [k, v] of Object.entries(novos.get(l._id) || {})) if (String(l[k] ?? '') !== v || !(k in l)) { if (k.startsWith('_')) marcadores++; else mudou++; }
   const erros = cidades.filter((c) => !c.ok);
   const comCombo = cidades.filter((c) => c.combo != null).length;
   const resultado: ResultadoOdoo = {
@@ -200,13 +233,13 @@ export async function sincronizarOdoo(armazenamento: Armazenamento, slug: string
     cidades,
   };
   const antes = lido.evento.odoo?.ultima;
-  // sem mudança e com os mesmos erros de antes, não grava (a automação confere a cada 30 minutos)
+  // sem mudança e com os mesmos erros de antes, não grava (a automação confere no intervalo do evento)
   const falhas = (r: ResultadoOdoo) => r.cidades.filter((c) => !c.ok).map((c) => c.id + c.mensagem).join('|');
   const mesmoResultado = antes && antes.ok === resultado.ok && falhas(antes) === falhas(resultado);
-  if (!mudou && mesmoResultado && !opcoes.sempre) return { resultado, evento: lido.evento, versao: null };
+  if (!mudou && !marcadores && mesmoResultado && !opcoes.sempre) return { resultado, evento: lido.evento, versao: null };
   const r = await armazenamento.atualizar(slug, (e) => {
     for (const l of e.cidades) Object.assign(l, novos.get(l._id) || {});
-    e.odoo = { ativo: opcoes.ligar || !!e.odoo?.ativo, ultima: resultado, ...(mudou || e.odoo?.pendente ? { pendente: true } : {}) };
+    e.odoo = { ...e.odoo, ativo: opcoes.ligar || !!e.odoo?.ativo, ultima: resultado, ...(mudou || e.odoo?.pendente ? { pendente: true } : {}) };
   }, mudou ? `Odoo: ${mudou} valor(es) de ${slug}` : `Odoo: confere ${slug}`);
   return { resultado, ...r };
 }

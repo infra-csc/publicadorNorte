@@ -144,8 +144,8 @@ export function detectar(modelos: Modelos, formato: Formato): Deteccao {
     }
     // "em breve" é o padrão e sempre existe; "aberta" é a outra opção
     const outras = [...opc.status].filter((o) => !['breve', 'em-breve'].includes(slug(o)));
-    // "realizado" sempre existe (o modo automático usa; no manual dá para escolher)
-    opc.status = new Set(['em breve', ...(outras.length ? outras : ['aberta']), ...(outras.some((o) => /^realizad/.test(slug(o))) ? [] : ['realizado'])]);
+    // "realizado" sempre existe (o modo automático usa; no manual dá para escolher); "esgotado" também (preços do Odoo)
+    opc.status = new Set(['em breve', ...(outras.length ? outras : ['aberta']), ...(outras.some((o) => /^realizad/.test(slug(o))) ? [] : ['realizado']), ...(outras.some((o) => /^esgotad/.test(slug(o))) ? [] : ['esgotado'])]);
   }
   const opcoes: Record<string, string[]> = {};
   for (const [k, s] of Object.entries(opc)) opcoes[k] = [...s];

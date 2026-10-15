@@ -171,7 +171,9 @@ class Montador {
       return [...grupos].map(([v, itens]) => this.render(n.filhos, { ...ctx, grupo: { col: n.col, valor: v }, listaG: itens, item: null }, R)).join('');
     }
     const v = this.valorCol(n.col, ctx);
-    let ok = n.op ? slugValor(v) === slugValor(n.val) : !!String(v || '').trim() && !['nao', 'no', 'false', '0'].includes(slug(v));
+    // "esgotado" é uma "aberta" sem vagas: onde o HTML não trata esgotado, ele segue o bloco da aberta (página e botões abertos)
+    const igual = (a: string, b: string) => a === b || (n.col === 'status' && b === 'aberta' && a === 'esgotado');
+    let ok = n.op ? igual(slugValor(v), slugValor(n.val)) : !!String(v || '').trim() && !['nao', 'no', 'false', '0'].includes(slug(v));
     if (n.op === '!=') ok = !ok;
     const saida = this.render(ok ? n.filhos : n.senao, ctx, R);
     // prévia editável: o "a confirmar" de um @se campo vazio vira o campo desse dado (digitar por cima preenche ele)
