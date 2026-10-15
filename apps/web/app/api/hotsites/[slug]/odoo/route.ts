@@ -9,7 +9,8 @@ type Ctx = { params: Promise<{ slug: string }> };
 export async function GET(req: Request) {
   return responder(req, async () => {
     const cfg = configOdoo();
-    return Response.json({ configurado: !!cfg, url: cfg?.url || null });
+    const faltam = ['ODOO_URL', 'ODOO_API_KEY'].filter((k) => !process.env[k]);
+    return Response.json({ configurado: !!cfg, url: cfg?.url || null, faltam });
   });
 }
 

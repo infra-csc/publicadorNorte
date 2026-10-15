@@ -13,12 +13,12 @@ export function SecaoOdoo() {
   const { evento, salvarJa, substituir } = useEditor();
   const o = evento.odoo;
   const comLink = evento.cidades.filter((l) => idDoCombo(l.link_inscricao) != null);
-  const [config, setConfig] = useState<{ configurado: boolean } | null>(null);
+  const [config, setConfig] = useState<{ configurado: boolean; faltam?: string[] } | null>(null);
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState('');
   const visivel = !!o || comLink.length > 0;
   useEffect(() => {
-    if (visivel) api<{ configurado: boolean }>(`/api/hotsites/${evento.slug}/odoo`).then(setConfig).catch(() => setConfig(null));
+    if (visivel) api<{ configurado: boolean; faltam?: string[] }>(`/api/hotsites/${evento.slug}/odoo`).then(setConfig).catch(() => setConfig(null));
   }, [visivel, evento.slug]);
   if (!visivel) return null;
 
@@ -53,7 +53,7 @@ export function SecaoOdoo() {
           <button type="button" aria-pressed={!!o?.ativo} disabled={ocupado || config?.configurado === false} onClick={() => !o?.ativo && enviar({})}>Ligado</button>
         </div>
       </div>
-      {config?.configurado === false && <p className="small" style={{ margin: 0 }}>O Odoo ainda não está configurado no publicador (falta a chave). Fale com quem cuida do publicador.</p>}
+      {config?.configurado === false && <p className="small" style={{ margin: 0 }}>O Odoo ainda não está configurado no publicador{config.faltam?.length ? ` (falta ${config.faltam.join(' e ')})` : ''}. Fale com quem cuida do publicador.</p>}
       {o?.ativo && (
         <div className="row" style={{ gap: 8 }}>
           <button className="btn sm" type="button" disabled={ocupado} onClick={() => enviar({})}>{ocupado ? 'Consultando…' : 'Buscar agora'}</button>
