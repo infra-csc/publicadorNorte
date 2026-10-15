@@ -127,6 +127,23 @@ export class GitHub {
     }
   }
 
+  /**
+   * Situação da publicação mais recente do site pelas execuções do Actions ("pages build and deployment").
+   * Publicações seguidas cancelam as montagens anteriores, e o registro antigo (/pages/builds) fica "errored"
+   * mesmo com a última no ar; por isso vale a execução mais nova que não foi cancelada. Sem acesso ao Actions: null.
+   */
+  async situacaoPelasActions(branch: string): Promise<{ situacao: 'no-ar' | 'publicando' | 'erro'; commit: string } | null> {
+    try {
+      const r = await this.api<{ workflow_runs: { status: string; conclusion: string | null; head_sha: string }[] }>(`/actions/runs?branch=${encodeURIComponent(branch)}&per_page=10`);
+      const run = r.workflow_runs.find((x) => x.conclusion !== 'cancelled');
+      if (!run) return null;
+      return { situacao: run.status !== 'completed' ? 'publicando' : run.conclusion === 'success' ? 'no-ar' : 'erro', commit: run.head_sha };
+    } catch (e) {
+      if (e instanceof ErroGitHub && (e.status === 403 || e.status === 404)) return null;
+      throw e;
+    }
+  }
+
   async ultimaPublicacaoPages(): Promise<{ status: string; commit: string } | null> {
     try {
       return await this.api<{ status: string; commit: string }>('/pages/builds/latest');

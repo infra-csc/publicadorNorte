@@ -76,6 +76,8 @@ export class DestinoGitHubPages implements DestinoPublicacao {
   async estado(): Promise<EstadoSite> {
     const p = await this.gh.pages();
     if (!p) return { ligado: false, situacao: 'desconhecida', commit: null, base: null };
+    const a = await this.gh.situacaoPelasActions(this.branch);
+    if (a) return { ligado: true, situacao: a.situacao, commit: a.commit, base: await this.base() };
     const b = await this.gh.ultimaPublicacaoPages();
     const situacao = !b ? 'desconhecida' : b.status === 'built' ? 'no-ar' : b.status === 'errored' ? 'erro' : 'publicando';
     return { ligado: true, situacao, commit: b?.commit || null, base: await this.base() };
