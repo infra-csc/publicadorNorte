@@ -98,6 +98,14 @@ describe('J. Tudo editável', () => {
     expect(verificarHtml(svg, 'praca').map((p) => p.codigo)).toEqual(['svg-embutido']);
   });
 
+  it('J16: um texto dividido em vários campos (_linha1/_linha2/_destaque) vira aviso', () => {
+    const p = so('<h1>@hero_titulo_linha1<br>@hero_titulo_linha2 <span>@hero_titulo_destaque</span></h1><p>@texto_linha1</p>', 'texto-dividido');
+    expect(p).toHaveLength(1);
+    expect(p[0].mensagem).toContain('@hero_titulo_linha1, @hero_titulo_linha2, @hero_titulo_destaque');
+    expect(so('<h2>@quim_final_titulo<br><span>@quim_final_titulo_destaque</span></h2>', 'texto-dividido')).toHaveLength(1);
+    expect(so('<h1>@hero_titulo</h1>', 'texto-dividido')).toEqual([]);
+  });
+
   it('J15: lista numerada com itens de campos diferentes', () => {
     const p = so('<p>@faq1_pergunta @faq1_resposta_gratuito</p><p>@faq2_pergunta @faq2_resposta</p><p>@faq3_pergunta @faq3_resposta</p>', 'lista-desigual');
     expect(p).toHaveLength(1);

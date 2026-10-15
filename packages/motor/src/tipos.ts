@@ -39,6 +39,12 @@ export interface EstadoVar {
   /** coluna criada no cadastro com "+ Coluna" */
   extra?: boolean;
   formula?: string;
+  /** ocultar na página: "texto" (some o texto, o bloco mantém o tamanho) ou "bloco" (some o bloco e o resto sobe) */
+  ocultar?: 'texto' | 'bloco';
+  /** mover o bloco do texto: posições para cima (negativo) ou para baixo, entre os irmãos */
+  mover?: number;
+  /** campo de link: abrir em nova aba (padrão sim, quando o link sai do site) */
+  novaAba?: boolean;
 }
 export type Vars = Record<string, EstadoVar>;
 

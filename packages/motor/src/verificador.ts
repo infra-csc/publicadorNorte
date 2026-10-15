@@ -16,6 +16,7 @@ export type CodigoProblema =
   | 'texto-fixo'
   | 'svg-embutido'
   | 'lista-desigual'
+  | 'texto-dividido'
   | 'decisao-em-atributo'
   | 'a-confirmar-fixo'
   | 'status-invalido'
@@ -166,6 +167,18 @@ export function verificarHtml(html: string, _tipo?: TipoPagina): Problema[] {
     const nome = (c: string, n: number) => c.replace('#', String(n));
     const lista = [...faltas].slice(0, 4).map(([n, cs]) => `${s.raiz}${n} não tem ${cs.map((c) => '@' + nome(c, n)).join(', ')}`).join('; ');
     add('lista-desigual', primeira.get([...s.itens.get(n0)!.values()][0])!, `Os itens da lista "${s.chave}" têm campos diferentes (${lista}${faltas.size > 4 ? '…' : ''}). Use os mesmos campos em todos os itens, os que nem sempre aparecem dentro de @se (guia, seção 1.1).`);
+  }
+  // um texto dividido em vários campos (titulo_linha1 + titulo_linha2, titulo + titulo_destaque): no cadastro, um campo só
+  // (a quebra de linha e o destaque vêm da formatação do campo)
+  const partes = new Map<string, string[]>();
+  for (const b of primeira.keys()) {
+    const m = /^(.+?)_(linha\d+|destaque)$/.exec(b);
+    if (m) partes.set(m[1], [...(partes.get(m[1]) || []), b]);
+  }
+  for (const [raiz, ps] of partes) {
+    const todas = primeira.has(raiz) ? [raiz, ...ps] : ps;
+    if (todas.length < 2) continue;
+    add('texto-dividido', primeira.get(todas[0])!, `O texto "${raiz}" está dividido em ${todas.length} campos (${todas.map((x) => '@' + x).join(', ')}). Use um campo só, @${raiz}: a quebra de linha, a cor e o destaque se fazem na formatação do campo, no publicador (guia, seção 1).`);
   }
   // scrollIntoView rola também a janela (e o publicador em volta da prévia): o site abre no meio
   for (const [a, b] of scripts) {

@@ -1,6 +1,7 @@
 import { lerBlocos, type No } from './blocos';
 import { ehPeriodo, formatarData, formatoDeData, periodo, type Automacao } from './datas';
 import { converterMarcas, MARCA_INI, marcar } from './edicao';
+import { ajustarLinks, anotarLinks, colocarBlocos, ehRico, limparRico } from './rico';
 import { Cadastro, linhaVazia } from './cadastro';
 import { temCardsFixos } from './cards-fixos';
 import { detectar, ehContagem, sincronizarVars, TEXTOS_PADRAO, VARS_GALERIA, type Deteccao } from './detectar';
@@ -228,7 +229,11 @@ class Montador {
       this.linhaUsada = null;
       const r = this.resolver(base, num, tok, ctx, R);
       if (r == null) return null;
-      return this.marcarEdicao && this.linhaUsada != null ? marcar(base, this.linhaUsada, esc(r)) : esc(r);
+      // texto formatado (limpo), editável na prévia, oculto ou movido: sai marcado (converterMarcas resolve pelo lugar onde caiu)
+      const rico = ehRico(r);
+      const valor = rico ? limparRico(r) : esc(r);
+      const op = (this.marcarEdicao && this.linhaUsada != null ? 'e' : '') + (v.ocultar === 'texto' ? 't' : v.ocultar === 'bloco' ? 'b' : '') + (v.mover ? 'm' + v.mover : '');
+      return op || rico ? marcar(base, this.linhaUsada ?? '', valor, false, op) : valor;
     });
   }
 
@@ -355,7 +360,7 @@ export function gerar(e: EntradaGerar): ResultadoGerar {
     const modelo = e.modelos[kind];
     if (modelo == null) return;
     let arv = arvores.get(kind);
-    if (!arv) arvores.set(kind, (arv = lerBlocos(modelo)));
+    if (!arv) arvores.set(kind, (arv = lerBlocos(anotarLinks(modelo))));
     const a0 = avisos.length;
     if (arv.erros.length && !errosVistos.has(kind)) {
       errosVistos.add(kind);
@@ -376,7 +381,8 @@ export function gerar(e: EntradaGerar): ResultadoGerar {
     const vs = cad.vars.status;
     const linhaStatus = vs?.dono === 'etapa' ? ctx.etapa : vs?.dono === 'cidade' ? ctx.cidade : undefined;
     const fechada = !pos && !!e.fecharEmBreve && (kind === 'praca' || kind === 'etapa') && !!linhaStatus && !!det.opcoes.status && !vs?.ignorar && !vs?.excluida && cad.statusDe(linhaStatus) === 'breve';
-    const montado = ajustarTagsMidia(colocarRodape(comPatro, rodapeDaPagina(e.rodape, linhasDaPagina)));
+    // links que saem do site abrem em nova aba (o de um campo segue a opção do campo); blocos ocultos e movidos
+    const montado = colocarBlocos(ajustarLinks(ajustarTagsMidia(colocarRodape(comPatro, rodapeDaPagina(e.rodape, linhasDaPagina))), (x) => cad.vars[x]?.novaAba !== false));
     let html = montado;
     if (e.seo) {
       const sctx: ContextoSeo = {

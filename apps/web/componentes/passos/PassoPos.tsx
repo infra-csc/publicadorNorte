@@ -7,6 +7,7 @@ import { useDeferredValue, useMemo, useState } from 'react';
 import { gerarEvento } from '@/lib/comum/montagem';
 import { Cabecalho, NavPassos, useEditor } from '../Editor';
 import { Escolha } from '../Escolha';
+import { OpcoesCampo } from '../OpcoesCampo';
 import { Previa } from '../Previa';
 import { Galerias } from './GaleriaFotos';
 import { CampoTexto } from './PassoCadastro';
@@ -113,9 +114,9 @@ export function PassoPos() {
                     <span className="eyebrow">{base === 'unica' ? 'Textos, links e botões' : 'Iguais em todas as páginas'}</span>
                     <div className="grid3">
                       {gerais.map((g) => (
-                        <label key={g} className="f"><span className="row" style={{ gap: 6 }}><span className="v">@{g}</span><small>{tipoCampo(g)}</small></span>
+                        <div key={g} className="f"><span className="f-cab"><span className="row" style={{ gap: 6 }}><span className="v">@{g}</span><small>{tipoCampo(g)}</small></span><OpcoesCampo nome={g} /></span>
                           <CampoTexto valor={evento.gerais[g] ?? ''} placeholder={cad.calculado(null, g)} rotulo={g} mudar={(v) => alterar((x) => { x.gerais[g] = v; })} />
-                        </label>
+                        </div>
                       ))}
                     </div>
                   </>
@@ -125,10 +126,10 @@ export function PassoPos() {
                     <span className="eyebrow">De {nomeLinha(linha)}</span>
                     <div className="grid3">
                       {daLinha.map((c) => (
-                        <label key={c} className="f"><span className="row" style={{ gap: 6 }}><span className="v">@{c}</span><small>{tipoCampo(c)}</small></span>
+                        <div key={c} className="f"><span className="f-cab"><span className="row" style={{ gap: 6 }}><span className="v">@{c}</span><small>{tipoCampo(c)}</small></span><OpcoesCampo nome={c} /></span>
                           <CampoTexto valor={String(linha[c] ?? '')} placeholder={cad.calculado(linha, c)} rotulo={c}
                             mudar={(v) => alterar((x) => { const l = (base === 'etapa' ? x.etapas : x.cidades).find((y) => y._id === linha._id); if (l) l[c] = v; })} />
-                        </label>
+                        </div>
                       ))}
                     </div>
                   </>

@@ -293,7 +293,18 @@ Os tapumes de cards fixos dos casos H1–H4 são fixtures sintéticos em `packag
 | W1 | faq1…3, equipe1…2 (mesmos campos), material_capa_linha1…2, destaque1 + destaque2_gratuito, carreta_ponto1…3 + hero_ponto1 | listas: faq, equipe, carreta_ponto; o resto fica solto |
 | W2 | itens com campos diferentes | campos na ordem do item 1; cada item diz o que falta ("O HTML não tem, neste item: …" no Cadastro) |
 | W3 | variação opcional `faqN_resposta_gratuito` dentro de `@se gratuito = sim` | preenchida e gratuito: ela; vazia ou pago: `faqN_resposta` |
+| J16 | `@hero_titulo_linha1`, `@hero_titulo_linha2`, `@hero_titulo_destaque` (ou `@titulo` + `@titulo_destaque`) | problema "texto-dividido": um campo só, com a formatação no publicador; um `_linha1` sozinho não conta |
 | J15 | faq1 com `_resposta_gratuito`, faq2/faq3 com `_resposta` | problema `lista-desigual` dizendo o que falta em cada item |
+
+## AA. Texto formatado, blocos ocultos e movidos, links em nova aba
+
+| # | Entrada | Esperado |
+|---|---|---|
+| AA1 | valor com `<br>` e `<span class style>` usado no texto, num `alt` e no `<title>` | HTML limpo na tela; texto puro (quebra vira espaço) no atributo e no título |
+| AA2 | valor com `<script>`, `onclick`, `url()`, `position`; `<div>` do editor; `<font color>`; tag sem fechar; texto comum "eu <3" | só b/strong/i/em/u/s/br/span (com cor, fundo, tamanho, peso, estilo, espaçamento, altura da linha, maiúsculas, sublinhado) ficam; div vira quebra; font vira span; tags fechadas; texto comum escapado |
+| AA3 | campo com "ocultar texto" / "ocultar bloco" | texto com `visibility:hidden` (bloco mantém o tamanho) / bloco some (`<pub-o data-bloco>` + CSS `:has`) e o resto sobe; sem uso, nada de CSS a mais |
+| AA4 | campo com "mover" −1 | marcador `<pub-o data-mover>` no bloco e o script que troca de lugar com o irmão |
+| AA5 | links `@link_…` externos, com "nova aba" desligada, âncora `#`, `@url`, link escrito no HTML | externo ganha `target="_blank" rel="noopener"`; desligado fica na mesma aba (tira o target); âncora e página do site, nada |
 
 ## Z. Preços do Odoo (apps/web, odoo.test.ts, Odoo simulado)
 

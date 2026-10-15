@@ -22,6 +22,8 @@ Não existe "texto genérico que não muda": se aparece na tela, vira variável.
 
 ### 1.1 Textos
 - Nome = `<seção>_<parte>`, sem número quando é igual em todas as páginas: `@sobre_titulo`, `@sobre_texto`, `@duvidas_titulo`, `@duvidas_sub`, `@inscricao_botao`, `@material_titulo`.
+- **Um texto, um campo.** Um título em duas linhas ou com uma palavra em destaque é **uma** variável: `<h1>@hero_titulo</h1>`, não `@hero_titulo_linha1<br>@hero_titulo_linha2 <span class="hl">@hero_titulo_destaque</span>`. A quebra de linha, a cor, o negrito e o tamanho se fazem no publicador, na formatação do campo (o valor pode levar `<br>`, `<b>`, `<i>`, `<u>` e `<span class="…" style="color/font-size/letter-spacing/text-transform…">`; a classe de destaque do HTML, como `hl`, pode ser usada no valor). O verificador avisa ("texto dividido").
+- Cada texto fica dentro do **seu próprio elemento** (`<h2>@x</h2>`, `<p>@y</p>`): no publicador, quem publica pode ocultar o texto (o espaço fica), ocultar o bloco (o conteúdo de baixo sobe) ou mover o bloco para cima e para baixo, e "o bloco" é o elemento em volta do texto.
 - Listas de itens parecidos são **séries numeradas**, cada item dentro do seu `@se`, com mais espaços do que o necessário hoje (o que sobrar some). No publicador elas aparecem em blocos, com + e − para mostrar ou tirar um item:
 
 ```html
@@ -54,6 +56,9 @@ Não existe "texto genérico que não muda": se aparece na tela, vira variável.
 
 ### 1.2 Links e arquivos para baixar
 - Links: `@link_inscricao` (base), `@link_whatsapp`, `@link_email`, `@link_instagram`, `@link_youtube`, `@link_regulamento`… Todo `<a href>` que leva para fora usa uma variável.
+- **Botões de compra** ("Garantir", "Quero aproveitar", barra fixa) levam para o carrinho (`@link_inscricao_1`) quando a cidade está aberta, não para uma âncora da página.
+- **Logos** do topo e do rodapé são links para a página inicial com variável (`<a class="logo" href="@link_inicio">`; na praça, a home é `index.html`).
+- Não escreva `target="_blank"`: o publicador abre em nova aba todo link que sai do site (âncoras `#…` e páginas do próprio site, não). Cada campo de link tem a opção "abrir na mesma aba" no publicador.
 - **Arquivo para baixar (PDF)**: use uma variável `@arquivo_<seção>_<nome>`. O PDF fica em `_media/<pagina>/<secao>/` e quem publica escolhe ou envia o arquivo no passo **Mídia**:
 
 ```html

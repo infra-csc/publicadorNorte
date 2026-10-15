@@ -147,6 +147,11 @@ Fórmulas padrão (aplicadas quando a variável aparece pela primeira vez; edit�
 - O select de status não tem opção vazia; mostra "em breve" selecionado quando vazio.
 - `breve`, `em breve` e `em-breve` são equivalentes em comparações e contagens.
 
+### 5.3b Formatação e blocos de texto
+- **Formatação:** todo campo de texto do Cadastro (gerais, listas, Pós-evento; na tabela, pelo botão "Aa" da célula) tem barra com negrito, itálico, sublinhado, maiúsculas, cor, tamanho e espaço entre as letras; sem seleção, vale para o texto todo. O valor fica como HTML limpo (`limparRico` do motor: só b/strong/i/em/u/s/br/span com classe e estilos simples); sem formatação, texto puro. Na página, o HTML vai no texto visível; em atributos, `<title>` e scripts, só o texto (quebra vira espaço).
+- **Ícones ao lado de cada campo** (`OpcoesCampo`; na tabela, no painel da coluna), valem em todas as páginas e ficam em `vars[x]`: ocultar o texto (`ocultar: "texto"`: `visibility:hidden`, o bloco mantém o tamanho), ocultar o bloco (`ocultar: "bloco"`: o elemento em volta do texto some e o resto sobe, via `<pub-o data-bloco>` + CSS `:has`), mover o bloco para cima/baixo (`mover: n`: um script na página troca o elemento de lugar com os irmãos visíveis). Campo de link: "abrir em nova aba" (`novaAba`, padrão sim).
+- **Links:** todo link que sai do site (http/https) abre em nova aba (`target="_blank" rel="noopener"`), menos o de campo com a opção desligada; âncoras e páginas do site, não.
+
 ### 5.4 Gerais
 
 Variáveis de dono geral aparecem como campos acima da tabela. Valor vazio sai em branco em todas as páginas (aviso).

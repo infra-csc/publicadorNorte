@@ -1,11 +1,13 @@
 'use client';
-import { deISO, ehData, estaRealizado, faltasNaSerie, separarSeries, soNoPos, type Cadastro, type Serie, FORMULAS_PADRAO, lerData, limiteRealizado, linhaVazia, novaLinha, paraISO, slugValor, sincronizarVars, type Linha, type TipoItem } from '@norte/motor';
-import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { deISO, ehData, ehRico, estaRealizado, faltasNaSerie, separarSeries, soNoPos, type Cadastro, type Serie, FORMULAS_PADRAO, lerData, limiteRealizado, linhaVazia, novaLinha, paraISO, slugValor, sincronizarVars, type Linha, type TipoItem } from '@norte/motor';
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { gerarEvento } from '@/lib/comum/montagem';
 import type { Evento } from '@/lib/comum/tipos';
 import { Cabecalho, NavPassos, useEditor } from '../Editor';
 import { baixarPlanilha, lerPlanilha, type Proposta } from '../planilha';
+import { OpcoesCampo } from '../OpcoesCampo';
 import { Previa } from '../Previa';
+import { TextoRico } from '../TextoRico';
 import { SecaoOdoo } from './Odoo';
 
 const novoId = () => crypto.randomUUID().slice(0, 8);
@@ -64,11 +66,32 @@ function Celula({ tipo, linha, col }: { tipo: TipoItem; linha: Linha; col: strin
   }
   if (ehData(col)) return <CampoData valor={valor} rotulo={col} mudar={set} />;
   const calc = cad.vars[col]?.formula ? cad.calculado(linha, col) : '';
+  if (!calc) return <CelulaTexto valor={valor} col={col} linha={linha} tipo={tipo} mudar={set} />;
   return (
     <>
       <input value={valor} placeholder={calc} onChange={(e) => set(e.target.value)} aria-label={col} data-col={col} data-row={linha._id} data-tbl={tipo} />
       {valor !== '' && calc !== '' && <button className="rst" type="button" title={`Voltar ao calculado (${calc})`} onClick={() => set('')}>↺</button>}
     </>
+  );
+}
+
+/** célula de texto: digita direto; "Aa" abre o texto com formatação (e o formatado aparece como texto, abrindo o editor) */
+function CelulaTexto({ valor, col, linha, tipo, mudar }: { valor: string; col: string; linha: Linha; tipo: TipoItem; mudar: (v: string) => void }) {
+  const [aberto, setAberto] = useState(false);
+  const rico = ehRico(valor);
+  return (
+    <span className="cel-txt">
+      {rico
+        ? <button type="button" className="cel-rico-ver" title="Texto com formatação: clique para editar" onClick={() => setAberto(true)} data-col={col} data-row={linha._id} data-tbl={tipo}>{valor.replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')}</button>
+        : <input value={valor} onChange={(e) => mudar(e.target.value)} aria-label={col} data-col={col} data-row={linha._id} data-tbl={tipo} />}
+      <button className="rst" type="button" title="Formatar o texto (negrito, cor, tamanho…)" onClick={() => setAberto((x) => !x)}>Aa</button>
+      {aberto && (
+        <span className="cel-pop" onKeyDown={(e) => { if (e.key === 'Escape') setAberto(false); }}>
+          <TextoRico valor={valor} rotulo={col} mudar={mudar} />
+          <button className="btn sm ghost" type="button" onClick={() => setAberto(false)}>Fechar</button>
+        </span>
+      )}
+    </span>
   );
 }
 
@@ -97,7 +120,7 @@ function PainelColuna({ tipo, col, cols, fechar }: { tipo: TipoItem; col: string
   return (
     <div className="colpanel" role="group" aria-label={`Coluna @${col}`}>
       <div className="row between">
-        <span className="v">@{col}</span>
+        <span className="row" style={{ gap: 8 }}><span className="v">@{col}</span><OpcoesCampo nome={col} /></span>
         <span className="row" style={{ gap: 4 }}>
           <button className="btn sm ghost" type="button" disabled={i <= 0} onClick={() => mover(-1)}>← Mover</button>
           <button className="btn sm ghost" type="button" disabled={i >= cols.length - 1} onClick={() => mover(1)}>Mover →</button>
@@ -381,15 +404,14 @@ function StatusPelasDatas() {
 }
 
 /** caixa de texto que cresce com o conteúdo (uma linha quando cabe) */
+/** campo de texto do cadastro: com formatação (negrito, cor, tamanho…) */
 export function CampoTexto({ valor, placeholder, rotulo, mudar }: { valor: string; placeholder?: string; rotulo: string; mudar: (v: string) => void }) {
-  const ref = useRef<HTMLTextAreaElement>(null);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = el.scrollHeight + 2 + 'px';
-  }, [valor]);
-  return <textarea ref={ref} className="inp campo-auto" rows={1} value={valor} placeholder={placeholder} aria-label={rotulo} onChange={(e) => mudar(e.target.value)} />;
+  return <TextoRico valor={valor} placeholder={placeholder} rotulo={rotulo} mudar={mudar} />;
+}
+
+/** nome do campo com os ícones de ocultar, mover e nova aba */
+function CabCampo({ nome, children }: { nome: string; children: React.ReactNode }) {
+  return <span className="f-cab">{children}<OpcoesCampo nome={nome} /></span>;
 }
 
 /**
@@ -480,9 +502,9 @@ function BlocoSerie({ s, busca }: { s: Serie; busca: string }) {
           </div>
           <div className="grid3">
             {[...s.itens.get(n)!.entries()].map(([campo, g]) => (
-              <label key={g} className="f"><span className="v" style={{ alignSelf: 'start' }} title={'@' + g}>{nomeCampo(campo, s.raiz)}</span>
+              <div key={g} className="f"><CabCampo nome={g}><span className="v" title={'@' + g}>{nomeCampo(campo, s.raiz)}</span></CabCampo>
                 {ehData(g) ? <CampoData valor={valor(g)} rotulo={g} mudar={(v) => alterar((x) => { x.gerais[g] = v; })} /> : <CampoTexto valor={valor(g)} placeholder={cad.calculado(null, g)} rotulo={g} mudar={(v) => alterar((x) => { x.gerais[g] = v; })} />}
-              </label>
+              </div>
             ))}
           </div>
           {faltas.get(n) && <p className="small muted" style={{ margin: 0 }}>O HTML não tem, neste item: {faltas.get(n)!.map((c) => nomeCampo(c, s.raiz)).join(', ')}.</p>}
@@ -508,9 +530,9 @@ function Gerais({ busca }: { busca: string }) {
       {visiveis.length > 0 && (
         <div className="grid3">
           {visiveis.map((g) => (
-            <label key={g} className="f"><span className="v" style={{ alignSelf: 'start' }}>@{g}</span>
+            <div key={g} className="f"><CabCampo nome={g}><span className="v">@{g}</span></CabCampo>
               {ehData(g) ? <CampoData valor={evento.gerais[g] ?? ''} rotulo={g} mudar={(v) => alterar((x) => { x.gerais[g] = v; })} /> : <CampoTexto valor={evento.gerais[g] ?? ''} placeholder={cad.calculado(null, g)} rotulo={g} mudar={(v) => alterar((x) => { x.gerais[g] = v; })} />}
-            </label>
+            </div>
           ))}
         </div>
       )}
@@ -573,7 +595,7 @@ function ListaEmBlocos({ busca }: { busca: string }) {
                   const ops = c === 'status' ? det.opcoes.status || ['em breve', 'aberta'] : det.opcoes[c];
                   const valor = String(l[c] ?? '');
                   return (
-                    <label key={c} className="f"><span className="v" style={{ alignSelf: 'start' }}>@{c}</span>
+                    <div key={c} className="f"><CabCampo nome={c}><span className="v">@{c}</span></CabCampo>
                       {ops ? (
                         <select className={'inp' + (c === 'status' && cad.valorDe(l, 'status') === 'realizado' && slugValor(valor) !== 'realizado' ? ' st-auto' : '')} value={c === 'status' && slugValor(valor) === 'breve' ? '' : valor} onChange={(e) => mudar(l._id, c, e.target.value)}>
                           {c === 'status' && cad.valorDe(l, 'status') === 'realizado' && slugValor(valor) !== 'realizado' && <option value={valor}>realizado (automático)</option>}
@@ -584,7 +606,7 @@ function ListaEmBlocos({ busca }: { busca: string }) {
                       ) : (
                         ehData(c) ? <CampoData valor={valor} rotulo={c} mudar={(v) => mudar(l._id, c, v)} /> : <CampoTexto valor={valor} placeholder={cad.calculado(l, c)} rotulo={c} mudar={(v) => mudar(l._id, c, v)} />
                       )}
-                    </label>
+                    </div>
                   );
                 })}
               </div>
