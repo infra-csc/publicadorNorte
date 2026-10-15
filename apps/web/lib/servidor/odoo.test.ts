@@ -22,7 +22,7 @@ function odooFalso(preco = 549, opcoes: { semCodigo?: boolean; foraDeVenda?: boo
     const corpo = JSON.parse(String(init.body));
     const r: Record<string, unknown> = {
       'product.template': corpo.domain[0][2] === 415
-        ? [{ id: 415, name: 'Combo CT', default_code: opcoes.semCodigo ? false : 'CDE27COMBO4CT', list_price: preco, x_max_parcelas: 12, sale_ok: !opcoes.foraDeVenda, is_published: true, active: true, categ_id: [9, 'Combos'], website_url: '/shop/cde27combo4ct-combo-curitiba-415' }]
+        ? [{ id: 415, name: 'Combo CT', default_code: opcoes.semCodigo ? false : 'CDE27COMBO4CT', list_price: preco, compare_list_price: 1149.96, x_max_parcelas: 12, sale_ok: !opcoes.foraDeVenda, is_published: true, active: true, categ_id: [9, 'Combos'], website_url: '/shop/cde27combo4ct-combo-curitiba-415' }]
         : [],
       'event.event.ticket': [
         { name: 'Combo 10 km', event_id: [2, 'Inverno'], seats_max: 0, seats_available: 0 },
@@ -74,8 +74,8 @@ describe('Odoo', () => {
     const c = await consultarCombo(CFG, clienteOdoo(CFG, f), 415);
     expect(c).toMatchObject({ preco: 799, parcelas: 12, valorParcela: 66.58, prime: { descontoPct: 10, preco: 719.1, valorParcela: 59.92 }, url: 'https://loja.test/shop/cde27combo4ct-combo-curitiba-415' });
     expect(valoresDoCombo(c)).toEqual({
-      preco_vista: '799', parcelamento: '12', valor_parcelado: '66,58', preco_prime: '719,10', preco_prime_parcelado: '59,92', porcentagem_desconto_prime: '10',
-      link_inscricao: c.url, link_inscricao_prime: c.url, etapa1_distancias: '5, 10', etapa2_distancias: '10', mes_outono: 'Maio', mes_outono_abrev: 'Mai', mes_inverno: 'Agosto', mes_inverno_abrev: 'Ago',
+      preco_vista: '799', preco_comum: '1.149,96', porcentagem_desconto: '31', desconto_em_reais: '350,96', parcelamento: '12', valor_parcelado: '66,58', preco_prime: '719,10', preco_prime_parcelado: '59,92', porcentagem_desconto_prime: '10',
+      link_inscricao: c.url, link_inscricao_prime: c.url, etapa1_distancias: '5, 10', etapa2_distancias: '10',
     });
   });
 
@@ -84,7 +84,7 @@ describe('Odoo', () => {
       'product.template': [{ id: 417, name: 'Combo - Circuito das Estações 2027 - Recife', default_code: 'CDE27COMBO4RC', list_price: 599.9, x_max_parcelas: 10, categ_id: false, website_url: '/shop/x-417' }],
       'event.event.ticket': [
         { name: '5KM', event_id: [1, ''], seats_max: 0, seats_available: 0 },
-        { name: 'Inscrição para Circuito das Estações 2027 - Inverno - Recife', event_id: [2, ''], seats_max: 0, seats_available: 0 },
+        { name: 'Inscrição para Circuito das Estações 2027 - Inverno - Recife', event_id: [2, ''], product_id: [9, '[CDE27RC2KBCOMBO-13KM] Kit Estações (13KM)'], seats_max: 0, seats_available: 0 },
         { name: '10KM', event_id: [2, ''], seats_max: 0, seats_available: 0 },
         { name: '15KM', event_id: [3, ''], seats_max: 0, seats_available: 0 },
       ],
@@ -99,7 +99,7 @@ describe('Odoo', () => {
     expect(c.aviso).toContain('Salvador');
     expect(c.prime).toBeNull();
     const v = valoresDoCombo(c);
-    expect([v.etapa2_distancias, v.etapa4_distancias, v.etapa1_distancias, v.mes_verao_abrev, v.parcelamento, v.valor_parcelado]).toEqual(['10', '5', undefined, 'Nov', '10', '59,99']);
+    expect([v.etapa2_distancias, v.etapa4_distancias, v.etapa1_distancias, v.mes_verao_abrev, v.parcelamento, v.valor_parcelado]).toEqual(['10, 13', '5', undefined, undefined, '10', '59,99']);
   });
 
   it('combo sem código no padrão: preço e link vêm, distâncias não (com aviso)', async () => {

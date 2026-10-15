@@ -22,6 +22,8 @@ export interface ComboOdoo {
   nome: string;
   codigo: string;
   preco: number;
+  /** preço "separado" (Compare to Price do Odoo); null quando não tem ou não é maior que o preço */
+  precoComum: number | null;
   parcelas: number;
   valorParcela: number;
   /** desconto de assinante O2 Prime (lista de preço do Prime, pela categoria do combo) */
@@ -56,15 +58,15 @@ export function clienteOdoo(cfg: ConfigOdoo, f: typeof fetch = fetch): Chamar {
 const arred = (v: number) => Math.round(v * 100) / 100;
 const parcela = (v: number, n: number) => Math.floor(Math.round(v * 100) / n) / 100;
 
-type Template = { id: number; name: string; default_code: string | false; list_price: number; x_max_parcelas?: number | false; categ_id: [number, string] | false; website_url: string; sale_ok?: boolean; is_published?: boolean; active?: boolean };
-type Ingresso = { name: string; event_id: [number, string]; seats_max: number; seats_available: number };
+type Template = { id: number; name: string; default_code: string | false; list_price: number; x_max_parcelas?: number | false; categ_id: [number, string] | false; website_url: string; sale_ok?: boolean; is_published?: boolean; active?: boolean; compare_list_price?: number | false };
+type Ingresso = { name: string; event_id: [number, string]; product_id?: [number, string] | false; seats_max: number; seats_available: number };
 type EventoOdoo = { id: number; name: string; date_begin: string | false };
 
 export async function consultarCombo(cfg: ConfigOdoo, chamar: Chamar, id: number): Promise<ComboOdoo> {
   // 1) produto do combo
   const [combo] = await chamar<Template[]>('product.template', 'search_read', {
     domain: [['id', '=', id], ['active', 'in', [true, false]]],
-    fields: ['name', 'default_code', 'list_price', 'x_max_parcelas', 'categ_id', 'website_url', 'sale_ok', 'is_published', 'active'],
+    fields: ['name', 'default_code', 'list_price', 'compare_list_price', 'x_max_parcelas', 'categ_id', 'website_url', 'sale_ok', 'is_published', 'active'],
   });
   if (!combo) throw new ErroOdoo(`O combo ${id} não existe no Odoo.`);
 
@@ -77,7 +79,7 @@ export async function consultarCombo(cfg: ConfigOdoo, chamar: Chamar, id: number
   else {
     ingressos = await chamar<Ingresso[]>('event.event.ticket', 'search_read', {
       domain: [['product_id.default_code', '=like', `${m[1] + m[2]}%`], ['product_id.default_code', 'ilike', 'KBCOMBO']],
-      fields: ['name', 'price', 'event_id', 'seats_max', 'seats_available'],
+      fields: ['name', 'price', 'event_id', 'product_id', 'seats_max', 'seats_available'],
     });
     const ids = [...new Set(ingressos.map((t) => t.event_id[0]))];
     if (ids.length) {
@@ -121,6 +123,7 @@ export async function consultarCombo(cfg: ConfigOdoo, chamar: Chamar, id: number
     nome: combo.name,
     codigo: combo.default_code || '',
     preco,
+    precoComum: combo.compare_list_price && combo.compare_list_price > preco ? arred(combo.compare_list_price) : null,
     parcelas,
     valorParcela: parcela(preco, parcelas),
     prime: pct > 0 ? { descontoPct: pct, preco: precoPrime, valorParcela: parcela(precoPrime, parcelas) } : null,
@@ -128,7 +131,11 @@ export async function consultarCombo(cfg: ConfigOdoo, chamar: Chamar, id: number
     etapas: eventos.map((ev) => ({
       nome: ev.name,
       data: ev.date_begin ? new Date(ev.date_begin.replace(' ', 'T') + 'Z').toISOString() : null,
-      distancias: ingressos.filter((t) => t.event_id[0] === ev.id).map((t) => ({ nome: t.name, esgotado: t.seats_max > 0 && t.seats_available <= 0 })),
+      // a distância certa está no código do produto do ingresso ([CDE27RJ1KBCOMBO-13KM]); o nome às vezes vem trocado
+      distancias: ingressos.filter((t) => t.event_id[0] === ev.id).map((t) => {
+        const doCodigo = t.product_id ? /-(\d+(?:[.,]\d+)?)\s*KM\]/i.exec(t.product_id[1])?.[1] : undefined;
+        return { nome: doCodigo ? doCodigo + 'KM' : t.name, esgotado: t.seats_max > 0 && t.seats_available <= 0 };
+      }),
     })),
     aVenda: !foraDeVenda,
     ...(foraDeVenda ? { foraDeVenda } : {}),
@@ -150,6 +157,10 @@ const ESTACOES = ['outono', 'inverno', 'primavera', 'verao'];
 export function valoresDoCombo(c: ComboOdoo): Record<string, string> {
   const v: Record<string, string> = {
     preco_vista: fmtBR(c.preco),
+    // desconto do combo sobre o preço "separado" (Compare to Price); sem ele, ficam vazios e o selo e o "separado" somem
+    preco_comum: c.precoComum ? fmtBR(c.precoComum) : '',
+    porcentagem_desconto: c.precoComum ? fmtBR(Math.round((1 - c.preco / c.precoComum) * 100)) : '',
+    desconto_em_reais: c.precoComum ? fmtBR(c.precoComum - c.preco) : '',
     parcelamento: String(c.parcelas),
     valor_parcelado: fmtBR(c.valorParcela),
     preco_prime: c.prime ? fmtBR(c.prime.preco) : '',
@@ -159,15 +170,9 @@ export function valoresDoCombo(c: ComboOdoo): Record<string, string> {
     link_inscricao_prime: c.url,
   };
   c.etapas.forEach((e, i) => {
-    // etapa com estação no nome (Outono, Inverno…): é a etapa 1 a 4 nessa ordem, e o mês dela vai para
-    // @mes_<estação> e @mes_<estação>_abrev (o tapume mostra); sem estação, vale a ordem das datas
+    // etapa com estação no nome (Outono, Inverno…): é a etapa 1 a 4 nessa ordem; sem estação, vale a ordem das datas
     const estacao = ESTACOES.find((x) => semAcento(e.nome).includes(x));
     const n = estacao ? ESTACOES.indexOf(estacao) + 1 : i + 1;
-    if (estacao && e.data) {
-      const mes = new Date(e.data).toLocaleDateString('pt-BR', { month: 'long', timeZone: 'America/Sao_Paulo' });
-      v[`mes_${estacao}`] = mes.charAt(0).toUpperCase() + mes.slice(1);
-      v[`mes_${estacao}_abrev`] = v[`mes_${estacao}`].slice(0, 3);
-    }
     const ds = [...new Set(e.distancias.map((d) => distancia(d.nome)).filter((d): d is string => !!d))];
     ds.sort((a, b) => parseFloat(a.replace(',', '.')) - parseFloat(b.replace(',', '.')));
     if (ds.length && !v[`etapa${n}_distancias`]) v[`etapa${n}_distancias`] = ds.join(', ');

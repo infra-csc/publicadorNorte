@@ -198,7 +198,7 @@ O publicador aceita qualquer forma: digite o preço à vista, ou as parcelas, ou
 | `@preco_prime_parcelado_1` | Parcela com O2 Prime | **automático** |
 | `@valor_adicional_prime_1` | Quanto o Prime soma | **automático** |
 
-Com os **preços do Odoo** ligados (passo Cadastro), o O2 Prime é desconto de assinante: `@preco_prime_1` é o preço do combo para assinante, e `@porcentagem_desconto_prime_1` o desconto (ex.: `10`). Nesse caso, não use `@valor_adicional_prime_1`. O Odoo também preenche `@etapa1_distancias_1`… (“5, 10, 13”) e, se o nome da etapa tiver a estação, `@mes_outono_1` / `@mes_outono_abrev_1`.
+Com os **preços do Odoo** ligados (passo Cadastro), o O2 Prime é desconto de assinante: `@preco_prime_1` é o preço do combo para assinante, e `@porcentagem_desconto_prime_1` o desconto (ex.: `10`). Nesse caso, não use `@valor_adicional_prime_1`. O Odoo também preenche o desconto (`@preco_comum_1`, `@porcentagem_desconto_1`, `@desconto_em_reais_1`, pelo "Compare to Price" do produto) e `@etapa1_distancias_1`… (“5, 10, 13”).
 | `@link_inscricao_prime_1` | Link do checkout com Prime | digitado |
 
 Evento sem O2 Prime: simplesmente não use estas variáveis.

@@ -311,8 +311,8 @@ Os tapumes de cards fixos dos casos H1–H4 são fixtures sintéticos em `packag
 | # | Entrada | Esperado |
 |---|---|---|
 | Z1 | link `…/shop/cde27combo4sp-…-346`, link sem código `…-belo-horizonte-410?x=1`, link de outro site | 346; 410; nenhum |
-| Z2 | combo R$ 799, 12x, Prime 10% | parcela 66,58 (para baixo), Prime 719,10 e 59,92; distâncias por etapa; mês da estação |
-| Z3 | combo de Recife com etapas de Salvador; ingresso sem "km" no nome; Prime sem regra | etapas de Salvador fora (aviso); ingresso ignorado; sem Prime |
+| Z2 | combo R$ 799 com "Compare to Price" 1.149,96, 12x, Prime 10% | parcela 66,58 (para baixo), separado 1.149,96, 31% e R$ 350,96 de desconto, Prime 719,10 e 59,92; distâncias por etapa; sem meses |
+| Z3 | combo de Recife com etapas de Salvador; ingresso com nome trocado e a distância no código do produto (`-13KM]`); Prime sem regra | etapas de Salvador fora (aviso); distância pelo código; sem Prime |
 | Z4 | combo sem código no padrão | preço e link vêm; distâncias não (aviso) |
 | Z5 | sincronizar duas vezes sem mudança; combo que não existe | grava na primeira, não na segunda; cidade sem link intocada; aviso "não existe" |
 | Z6 | automação com o preço mudado e evento publicado; fora da janela de 30 min; desligado | grava e republica; nada; nada |
