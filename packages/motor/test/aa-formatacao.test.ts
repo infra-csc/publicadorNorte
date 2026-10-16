@@ -57,6 +57,18 @@ describe('AA. Formatação, ocultar, mover e nova aba', () => {
     expect(roda(h2)).toBe('B|A');
   });
 
+  it('AA4e: campo arrastado no Cadastro ("junto"): o bloco vai para antes/depois do bloco do outro campo, no mesmo card', () => {
+    const html = '<html><body><div class="c"><h3>@n1</h3><p>@l1</p><p><b>@f1</b></p></div><div class="c"><h3>@n2</h3><p>@l2</p><p><b>@f2</b></p></div></body></html>';
+    const h = unica(html, { n1: 'N1', l1: 'L1', f1: 'F1', n2: 'N2', l2: 'L2', f2: 'F2' }, {
+      f1: { dono: 'geral', junto: { de: 'n1' } }, f2: { dono: 'geral', junto: { de: 'l2', depois: true } }, n2: { dono: 'geral', junto: { de: 'l2', depois: true } },
+    });
+    expect(h).toContain('<pub-o data-campo="n1"></pub-o>N1');
+    expect(h).toContain('<pub-o data-junto="n1"></pub-o>F1');
+    const { document } = parseHTML(h);
+    new Function('document', /<script id="pub-mover">([\s\S]*?)<\/script>/.exec(h)![1])(document);
+    expect([...document.querySelectorAll('.c')].map((c) => c.textContent).join('|')).toBe('F1N1L1|L2F2N2');
+  });
+
   it('AA4c: campos que só ficam em atributos ou scripts são texto simples (sem formatação, ocultar ou mover)', () => {
     const html = '<button aria-label="@menu_abrir"></button><p>@titulo</p><img alt="@titulo"><script>var x="@msg"</script><!-- @se status = aberta --><title>@nome</title>';
     expect([...varsTextoSimples({ unica: html })].sort()).toEqual(['menu_abrir', 'msg', 'nome']);

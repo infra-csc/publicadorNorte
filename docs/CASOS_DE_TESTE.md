@@ -307,6 +307,7 @@ Os tapumes de cards fixos dos casos H1–H4 são fixtures sintéticos em `packag
 | AA4b | `<h2><span>@a</span></h2>` com "mover" 2; campo sozinho num `<div>` dentro da `<section>` | move o `<h2>` (o `<span>` não tem irmão); move a seção inteira |
 | AA4c | campo em `aria-label`, `<script>`, `<title>` e outro em texto e em `alt` | os três primeiros são texto simples; o que também está no texto, não |
 | AA4d | rodapé com descrição, título e link formatados no editor; descrição antiga com `**negrito**` | HTML limpo (script sai, texto fica); título sem tags no aria-label; `**…**` continua virando `<strong>` |
+| AA4e | três cards; `f1` junto de `n1` (antes), `f2` e `n2` depois de `l2` | marcadores `data-campo`/`data-junto`; cada card reordenado só com os campos dele (F1 N1 L1 / L2 F2 N2) |
 | AA5 | links `@link_…` externos, com "nova aba" desligada, âncora `#`, `@url`, link escrito no HTML | externo ganha `target="_blank" rel="noopener"`; desligado fica na mesma aba (tira o target); âncora e página do site, nada |
 
 ## Z. Preços do Odoo (apps/web, odoo.test.ts, Odoo simulado)

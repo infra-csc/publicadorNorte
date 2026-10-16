@@ -5,7 +5,9 @@ import { useState } from 'react';
 
 const TIPO = 'application/x-publicador-ordem';
 
-export function useReordenar(mover: (de: number, para: number) => void) {
+/** `tipo`: listas uma dentro da outra (ex.: campos dentro de itens) usam tipos diferentes, para um solto não cair na outra */
+export function useReordenar(mover: (de: number, para: number) => void, tipo = '') {
+  const T = TIPO + (tipo ? '-' + tipo : '');
   const [arrastando, setArrastando] = useState<number | null>(null);
   const [sobre, setSobre] = useState<number | null>(null);
   const fim = () => { setArrastando(null); setSobre(null); };
@@ -14,7 +16,7 @@ export function useReordenar(mover: (de: number, para: number) => void) {
   const alca = (i: number) => ({
     draggable: true,
     onDragStart: (e: React.DragEvent<HTMLElement>) => {
-      e.dataTransfer.setData(TIPO, String(i));
+      e.dataTransfer.setData(T, String(i));
       e.dataTransfer.effectAllowed = 'move';
       const bloco = e.currentTarget.closest('[data-reordenar]') as HTMLElement | null;
       if (bloco) e.dataTransfer.setDragImage(bloco, 20, 20);
@@ -29,16 +31,17 @@ export function useReordenar(mover: (de: number, para: number) => void) {
     'data-arrastando': arrastando === i ? '' : undefined,
     'data-sobre': sobre === i && arrastando !== null && arrastando !== i ? (arrastando < i ? 'depois' : 'antes') : undefined,
     onDragOver: (e: React.DragEvent) => {
-      if (!e.dataTransfer.types.includes(TIPO)) return;
+      if (!e.dataTransfer.types.includes(T)) return;
       e.preventDefault();
+      e.stopPropagation();
       e.dataTransfer.dropEffect = 'move';
       if (sobre !== i) setSobre(i);
     },
     onDrop: (e: React.DragEvent) => {
-      if (!e.dataTransfer.types.includes(TIPO)) return;
+      if (!e.dataTransfer.types.includes(T)) return;
       e.preventDefault();
       e.stopPropagation();
-      const de = Number(e.dataTransfer.getData(TIPO));
+      const de = Number(e.dataTransfer.getData(T));
       fim();
       if (!Number.isNaN(de) && de !== i) mover(de, i);
     },

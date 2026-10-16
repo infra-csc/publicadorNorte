@@ -10,11 +10,12 @@ export const MARCA_FIM = '\uE002';
 
 /**
  * valor marcado: variável | linha (vazia = geral) | vazio (o que aparece é o texto de "a confirmar", não o valor) | opções:
- * e = editável na prévia (<pub-v>), t = ocultar o texto (o bloco mantém o tamanho), b = ocultar o bloco, m<n> = mover o bloco n posições.
+ * e = editável na prévia (<pub-v>), t = ocultar o texto (o bloco mantém o tamanho), b = ocultar o bloco, m<n> = mover o bloco n posições,
+ * c = outro campo se posiciona junto deste (marca onde ele está) | junto: "+campo" (depois do bloco do campo) ou "-campo" (antes).
  * O valor já vem pronto para o HTML (escapado, ou formatado e limpo).
  */
-export const marcar = (variavel: string, linha: string, valor: string, vazio = false, opcoes = 'e') =>
-  MARCA_INI + variavel + '|' + linha + '|' + (vazio ? '1' : '') + '|' + opcoes + MARCA_MEIO + valor + MARCA_FIM;
+export const marcar = (variavel: string, linha: string, valor: string, vazio = false, opcoes = 'e', junto = '') =>
+  MARCA_INI + variavel + '|' + linha + '|' + (vazio ? '1' : '') + '|' + opcoes + (junto ? '|' + junto : '') + MARCA_MEIO + valor + MARCA_FIM;
 
 const atr = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 
@@ -37,7 +38,7 @@ export function converterMarcas(html: string): string {
     const f = m < 0 ? -1 : html.indexOf(MARCA_FIM, m);
     if (m < 0 || f < 0) break;
     partes.push(html.slice(fim, i));
-    const [variavel, linha = '', vazio, opcoes = 'e'] = html.slice(i + 1, m).split('|');
+    const [variavel, linha = '', vazio, opcoes = 'e', junto = ''] = html.slice(i + 1, m).split('|');
     const valor = html.slice(m + 1, f);
     if (emCru(i) || emTag(i)) partes.push(textoDoRico(valor));
     else if (opcoes.includes('b')) partes.push('<pub-o data-bloco></pub-o>');
@@ -45,7 +46,9 @@ export function converterMarcas(html: string): string {
       const mover = /m(-?\d+)/.exec(opcoes)?.[1];
       let v = opcoes.includes('t') ? `<span style="visibility:hidden">${valor}</span>` : valor;
       if (opcoes.includes('e')) v = `<pub-v data-v="${atr(variavel)}" data-l="${atr(linha)}"${vazio ? ' data-ph="1"' : ''}>${v}</pub-v>`;
-      partes.push((mover ? `<pub-o data-mover="${mover}"></pub-o>` : '') + v);
+      const alvo = opcoes.includes('c') ? `<pub-o data-campo="${atr(variavel)}"></pub-o>` : '';
+      const perto = junto ? `<pub-o data-junto="${atr(junto.slice(1))}"${junto[0] === '+' ? ' data-depois' : ''}></pub-o>` : '';
+      partes.push(alvo + perto + (mover ? `<pub-o data-mover="${mover}"></pub-o>` : '') + v);
     }
     fim = f + 1;
   }

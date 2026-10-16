@@ -43,6 +43,8 @@ export interface EstadoVar {
   ocultar?: 'texto' | 'bloco';
   /** mover o bloco do texto: posições para cima (negativo) ou para baixo, entre os irmãos */
   mover?: number;
+  /** pôr o bloco do texto antes (ou depois) do bloco de outro campo: arrastar o campo no Cadastro. Vale antes do `mover`. */
+  junto?: { de: string; depois?: boolean };
   /** campo de link: abrir em nova aba (padrão sim, quando o link sai do site) */
   novaAba?: boolean;
 }

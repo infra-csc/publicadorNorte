@@ -1,5 +1,5 @@
 'use client';
-import { deISO, ehData, ehRico, estaRealizado, faltasNaSerie, separarSeries, soNoPos, type Cadastro, type Serie, FORMULAS_PADRAO, lerData, limiteRealizado, linhaVazia, novaLinha, paraISO, slugValor, sincronizarVars, type Linha, type TipoItem } from '@norte/motor';
+import { deISO, ehData, ehRico, estaRealizado, faltasNaSerie, separarSeries, soNoPos, type Cadastro, type Serie, type Vars, FORMULAS_PADRAO, lerData, limiteRealizado, linhaVazia, novaLinha, paraISO, slugValor, sincronizarVars, type Linha, type TipoItem } from '@norte/motor';
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { gerarEvento } from '@/lib/comum/montagem';
 import type { Evento } from '@/lib/comum/tipos';
@@ -7,6 +7,7 @@ import { Cabecalho, NavPassos, useEditor } from '../Editor';
 import { baixarPlanilha, lerPlanilha, type Proposta } from '../planilha';
 import { OpcoesCampo, useTextoSimples } from '../OpcoesCampo';
 import { Previa } from '../Previa';
+import { mover, useReordenar } from '../Reordenar';
 import { TextoRico } from '../TextoRico';
 import { SecaoOdoo } from './Odoo';
 
@@ -415,9 +416,79 @@ export function CampoTexto({ valor, placeholder, rotulo, mudar }: { valor: strin
   return <TextoRico valor={valor} placeholder={placeholder} rotulo={rotulo} mudar={mudar} simples={simples} />;
 }
 
-/** nome do campo com os ícones de ocultar, mover e nova aba */
-function CabCampo({ nome, children }: { nome: string; children: React.ReactNode }) {
-  return <span className="f-cab">{children}<OpcoesCampo nome={nome} /></span>;
+/** nome do campo com os ícones de ocultar, mover e nova aba; `alca`: arrastar o campo muda o texto de lugar na página */
+function CabCampo({ nome, children, alca }: { nome: string; children: React.ReactNode; alca?: Record<string, unknown> }) {
+  return (
+    <span className="f-cab">
+      <span className="row" style={{ gap: 2, flexWrap: 'nowrap', minWidth: 0 }}>
+        {alca && <span className="alca" title="Arraste para mudar este texto de lugar na página" aria-hidden="true" {...alca}>⠿</span>}
+        {children}
+      </span>
+      <OpcoesCampo nome={nome} />
+    </span>
+  );
+}
+
+/** ordem dos campos na tela: o arrastado ("junto") fica ao lado do campo de referência, como na página */
+export function ordemJunto(lista: string[], vars: Vars): string[] {
+  let l = [...lista];
+  for (const a of lista) {
+    const j = vars[a]?.junto;
+    if (!j || j.de === a || !l.includes(j.de)) continue;
+    l = l.filter((x) => x !== a);
+    const i = l.indexOf(j.de);
+    l.splice(j.depois ? i + 1 : i, 0, a);
+  }
+  return l;
+}
+
+/** campo `a` passa a ficar antes (ou depois) do campo `b` na página, em cada par; tira o mover pelas setas */
+export function porJunto(e: Evento, pares: [string, string][], depois: boolean) {
+  for (const [a, b] of pares) {
+    const x = e.vars[a];
+    if (!x || a === b) continue;
+    x.junto = depois ? { de: b, depois: true } : { de: b };
+    delete x.mover;
+    if (e.vars[b]?.junto?.de === a) delete e.vars[b].junto;
+  }
+}
+
+/**
+ * Itens de uma lista numerada trocados de lugar: `mapa` = número de destino → número de onde vem o conteúdo.
+ * Leva junto tudo que tem o mesmo número (textos e imagens: etapa2_nome, img_etapa2_kit…).
+ */
+export function trocarItens(e: Evento, raiz: string, mapa: Map<number, number>) {
+  const re = new RegExp(`^${raiz}(\\d+)$`);
+  const doItem = (k: string) => k.split('_').some((p) => { const m = re.exec(p); return !!m && mapa.has(Number(m[1])); });
+  for (const obj of [e.gerais, e.imagens] as Record<string, string>[]) {
+    const velho = { ...obj };
+    const envolvidos = Object.keys(velho).filter(doItem);
+    for (const k of envolvidos) delete obj[k];
+    for (const [para, de] of mapa) {
+      for (const k of envolvidos) if (k.split('_').includes(raiz + de)) obj[k.split('_').map((p) => (p === raiz + de ? raiz + para : p)).join('_')] = velho[k];
+    }
+  }
+}
+
+/** campos de um item (ou dos gerais) numa grade: cada um tem a alça para arrastar entre os outros */
+function GradeCampos({ campos, nome, pares, campo }: { campos: string[]; nome: (g: string) => React.ReactNode; pares: (a: string, b: string) => [string, string][]; campo: (g: string) => React.ReactNode }) {
+  const { evento, det, alterar } = useEditor();
+  const simples = useTextoSimples();
+  const lista = ordemJunto(campos, evento.vars);
+  const { alca, alvo } = useReordenar((de, para) => alterar((e) => { e.vars = sincronizarVars(det, e.vars); porJunto(e, pares(lista[de], lista[para]), de < para); }), 'campo');
+  return (
+    <div className="grid3">
+      {lista.map((g, i) => {
+        const mexe = !simples.has(g);
+        return (
+          <div key={g} className="f" {...(mexe ? alvo(i) : {})}>
+            <CabCampo nome={g} alca={mexe ? alca(i) : undefined}>{nome(g)}</CabCampo>
+            {campo(g)}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 /**
@@ -454,8 +525,8 @@ function BlocoSerie({ s, busca }: { s: Serie; busca: string }) {
   // visíveis: os preenchidos, os que a pessoa abriu e, com busca, os que batem
   const [abertos, setAbertos] = useState<Set<number>>(new Set());
   const visiveis = nums.filter((n) => (busca ? bate(busca, s.raiz + ' ' + n, ...[...s.itens.get(n)!.entries()].flatMap(([c, g]) => [c, g, String(valor(g))])) : temValor(n) || abertos.has(n)));
-  if (busca && !visiveis.length) return null;
   const proximo = nums.find((n) => !temValor(n) && !abertos.has(n));
+  const campoDe = new Map([...s.itens.values()].flatMap((m) => [...m].map(([c, g]) => [g, c] as const)));
 
   /** tira o bloco n: os de baixo sobem uma posição (o site não fica com buraco) */
   function remover(n: number) {
@@ -474,6 +545,14 @@ function BlocoSerie({ s, busca }: { s: Serie; busca: string }) {
     setAbertos((a) => { const b = new Set<number>(); for (const x of a) if (x < n) b.add(x); else if (x > n) b.add(x - 1); return b; });
   }
 
+  // arrastar um item (Etapa 2 para cima da Etapa 1): os conteúdos trocam de número
+  const { alca: alcaItem, alvo: alvoItem } = useReordenar((de, para) => {
+    const ordem = mover(visiveis, de, para);
+    alterar((e) => trocarItens(e, s.raiz, new Map(visiveis.map((n, k) => [n, ordem[k]]))));
+  }, 'item');
+  const alcaDoItem = (k: number) => <span className="alca" title={`Arraste para mudar a ordem (os textos e imagens do ${s.raiz} vão junto)`} aria-hidden="true" {...alcaItem(k)}>⠿</span>;
+
+  if (busca && !visiveis.length) return null;
   return (
     <div className="serie">
       <div className="row between">
@@ -486,10 +565,11 @@ function BlocoSerie({ s, busca }: { s: Serie; busca: string }) {
           </button>
         )}
       </div>
-      {visiveis.map((n) => (
+      {visiveis.map((n, k) => (
         s.campos.length === 1 ? (
           // um campo por item: uma linha com número, texto e lixeira
-          <div key={n} className="serie-linha">
+          <div key={n} className="serie-linha" {...alvoItem(k)}>
+            {visiveis.length > 1 && alcaDoItem(k)}
             <span className="small muted serie-n">{n}</span>
             {[...s.itens.get(n)!.entries()].map(([, g]) => (
               <CampoTexto key={g} valor={valor(g)} placeholder={cad.calculado(null, g)} rotulo={g} mudar={(v) => alterar((x) => { x.gerais[g] = v; })} />
@@ -499,20 +579,20 @@ function BlocoSerie({ s, busca }: { s: Serie; busca: string }) {
             </button>
           </div>
         ) : (
-        <div key={n} className="serie-item">
+        <div key={n} className="serie-item" {...alvoItem(k)}>
           <div className="row between">
-            <span className="small muted">{nomeRaiz(s.raiz)} {n}</span>
+            <span className="row small muted" style={{ gap: 4 }}>{visiveis.length > 1 && alcaDoItem(k)}{nomeRaiz(s.raiz)} {n}</span>
             <button className="iconbtn" type="button" title={`Tirar o ${s.raiz} ${n} (os de baixo sobem; dá para desfazer)`} aria-label={`Tirar ${s.raiz} ${n}`} onClick={() => remover(n)}>
               <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M2.5 4h9M5.5 4V2.5h3V4M3.5 4l.6 8h5.8l.6-8" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </button>
           </div>
-          <div className="grid3">
-            {[...s.itens.get(n)!.entries()].map(([campo, g]) => (
-              <div key={g} className="f"><CabCampo nome={g}><span className="v" title={'@' + g}>{nomeCampo(campo, s.raiz)}</span></CabCampo>
-                {ehData(g) ? <CampoData valor={valor(g)} rotulo={g} mudar={(v) => alterar((x) => { x.gerais[g] = v; })} /> : <CampoTexto valor={valor(g)} placeholder={cad.calculado(null, g)} rotulo={g} mudar={(v) => alterar((x) => { x.gerais[g] = v; })} />}
-              </div>
-            ))}
-          </div>
+          <GradeCampos
+            campos={[...s.itens.get(n)!.values()]}
+            nome={(g) => <span className="v" title={'@' + g}>{nomeCampo(campoDe.get(g) || g, s.raiz)}</span>}
+            // arrastar num item vale para todos os itens da lista (o mesmo campo em cada número)
+            pares={(a, b) => [...s.itens.values()].map((m) => [m.get(campoDe.get(a)!), m.get(campoDe.get(b)!)] as [string, string]).filter(([x, y]) => x && y)}
+            campo={(g) => ehData(g) ? <CampoData valor={valor(g)} rotulo={g} mudar={(v) => alterar((x) => { x.gerais[g] = v; })} /> : <CampoTexto valor={valor(g)} placeholder={cad.calculado(null, g)} rotulo={g} mudar={(v) => alterar((x) => { x.gerais[g] = v; })} />}
+          />
           {faltas.get(n) && <p className="small muted" style={{ margin: 0 }}>O HTML não tem, neste item: {faltas.get(n)!.map((c) => nomeCampo(c, s.raiz)).join(', ')}.</p>}
         </div>
         )
@@ -534,13 +614,12 @@ function Gerais({ busca }: { busca: string }) {
     <section className="card stack">
       <h2 style={{ fontSize: 20 }}>{unica ? 'Gerais' : 'Igual em todas as páginas'}</h2>
       {visiveis.length > 0 && (
-        <div className="grid3">
-          {visiveis.map((g) => (
-            <div key={g} className="f"><CabCampo nome={g}><span className="v">@{g}</span></CabCampo>
-              {ehData(g) ? <CampoData valor={evento.gerais[g] ?? ''} rotulo={g} mudar={(v) => alterar((x) => { x.gerais[g] = v; })} /> : <CampoTexto valor={evento.gerais[g] ?? ''} placeholder={cad.calculado(null, g)} rotulo={g} mudar={(v) => alterar((x) => { x.gerais[g] = v; })} />}
-            </div>
-          ))}
-        </div>
+        <GradeCampos
+          campos={visiveis}
+          nome={(g) => <span className="v">@{g}</span>}
+          pares={(a, b) => [[a, b]]}
+          campo={(g) => ehData(g) ? <CampoData valor={evento.gerais[g] ?? ''} rotulo={g} mudar={(v) => alterar((x) => { x.gerais[g] = v; })} /> : <CampoTexto valor={evento.gerais[g] ?? ''} placeholder={cad.calculado(null, g)} rotulo={g} mudar={(v) => alterar((x) => { x.gerais[g] = v; })} />}
+        />
       )}
       {series.map((s) => <BlocoSerie key={s.chave} s={s} busca={busca} />)}
     </section>

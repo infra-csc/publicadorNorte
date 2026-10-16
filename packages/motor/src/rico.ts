@@ -155,13 +155,23 @@ export const JS_BLOCO =
   'function pubVis(s){return!/^(SCRIPT|STYLE|TEMPLATE|LINK|META|PUB-O)$/.test(s.tagName)&&!(typeof getComputedStyle=="function"&&getComputedStyle(s).display==="none")}' +
   'function pubIrmao(a,n){var s=n<0?a.previousElementSibling:a.nextElementSibling;while(s&&!pubVis(s))s=n<0?s.previousElementSibling:s.nextElementSibling;return s}' +
   'function pubBloco(m){var el=m.parentElement,b=document.body;while(el&&el!==b&&el.parentElement&&el.parentElement!==b&&!pubIrmao(el,-1)&&!pubIrmao(el,1))el=el.parentElement;return el===b?null:el}';
-export const JS_MOVER = '<script id="pub-mover">(function(){' + JS_BLOCO + 'Array.prototype.forEach.call(document.querySelectorAll("pub-o[data-mover]"),function(m){var el=pubBloco(m),n=+m.getAttribute("data-mover");if(!el||!el.parentElement||!n)return;var a=el;for(var i=0;i<Math.abs(n);i++){var s=pubIrmao(a,n);if(!s)break;a=s}if(a===el)return;if(n<0)a.before(el);else a.after(el)})})()</script>';
+/**
+ * junto: o bloco do campo vai para antes (ou depois) do bloco do outro campo. Acha o outro campo mais perto (o primeiro
+ * elemento acima que contém os dois: num card que se repete, o do mesmo card) e troca os filhos desse elemento que
+ * contêm cada um. Roda antes do mover.
+ */
+const JS_JUNTO =
+  'Array.prototype.forEach.call(document.querySelectorAll("pub-o[data-junto]"),function(m){var n=m.getAttribute("data-junto"),c=m.parentElement,t=null;' +
+  'while(c&&c!==document.documentElement){t=c.querySelector(\'pub-o[data-campo="\'+n+\'"]\');if(t)break;c=c.parentElement}if(!t||!c)return;' +
+  'var sobe=function(x){while(x&&x.parentElement!==c)x=x.parentElement;return x},a=sobe(m),b=sobe(t);' +
+  'if(!a||!b||a===b||a===m||b===t)return;if(m.hasAttribute("data-depois"))b.after(a);else b.before(a)});';
+export const JS_MOVER = '<script id="pub-mover">(function(){' + JS_BLOCO + JS_JUNTO + 'Array.prototype.forEach.call(document.querySelectorAll("pub-o[data-mover]"),function(m){var el=pubBloco(m),n=+m.getAttribute("data-mover");if(!el||!el.parentElement||!n)return;var a=el;for(var i=0;i<Math.abs(n);i++){var s=pubIrmao(a,n);if(!s)break;a=s}if(a===el)return;if(n<0)a.before(el);else a.after(el)})})()</script>';
 
 /** coloca o CSS e o script dos blocos na página, se ela usar */
 export function colocarBlocos(html: string): string {
   if (!html.includes('<pub-o')) return html;
   let h = html;
   if (!h.includes('id="pub-blocos"')) h = /<\/head>/i.test(h) ? h.replace(/<\/head>/i, CSS_BLOCOS + '</head>') : CSS_BLOCOS + h;
-  if (h.includes('data-mover=') && !h.includes('id="pub-mover"')) h = /<\/body>/i.test(h) ? h.replace(/<\/body>(?![\s\S]*<\/body>)/i, JS_MOVER + '</body>') : h + JS_MOVER;
+  if ((h.includes('data-mover=') || h.includes('data-junto=')) && !h.includes('id="pub-mover"')) h = /<\/body>/i.test(h) ? h.replace(/<\/body>(?![\s\S]*<\/body>)/i, JS_MOVER + '</body>') : h + JS_MOVER;
   return h;
 }

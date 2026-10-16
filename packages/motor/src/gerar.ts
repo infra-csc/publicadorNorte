@@ -122,6 +122,12 @@ class Montador {
   private linhaUsada: string | null = null;
   constructor(private cad: Cadastro, private formato: Formato, private marcarEdicao = false, private galerias: Record<string, FotoGaleria[]> = {}) {}
 
+  /** campos que outro campo usa como referência para se posicionar ("junto"): ganham um marcador na página */
+  private _alvos?: Set<string>;
+  private alvosJunto(): Set<string> {
+    return (this._alvos ??= new Set(Object.values(this.cad.vars).map((v) => v.junto?.de).filter((x): x is string => !!x)));
+  }
+
   /** fotos da galeria no lugar: dentro de uma cidade (lista ou página dela), as dela e as de todas; fora, todas */
   private fotos(colecao: string, ctx: Ctx): FotoGaleria[] {
     const lista = (this.galerias[colecao] || []).filter((f) => f.arquivo);
@@ -232,8 +238,9 @@ class Montador {
       // texto formatado (limpo), editável na prévia, oculto ou movido: sai marcado (converterMarcas resolve pelo lugar onde caiu)
       const rico = ehRico(r);
       const valor = rico ? limparRico(r) : esc(r);
-      const op = (this.marcarEdicao && this.linhaUsada != null ? 'e' : '') + (v.ocultar === 'texto' ? 't' : v.ocultar === 'bloco' ? 'b' : '') + (v.mover ? 'm' + v.mover : '');
-      return op || rico ? marcar(base, this.linhaUsada ?? '', valor, false, op) : valor;
+      const op = (this.marcarEdicao && this.linhaUsada != null ? 'e' : '') + (v.ocultar === 'texto' ? 't' : v.ocultar === 'bloco' ? 'b' : '') + (v.mover ? 'm' + v.mover : '') + (this.alvosJunto().has(base) ? 'c' : '');
+      const junto = v.junto?.de && this.cad.vars[v.junto.de] ? (v.junto.depois ? '+' : '-') + v.junto.de : '';
+      return op || rico || junto ? marcar(base, this.linhaUsada ?? '', valor, false, op, junto) : valor;
     });
   }
 
