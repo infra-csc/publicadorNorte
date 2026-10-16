@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from 'react';
 import { arquivoAceito, caminhoGuardado, tamanho } from '@/lib/comum/arquivos';
 import { api, json } from '../api';
 import { lerSoltos, temArquivos, type ArquivoSolto } from '../arrastarPasta';
-import { enviarMidia, juntar } from '../enviarMidia';
+import { comSha, enviarMidia, juntar, repetidos, type ItemEnvio } from '../enviarMidia';
 import { Cabecalho, NavPassos, useEditor, varsSincronizadas } from '../Editor';
 
 const DESC_PAG: Record<TipoPagina, string> = {
@@ -151,6 +151,8 @@ function CartaoMidia() {
   const [progresso, setProgresso] = useState('');
   const [erro, setErro] = useState('');
   const [confirmar, setConfirmar] = useState(false);
+  // pasta enviada de novo: arquivos de mesmo nome esperando a escolha (substituir ou manter o atual)
+  const [pendente, setPendente] = useState<{ itens: ItemEnvio[]; repetidos: string[]; marcados: Set<string>; ignorados: number } | null>(null);
   const total = arquivos.reduce((s, a) => s + a.bytes, 0);
   const { refs, faltam } = useMemo(() => {
     const r = new Set<string>();
@@ -172,15 +174,45 @@ function CartaoMidia() {
     const ignorados = todos.length - aceitos.length;
     if (!aceitos.length) return setErro('Nenhuma imagem, vídeo ou fonte nessa seleção.');
     try {
-      const r = await enviarMidia(evento.slug, aceitos.map((x) => ({ file: x.f, caminho: x.caminho })), arquivos, setProgresso);
+      const itens = await comSha(aceitos.map((x) => ({ file: x.f, caminho: x.caminho })), setProgresso);
+      const rep = repetidos(itens, arquivos);
+      if (rep.length) {
+        setProgresso('');
+        return setPendente({ itens, repetidos: rep, marcados: new Set(), ignorados });
+      }
+      await enviar(itens, ignorados, 0);
+    } catch (e) {
+      setErro((e as Error).message);
+      setProgresso('');
+    }
+  }
+
+  /** envia o que foi escolhido; `mantidos`: repetidos em que ficou o arquivo que já estava no projeto */
+  async function enviar(itens: ItemEnvio[], ignorados: number, mantidos: number) {
+    setErro('');
+    try {
+      const r = await enviarMidia(evento.slug, itens, arquivos, setProgresso);
       if (r.novos.length) setArquivos(juntar(arquivos, r.novos));
-      setProgresso(`${r.novos.length} arquivo(s) enviado(s)` + (r.pulados ? ` · ${r.pulados} já estavam guardados` : '') + (ignorados ? ` · ${ignorados} ignorados (não são imagem, vídeo ou fonte)` : ''));
+      setProgresso(`${r.novos.length} arquivo(s) enviado(s)` + (r.pulados ? ` · ${r.pulados} já estavam guardados` : '') + (mantidos ? ` · ${mantidos} mantido(s) como estavam` : '') + (ignorados ? ` · ${ignorados} ignorados (não são imagem, vídeo ou fonte)` : '') + '. Os arquivos que já estavam no projeto continuam lá.');
       if (r.grandes.length) setErro('Acima de 100 MB, o GitHub não aceita: ' + r.grandes.join(', ') + '. Comprima e envie de novo.');
     } catch (e) {
       setErro((e as Error).message);
       setProgresso('');
     }
   }
+
+  /** `trocar`: caminhos repetidos que passam a valer o arquivo novo; os outros ficam como estavam */
+  function decidir(trocar: Set<string>) {
+    if (!pendente) return;
+    const { itens, repetidos: rep, ignorados } = pendente;
+    setPendente(null);
+    const manter = new Set(rep.filter((c) => !trocar.has(c)));
+    const escolhidos = itens.filter((x) => !manter.has(x.caminho));
+    if (!escolhidos.length) return setProgresso(`Nada enviado · ${manter.size} mantido(s) como estavam.`);
+    enviar(escolhidos, ignorados, manter.size);
+  }
+  const marcar = (c: string, sim: boolean) =>
+    setPendente((p) => { if (!p) return p; const m = new Set(p.marcados); if (sim) m.add(c); else m.delete(c); return { ...p, marcados: m }; });
 
   async function remover() {
     setConfirmar(false);
@@ -240,6 +272,30 @@ function CartaoMidia() {
           </label>
           <label className="btn sm">Ou escolher arquivos soltos{inputSoltos}</label>
         </div>
+      )}
+      {pendente && (
+        <div className="w-item warn"><span className="ic">!</span><div className="stack" style={{ gap: 8 }}>
+          <span><b>{pendente.repetidos.length} arquivo(s) com o mesmo nome de um que já está no projeto</b>Marque os que devem ser trocados pela versão nova. Os outros arquivos novos entram normalmente e nada do que já está no projeto é apagado.</span>
+          <div style={{ maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {pendente.repetidos.map((c) => {
+              const atual = arquivos.find((a) => a.caminho === c);
+              const novo = pendente.itens.find((x) => x.caminho === c);
+              return (
+                <label key={c} className="row small" style={{ gap: 8, flexWrap: 'nowrap' }}>
+                  <input type="checkbox" checked={pendente.marcados.has(c)} onChange={(e) => marcar(c, e.target.checked)} />
+                  <span className="mono" style={{ overflowWrap: 'anywhere' }}>{c}</span>
+                  <span className="muted" style={{ whiteSpace: 'nowrap' }}>{atual ? tamanho(atual.bytes) : ''} → {novo ? tamanho(novo.file.size) : ''}</span>
+                </label>
+              );
+            })}
+          </div>
+          <div className="row" style={{ gap: 6 }}>
+            <button className="btn sm" type="button" onClick={() => decidir(new Set(pendente.repetidos))}>Substituir todos</button>
+            <button className="btn sm" type="button" disabled={!pendente.marcados.size} onClick={() => decidir(pendente.marcados)}>Substituir selecionados ({pendente.marcados.size})</button>
+            <button className="btn sm ghost" type="button" onClick={() => decidir(new Set())}>Manter os atuais</button>
+            <button className="btn sm ghost" type="button" onClick={() => setPendente(null)}>Cancelar envio</button>
+          </div>
+        </div></div>
       )}
       {progresso && <p className="small muted">{progresso}</p>}
       {erro && <div className="w-item bad"><span className="ic">✕</span><div>{erro}</div></div>}

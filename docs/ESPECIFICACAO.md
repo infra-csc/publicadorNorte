@@ -246,6 +246,8 @@ Em cada página gerada, nesta ordem: reordena as seções (6.5), tira as seçõe
 
 `_media/<pagina>/<secao>/arquivos` com `<pagina>` = `tapume`, `praca`, `etapa` ou `pagina` (One page). Compatível com `_images/` (versão antiga). Aceita a pasta `_media` solta ou dentro da pasta do site.
 
+Enviar a pasta de novo (ou mais arquivos) só acrescenta: nada do que já está no projeto é apagado (inclusive o que foi adicionado depois, no passo Mídia). Arquivo igual ao guardado é pulado. Se algum tiver o mesmo caminho de um guardado e conteúdo diferente, a tela lista esses arquivos (tamanho atual → novo) antes de enviar, com "Substituir todos", "Substituir selecionados", "Manter os atuais" e "Cancelar envio"; os outros arquivos novos entram em qualquer caso.
+
 Tipos aceitos: png, jpg, jpeg, gif, webp, svg, avif, mp4, webm, woff2, woff, ttf, otf, css, js, json, pdf. Arquivos ocultos ignorados.
 
 ### 7.2 Variáveis de mídia

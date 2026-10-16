@@ -4,7 +4,8 @@ import { shaGit } from '@/lib/comum/arquivos';
 import type { ArquivoMidia } from '@/lib/comum/tipos';
 import { api, json } from './api';
 
-export interface ItemEnvio { file: File; caminho: string }
+/** `sha`: já calculado (ex.: na comparação com o que está guardado), para não ler o arquivo de novo */
+export interface ItemEnvio { file: File; caminho: string; sha?: string }
 export interface ResultadoEnvio {
   /** arquivos registrados (novos ou trocados) */
   novos: ArquivoMidia[];
@@ -28,7 +29,7 @@ export async function enviarMidia(slugEvento: string, itens: ItemEnvio[], existe
   const trabalhar = async () => {
     for (let x = fila.shift(); x; x = fila.shift()) {
       const bytes = new Uint8Array(await x.file.arrayBuffer());
-      const sha = await shaGit(bytes);
+      const sha = x.sha ?? (await shaGit(bytes));
       progresso(`Enviando ${++feitos} de ${itens.length}…`);
       // o mesmo conteúdo já está guardado: não sobe de novo
       if (porCaminho.get(x.caminho)?.sha === sha) { pulados++; porPedido.set(x.caminho, porCaminho.get(x.caminho)!); continue; }
@@ -45,6 +46,22 @@ export async function enviarMidia(slugEvento: string, itens: ItemEnvio[], existe
     await api(`/api/hotsites/${slugEvento}/midia`, json('POST', { arquivos: novos }));
   }
   return { novos, porPedido, pulados, grandes };
+}
+
+/** calcula o sha de cada item (para comparar com o que já está guardado antes de enviar) */
+export async function comSha(itens: ItemEnvio[], progresso: (t: string) => void): Promise<(ItemEnvio & { sha: string })[]> {
+  const saida: (ItemEnvio & { sha: string })[] = [];
+  for (const x of itens) {
+    progresso(`Comparando ${saida.length + 1} de ${itens.length}…`);
+    saida.push({ ...x, sha: x.sha ?? (await shaGit(new Uint8Array(await x.file.arrayBuffer()))) });
+  }
+  return saida;
+}
+
+/** caminhos que já existem no projeto com outro conteúdo (o mesmo arquivo de novo não conta) */
+export function repetidos(itens: { caminho: string; sha: string }[], existentes: ArquivoMidia[]): string[] {
+  const porCaminho = new Map(existentes.map((a) => [a.caminho, a.sha]));
+  return [...new Set(itens.filter((x) => porCaminho.has(x.caminho) && porCaminho.get(x.caminho) !== x.sha).map((x) => x.caminho))].sort();
 }
 
 /** junta os arquivos novos aos que já existiam (o caminho igual é trocado) */
