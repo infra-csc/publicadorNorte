@@ -2,7 +2,14 @@
 // - atualizar: recebe a página nova e troca só o que mudou entre a versão anterior e a nova (texto e atributos),
 //   sem recarregar; o que o JavaScript da própria página mudou fica como está. Se a estrutura mudou, pede recarga.
 // - editar: com o modo de edição ligado, os <pub-v> (textos que vêm de variáveis) ficam editáveis.
+// - mover: no modo de edição, o bloco do texto embaixo do mouse ganha a alça ⠿; arrastar e soltar entre os irmãos
+//   dele manda quantas posições andou (o mesmo bloco e a mesma conta do script de mover da página: JS_BLOCO do motor).
 /* eslint-disable */
+import { JS_BLOCO } from '@norte/motor';
+
+declare function pubBloco(m: Element): HTMLElement | null;
+declare function pubVis(s: Element): boolean;
+
 function scriptPrevia() {
   var base: Document | null = null;
   var editando = false;
@@ -176,10 +183,97 @@ function scriptPrevia() {
     });
     envia({ tipo: 'pub-editar', v: alvo.dataset.v, l: alvo.dataset.l, valor: valor });
   }, true);
+  // arrastar blocos: alça no bloco do texto embaixo do mouse, linha onde ele vai entrar
+  var ui: { alca: HTMLElement; caixa: HTMLElement; linha: HTMLElement } | null = null;
+  var sob: { bloco: HTMLElement; v: string } | null = null;
+  var arraste: { bloco: HTMLElement; v: string; destino: Element | null; depois: boolean; opacidade: string } | null = null;
+  var por = function (el: HTMLElement, x: number, y: number, w: number, h: number) {
+    el.style.left = x + 'px'; el.style.top = y + 'px'; el.style.width = w + 'px'; el.style.height = h + 'px'; el.style.display = 'block';
+  };
+  var esconderUi = function () {
+    if (ui) ui.alca.style.display = ui.caixa.style.display = ui.linha.style.display = 'none';
+    sob = null;
+  };
+  var montarUi = function () {
+    if (ui) return ui;
+    // fora do <body>: não conta como bloco da página
+    var mk = function (css: string) {
+      var d = document.createElement('div');
+      d.setAttribute('style', 'position:fixed;z-index:2147483647;display:none;box-sizing:border-box;' + css);
+      document.documentElement.appendChild(d);
+      return d;
+    };
+    var alca = mk('border-radius:6px;background:#6e5aff;color:#fff;font:15px/22px system-ui,sans-serif;text-align:center;cursor:grab;user-select:none;touch-action:none;box-shadow:0 2px 6px rgba(0,0,0,.35)');
+    alca.textContent = '⠿';
+    alca.title = 'Arraste para mudar este bloco de lugar';
+    var caixa = mk('pointer-events:none;outline:2px dashed rgba(110,90,255,.9);outline-offset:2px;border-radius:4px');
+    var linha = mk('pointer-events:none;background:#6e5aff;border-radius:2px;box-shadow:0 0 0 2px rgba(255,255,255,.8)');
+    alca.addEventListener('pointerdown', function (e: PointerEvent) {
+      if (!sob) return;
+      e.preventDefault();
+      arraste = { bloco: sob.bloco, v: sob.v, destino: null, depois: false, opacidade: sob.bloco.style.opacity };
+      sob.bloco.style.opacity = '.45';
+      alca.style.display = 'none';
+      document.documentElement.style.cursor = 'grabbing';
+    });
+    ui = { alca: alca, caixa: caixa, linha: linha };
+    return ui;
+  };
+  document.addEventListener('mousemove', function (e) {
+    if (!editando || arraste) return;
+    var t = e.target as Element;
+    if (ui && t === ui.alca) return;
+    var pv = t && t.closest ? (t.closest('pub-v') as HTMLElement | null) : null;
+    if (!pv) { if (sob && !sob.bloco.contains(t)) esconderUi(); return; }
+    var b = pubBloco(pv);
+    if (!b) { esconderUi(); return; }
+    var u = montarUi();
+    sob = { bloco: b, v: pv.dataset.v || '' };
+    var r = b.getBoundingClientRect();
+    por(u.caixa, r.left, r.top, r.width, r.height);
+    por(u.alca, Math.max(2, r.left - 24), Math.max(2, r.top), 22, 22);
+  }, { passive: true });
+  addEventListener('scroll', function () { if (!arraste) esconderUi(); }, { passive: true });
+  document.addEventListener('pointermove', function (e) {
+    if (!arraste || !ui) return;
+    if (e.clientY < 40) scrollBy(0, -16); else if (e.clientY > innerHeight - 40) scrollBy(0, 16);
+    var a = arraste, pai = a.bloco.parentElement;
+    var x = document.elementFromPoint(e.clientX, e.clientY);
+    while (x && x.parentElement !== pai) x = x.parentElement;
+    var r0 = a.bloco.getBoundingClientRect();
+    por(ui.caixa, r0.left, r0.top, r0.width, r0.height);
+    if (!x || x === a.bloco || !pubVis(x) || !pai) { a.destino = null; ui.linha.style.display = 'none'; return; }
+    var r = x.getBoundingClientRect(), cs = getComputedStyle(pai);
+    var deLado = (/flex/.test(cs.display) && !/column/.test(cs.flexDirection)) || /grid/.test(cs.display);
+    a.destino = x;
+    a.depois = deLado ? e.clientX > r.left + r.width / 2 : e.clientY > r.top + r.height / 2;
+    if (deLado) por(ui.linha, (a.depois ? r.right : r.left) - 2, r.top, 4, r.height);
+    else por(ui.linha, r.left, (a.depois ? r.bottom : r.top) - 2, r.width, 4);
+  });
+  var soltar = function () {
+    if (!arraste) return;
+    var a = arraste;
+    arraste = null;
+    a.bloco.style.opacity = a.opacidade;
+    document.documentElement.style.cursor = '';
+    esconderUi();
+    var pai = a.bloco.parentElement;
+    if (!a.destino || !pai) return;
+    // posições contadas como no script de mover da página: só os irmãos visíveis
+    var irmaos = Array.prototype.filter.call(pai.children, function (s: Element) { return s !== a.bloco && pubVis(s); }) as Element[];
+    var antes = irmaos.filter(function (s) { return !!(s.compareDocumentPosition(a.bloco) & Node.DOCUMENT_POSITION_FOLLOWING); }).length;
+    var delta = irmaos.indexOf(a.destino) + (a.depois ? 1 : 0) - antes;
+    if (!delta) return;
+    if (a.depois) a.destino.after(a.bloco); else a.destino.before(a.bloco);
+    envia({ tipo: 'pub-mover', v: a.v, delta: delta });
+  };
+  document.addEventListener('pointerup', soltar);
+  document.addEventListener('pointercancel', soltar);
+
   document.addEventListener('DOMContentLoaded', function () {
     var m = document.querySelector('meta[name="pub-carga"]');
     envia({ tipo: 'pub-pronto', carga: m ? m.getAttribute('content') : '' });
   });
 }
 
-export const SCRIPT_PREVIA = '(' + scriptPrevia.toString() + ')();';
+export const SCRIPT_PREVIA = JS_BLOCO + '(' + scriptPrevia.toString() + ')();';

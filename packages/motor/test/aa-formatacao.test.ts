@@ -1,6 +1,7 @@
 // AA. Texto formatado, blocos ocultos e movidos, links em nova aba
 import { describe, expect, it } from 'vitest';
-import { ajustarLinks, gerar, limparRico, varsDeLink } from '../src/index';
+import { parseHTML } from 'linkedom';
+import { ajustarLinks, gerar, limparRico, montarRodape, RODAPE_PADRAO, varsDeLink, varsTextoSimples } from '../src/index';
 import { linha } from './ajuda';
 
 const unica = (html: string, gerais: Record<string, string>, vars: Record<string, object> = {}) =>
@@ -37,6 +38,37 @@ describe('AA. Formatação, ocultar, mover e nova aba', () => {
     const h = unica('<html><body><p>@a</p><p>@b</p></body></html>', { a: 'A', b: 'B' }, { b: { dono: 'geral', mover: -1 } });
     expect(h).toContain('<p><pub-o data-mover="-1"></pub-o>B</p>');
     expect(h).toContain('id="pub-mover"');
+  });
+
+  it('AA4b: o bloco que se move é o primeiro elemento em volta do texto que tem irmão (um <span> sozinho no <h2> move o <h2>)', () => {
+    const roda = (html: string) => {
+      const { document } = parseHTML(html);
+      const js = /<script id="pub-mover">([\s\S]*?)<\/script>/.exec(html)![1];
+      new Function('document', js)(document);
+      return [...document.querySelectorAll('section')].map((e) => e.textContent).join('|');
+    };
+    const html = '<html><body><section><h2><span>@a</span></h2><p>@b</p><a href="#">x</a></section></body></html>';
+    const h = unica(html, { a: 'A', b: 'B' }, { a: { dono: 'geral', mover: 2 } });
+    const { document } = parseHTML(h);
+    new Function('document', /<script id="pub-mover">([\s\S]*?)<\/script>/.exec(h)![1])(document);
+    expect([...document.querySelector('section')!.children].map((e) => e.tagName + ':' + e.textContent).join('|')).toBe('P:B|A:x|H2:A');
+    // sozinho na seção: a seção inteira troca de lugar com a de baixo
+    const h2 = unica('<html><body><section><div><h1>@a</h1></div></section><section><p>@b</p></section></body></html>', { a: 'A', b: 'B' }, { a: { dono: 'geral', mover: 1 } });
+    expect(roda(h2)).toBe('B|A');
+  });
+
+  it('AA4c: campos que só ficam em atributos ou scripts são texto simples (sem formatação, ocultar ou mover)', () => {
+    const html = '<button aria-label="@menu_abrir"></button><p>@titulo</p><img alt="@titulo"><script>var x="@msg"</script><!-- @se status = aberta --><title>@nome</title>';
+    expect([...varsTextoSimples({ unica: html })].sort()).toEqual(['menu_abrir', 'msg', 'nome']);
+  });
+
+  it('AA4d: rodapé aceita o texto do editor (HTML limpo) e continua aceitando **negrito**', () => {
+    const r = montarRodape({ ...RODAPE_PADRAO, descricao: 'Uma <b>carreta</b><script>x</script>', tituloLinks: '<i>Dúvidas</i>', links: [{ texto: '<u>Regulamento</u>', url: 'https://x.com' }] });
+    expect(r).toContain('<p class="pub-rodape__desc">Uma <b>carreta</b>x</p>');
+    expect(r).toContain('<p class="pub-rodape__titulo"><i>Dúvidas</i></p>');
+    expect(r).toContain('aria-label="Dúvidas"');
+    expect(r).toContain('<u>Regulamento</u></a>');
+    expect(montarRodape({ ...RODAPE_PADRAO, descricao: 'Circuito **das Estações** <3' })).toContain('Circuito <strong>das Estações</strong> &lt;3');
   });
 
   it('AA5: link externo abre em nova aba; âncora e página do site, não; o campo com "nova aba" desligado fica na mesma aba', () => {

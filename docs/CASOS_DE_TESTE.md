@@ -304,6 +304,9 @@ Os tapumes de cards fixos dos casos H1–H4 são fixtures sintéticos em `packag
 | AA2 | valor com `<script>`, `onclick`, `url()`, `position`; `<div>` do editor; `<font color>`; tag sem fechar; texto comum "eu <3" | só b/strong/i/em/u/s/br/span (com cor, fundo, tamanho, peso, estilo, espaçamento, altura da linha, maiúsculas, sublinhado) ficam; div vira quebra; font vira span; tags fechadas; texto comum escapado |
 | AA3 | campo com "ocultar texto" / "ocultar bloco" | texto com `visibility:hidden` (bloco mantém o tamanho) / bloco some (`<pub-o data-bloco>` + CSS `:has`) e o resto sobe; sem uso, nada de CSS a mais |
 | AA4 | campo com "mover" −1 | marcador `<pub-o data-mover>` no bloco e o script que troca de lugar com o irmão |
+| AA4b | `<h2><span>@a</span></h2>` com "mover" 2; campo sozinho num `<div>` dentro da `<section>` | move o `<h2>` (o `<span>` não tem irmão); move a seção inteira |
+| AA4c | campo em `aria-label`, `<script>`, `<title>` e outro em texto e em `alt` | os três primeiros são texto simples; o que também está no texto, não |
+| AA4d | rodapé com descrição, título e link formatados no editor; descrição antiga com `**negrito**` | HTML limpo (script sai, texto fica); título sem tags no aria-label; `**…**` continua virando `<strong>` |
 | AA5 | links `@link_…` externos, com "nova aba" desligada, âncora `#`, `@url`, link escrito no HTML | externo ganha `target="_blank" rel="noopener"`; desligado fica na mesma aba (tira o target); âncora e página do site, nada |
 
 ## Z. Preços do Odoo (apps/web, odoo.test.ts, Odoo simulado)

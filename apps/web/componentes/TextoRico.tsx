@@ -10,7 +10,8 @@ const ESPACOS: [string, string][] = [['', 'Espaço'], ['-0.02em', 'Junto'], ['0.
 
 const paraTela = (v: string) => (ehRico(v) ? limparRico(v) : v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>'));
 
-export function TextoRico({ valor, placeholder, rotulo, mudar }: { valor: string; placeholder?: string; rotulo: string; mudar: (v: string) => void }) {
+/** `simples`: o texto vai num atributo ou script da página (sai sem formatação): campo sem a barra */
+export function TextoRico({ valor, placeholder, rotulo, mudar, simples }: { valor: string; placeholder?: string; rotulo: string; mudar: (v: string) => void; simples?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const ultimo = useRef<string | null>(null);
   const faixa = useRef<Range | null>(null);
@@ -93,7 +94,7 @@ export function TextoRico({ valor, placeholder, rotulo, mudar }: { valor: string
   const segura = (e: React.MouseEvent) => e.preventDefault();
   return (
     <span className="rico" onFocus={() => setAtivo(true)} onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setAtivo(false); }}>
-      {ativo && (
+      {ativo && !simples && (
         <span className="rico-barra" role="toolbar" aria-label={`Formatar ${rotulo}`}>
           <button type="button" title="Negrito (Ctrl+B)" onMouseDown={segura} onClick={() => comando('bold')}><b>B</b></button>
           <button type="button" title="Itálico (Ctrl+I)" onMouseDown={segura} onClick={() => comando('italic')}><i>I</i></button>
@@ -125,7 +126,10 @@ export function TextoRico({ valor, placeholder, rotulo, mudar }: { valor: string
         onInput={emitir}
         onKeyUp={guardarSelecao}
         onMouseUp={guardarSelecao}
-        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); document.execCommand('insertLineBreak'); emitir(); } }}
+        onKeyDown={(e) => {
+          if (simples && (e.ctrlKey || e.metaKey) && /^[biu]$/i.test(e.key)) e.preventDefault();
+          if (e.key === 'Enter') { e.preventDefault(); document.execCommand('insertLineBreak'); emitir(); }
+        }}
         onPaste={(e) => { e.preventDefault(); document.execCommand('insertText', false, e.clipboardData.getData('text/plain')); }}
       />
     </span>

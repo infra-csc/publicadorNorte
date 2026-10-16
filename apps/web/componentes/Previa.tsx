@@ -18,6 +18,8 @@ type Props = {
   /** textos de variáveis editáveis na própria prévia (o html precisa vir com marcarEdicao) */
   editar?: boolean;
   aoEditar?: (variavel: string, linha: string, valor: string) => void;
+  /** bloco arrastado na prévia (modo de edição): andou `delta` posições entre os irmãos */
+  aoMover?: (variavel: string, delta: number) => void;
   /** botões extras no cabeçalho da prévia */
   extra?: React.ReactNode;
 };
@@ -44,7 +46,7 @@ export function Previa(props: Props) {
 }
 
 /** fora do editor (ex.: aba Patrocínios): recebe os arquivos */
-export function PreviaSolta({ html, titulo, altura = 640, arquivos, baseUrl, editar = false, aoEditar, extra }: Props & { arquivos: ArquivoMidia[]; baseUrl?: string }) {
+export function PreviaSolta({ html, titulo, altura = 640, arquivos, baseUrl, editar = false, aoEditar, aoMover, extra }: Props & { arquivos: ArquivoMidia[]; baseUrl?: string }) {
   const [tela, setTela] = useState<keyof typeof TELAS>('cel');
   // um quadro só: um quadro escondido (carregando por trás) não é desenhado pelo navegador e aparecia em branco
   const [srcDoc, setSrcDoc] = useState('');
@@ -64,6 +66,8 @@ export function PreviaSolta({ html, titulo, altura = 640, arquivos, baseUrl, edi
   // último campo digitado na prévia (para voltar o cursor nele se precisar recarregar)
   const ultimoCampo = useRef<{ v: string; l: string; t: number } | null>(null);
   aoEditarRef.current = aoEditar;
+  const aoMoverRef = useRef(aoMover);
+  aoMoverRef.current = aoMover;
 
   // vigia: às vezes o navegador não desenha o quadro que acabou de carregar (fica branco até algo mudar no layout).
   // Depois de cada carga, pergunta a altura da página; se não respondeu ou veio 0, esconde e mostra o quadro.
@@ -140,6 +144,8 @@ export function PreviaSolta({ html, titulo, altura = 640, arquivos, baseUrl, edi
       } else if (d.tipo === 'pub-editar' && typeof d.v === 'string') {
         ultimoCampo.current = { v: d.v, l: d.l || '', t: Date.now() };
         aoEditarRef.current?.(d.v, d.l || '', String(d.valor ?? ''));
+      } else if (d.tipo === 'pub-mover' && typeof d.v === 'string' && Number.isInteger(d.delta)) {
+        aoMoverRef.current?.(d.v, d.delta);
       } else if (!pronto.current) return;
       else if (d.tipo === 'pub-rolagem') rolagem.current = d.y;
       else if (d.tipo === 'pub-resultado') {

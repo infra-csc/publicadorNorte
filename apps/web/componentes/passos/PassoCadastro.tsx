@@ -5,7 +5,7 @@ import { gerarEvento } from '@/lib/comum/montagem';
 import type { Evento } from '@/lib/comum/tipos';
 import { Cabecalho, NavPassos, useEditor } from '../Editor';
 import { baixarPlanilha, lerPlanilha, type Proposta } from '../planilha';
-import { OpcoesCampo } from '../OpcoesCampo';
+import { OpcoesCampo, useTextoSimples } from '../OpcoesCampo';
 import { Previa } from '../Previa';
 import { TextoRico } from '../TextoRico';
 import { SecaoOdoo } from './Odoo';
@@ -409,8 +409,10 @@ function StatusPelasDatas() {
 
 /** caixa de texto que cresce com o conteúdo (uma linha quando cabe) */
 /** campo de texto do cadastro: com formatação (negrito, cor, tamanho…) */
+/** (o rótulo é o nome da variável; a que só vai em atributo ou script fica sem a barra de formatação) */
 export function CampoTexto({ valor, placeholder, rotulo, mudar }: { valor: string; placeholder?: string; rotulo: string; mudar: (v: string) => void }) {
-  return <TextoRico valor={valor} placeholder={placeholder} rotulo={rotulo} mudar={mudar} />;
+  const simples = useTextoSimples().has(rotulo);
+  return <TextoRico valor={valor} placeholder={placeholder} rotulo={rotulo} mudar={mudar} simples={simples} />;
 }
 
 /** nome do campo com os ícones de ocultar, mover e nova aba */
@@ -624,7 +626,7 @@ function ListaEmBlocos({ busca }: { busca: string }) {
 }
 
 export function PassoCadastro() {
-  const { evento, modelos, arquivos, cad, banco, alterar } = useEditor();
+  const { evento, modelos, arquivos, cad, banco, det, alterar } = useEditor();
   const [foco, setFoco] = useState<string | null>(null);
   const unica = evento.formato === 'unica';
   const [busca, setBusca] = useState('');
@@ -644,6 +646,14 @@ export function PassoCadastro() {
     const l = e.cidades.find((x) => x._id === linha) || e.etapas.find((x) => x._id === linha);
     if (l) l[variavel] = valor;
   });
+  // bloco arrastado na prévia: soma ao "mover" do campo (o mesmo das setas)
+  const moverNaPrevia = (variavel: string, delta: number) => alterar((e) => {
+    e.vars = sincronizarVars(det, e.vars);
+    const x = e.vars[variavel];
+    if (!x) return;
+    const n = (x.mover || 0) + delta;
+    if (n) x.mover = n; else delete x.mover;
+  });
   const trocaModo = (
     <div className="seg" role="group" aria-label="Onde editar">
       <button type="button" aria-pressed={!naPrevia} onClick={() => setModo('campos')} title="Editar nos campos">Campos</button>
@@ -661,7 +671,7 @@ export function PassoCadastro() {
       <Cabecalho passo="cadastro" titulo="Cadastro">{unica ? 'Preencha os valores da página. A lista de cidades (se houver) alimenta os trechos que se repetem, como agenda e acordeão.' : 'Preencha os valores. Cada linha vira uma página. Dá para colar linhas de uma planilha. A prévia mostra a linha em que você está.'}</Cabecalho>
       {naPrevia ? (
         <div className="stack">
-          <div className="w-item info"><span className="ic">✎</span><div>Clique num texto da página e digite. Só os textos que vêm do cadastro ficam marcados e podem ser editados. Imagens e vídeos se trocam no passo Mídia.</div></div>
+          <div className="w-item info"><span className="ic">✎</span><div>Clique num texto da página e digite. Só os textos que vêm do cadastro ficam marcados e podem ser editados. Para mudar um bloco de lugar, passe o mouse no texto e arraste a alça ⠿ que aparece ao lado. Imagens e vídeos se trocam no passo Mídia.</div></div>
           {resultado.paginas.length > 1 && (
             <label className="row small" style={{ gap: 6 }}>Página:
               <select className="inp" style={{ width: 'auto', padding: '6px 10px' }} value={pagina?.arquivo || ''} onChange={(e) => setPaginaEscolhida(e.target.value)}>
@@ -669,7 +679,7 @@ export function PassoCadastro() {
               </select>
             </label>
           )}
-          <Previa html={pagina?.html ?? null} titulo={pagina ? `${pagina.titulo} · ${pagina.arquivo}` : 'Prévia'} altura={Math.max(520, alturaJanela - 260)} editar aoEditar={editarNaPrevia} extra={trocaModo} />
+          <Previa html={pagina?.html ?? null} titulo={pagina ? `${pagina.titulo} · ${pagina.arquivo}` : 'Prévia'} altura={Math.max(520, alturaJanela - 260)} editar aoEditar={editarNaPrevia} aoMover={moverNaPrevia} extra={trocaModo} />
         </div>
       ) : (
       <div className="split">

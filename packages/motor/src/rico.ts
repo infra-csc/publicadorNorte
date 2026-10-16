@@ -77,6 +77,29 @@ export function limparRico(html: string): string {
 /** texto puro do texto formatado (para atributos, <title> e scripts): quebra de linha vira espaço */
 export const textoDoRico = (html: string): string => html.replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]*>/g, '');
 
+/**
+ * Variáveis que só aparecem dentro de tags (atributos: aria-label, alt, placeholder…) ou de <script>, <style>, <title> e <textarea>:
+ * na página viram texto puro (sem formatação) e não têm bloco para ocultar ou mover.
+ */
+export function varsTextoSimples(modelos: Partial<Record<string, string | null | undefined>>): Set<string> {
+  const simples = new Set<string>();
+  const naTela = new Set<string>();
+  for (const h0 of Object.values(modelos)) {
+    // comentários (@se, @repetir…) não são texto da página
+    const h = String(h0 || '').replace(/<!--[\s\S]*?-->/g, (c) => ' '.repeat(c.length));
+    const crus: [number, number][] = [];
+    for (const m of h.matchAll(/<(script|style|title|textarea)\b[^>]*>[\s\S]*?<\/\1\s*>/gi)) crus.push([m.index!, m.index! + m[0].length]);
+    for (const m of h.matchAll(/@\{?([a-z][a-z0-9_]*?)(?:_\d+)?\}?(?![a-z0-9_])/gi)) {
+      const i = m.index!;
+      const base = m[1].toLowerCase();
+      const fora = crus.some(([a, b]) => i > a && i < b) || h.lastIndexOf('<', i) > h.lastIndexOf('>', i);
+      (fora ? simples : naTela).add(base);
+    }
+  }
+  for (const b of naTela) simples.delete(b);
+  return simples;
+}
+
 /** um endereço que sai do site (abre em nova aba): http(s):// e //; âncoras (#…) e páginas do próprio site, não */
 export const ehLinkExterno = (href: string): boolean => /^\s*(https?:)?\/\//i.test(href);
 
@@ -122,7 +145,17 @@ export function ajustarLinks(html: string, novaAba: (variavel: string) => boolea
 
 /** blocos ocultos ou movidos pelo cadastro: o marcador <pub-o> fica dentro do bloco (o elemento em volta do texto); mover pula os blocos ocultos */
 export const CSS_BLOCOS = '<style id="pub-blocos">pub-o{display:none}*:has(> pub-o[data-bloco]){display:none!important}</style>';
-export const JS_MOVER = '<script id="pub-mover">(function(){document.querySelectorAll("pub-o[data-mover]").forEach(function(m){var el=m.parentElement,n=+m.getAttribute("data-mover");if(!el||!el.parentElement||!n)return;var a=el;for(var i=0;i<Math.abs(n);i++){var s=n<0?a.previousElementSibling:a.nextElementSibling;while(s&&getComputedStyle(s).display==="none")s=n<0?s.previousElementSibling:s.nextElementSibling;if(!s)break;a=s}if(a===el)return;if(n<0)a.before(el);else a.after(el)})})()</script>';
+
+/**
+ * Bloco que se move (o mesmo na página publicada e no arrastar da prévia): o elemento em volta do texto;
+ * se ele não tem irmão visível (ex.: <span> sozinho dentro do <h2>), sobe até o primeiro que tem (sem passar do filho do <body>).
+ * pubIrmao: o irmão visível seguinte (n > 0) ou anterior (n < 0).
+ */
+export const JS_BLOCO =
+  'function pubVis(s){return!/^(SCRIPT|STYLE|TEMPLATE|LINK|META|PUB-O)$/.test(s.tagName)&&!(typeof getComputedStyle=="function"&&getComputedStyle(s).display==="none")}' +
+  'function pubIrmao(a,n){var s=n<0?a.previousElementSibling:a.nextElementSibling;while(s&&!pubVis(s))s=n<0?s.previousElementSibling:s.nextElementSibling;return s}' +
+  'function pubBloco(m){var el=m.parentElement,b=document.body;while(el&&el!==b&&el.parentElement&&el.parentElement!==b&&!pubIrmao(el,-1)&&!pubIrmao(el,1))el=el.parentElement;return el===b?null:el}';
+export const JS_MOVER = '<script id="pub-mover">(function(){' + JS_BLOCO + 'Array.prototype.forEach.call(document.querySelectorAll("pub-o[data-mover]"),function(m){var el=pubBloco(m),n=+m.getAttribute("data-mover");if(!el||!el.parentElement||!n)return;var a=el;for(var i=0;i<Math.abs(n);i++){var s=pubIrmao(a,n);if(!s)break;a=s}if(a===el)return;if(n<0)a.before(el);else a.after(el)})})()</script>';
 
 /** coloca o CSS e o script dos blocos na página, se ela usar */
 export function colocarBlocos(html: string): string {

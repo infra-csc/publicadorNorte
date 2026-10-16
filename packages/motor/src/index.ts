@@ -17,7 +17,7 @@ export { TEXTOS_PADRAO, VARS_GALERIA, galeriasDe, soNoPos } from './detectar';
 export { estaRealizado, limiteRealizado, type Automacao } from './datas';
 export { ehData, ehPeriodo, formatoDeData, formatarData, periodo, lerData, paraISO, deISO, FORMATOS_DATA, type FormatoData } from './datas';
 export { converterMarcas, MARCA_INI, MARCA_MEIO, MARCA_FIM } from './edicao';
-export { ehRico, limparRico, textoDoRico, ehLinkExterno, ajustarLinks, anotarLinks, varsDeLink } from './rico';
+export { ehRico, limparRico, textoDoRico, ehLinkExterno, ajustarLinks, anotarLinks, varsDeLink, varsTextoSimples, JS_BLOCO } from './rico';
 export {
   ajustarTagsMidia, PASTA_PAG, refsDeArquivo, acharArquivo, normRef, opcoesMidia, padraoMidia, valorMidia, pastasMidia,
   versaoTela, caminhoMidia, OCULTA, midiaEscondida, arquivoDaEscolha, tirarMidiaOculta, secaoMidia, slotMidia, arquivoAceito, tipoArquivo, TIPOS_ARQUIVO, CSS_MIDIA, type OpcaoMidia,

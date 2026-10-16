@@ -1,5 +1,6 @@
 // Rodapé padrão do publicador: montado a partir de uma configuração (fonte, cores, descrição, links e redes sociais)
 // e colocado no fim da página. Geral do evento, com troca por cidade.
+import { ehRico, limparRico, textoDoRico } from './rico';
 import { esc } from './texto';
 
 export type RedeSocial = 'instagram' | 'facebook' | 'youtube' | 'tiktok' | 'x' | 'linkedin' | 'whatsapp' | 'spotify' | 'site' | 'email' | 'telefone';
@@ -80,6 +81,10 @@ export const caminhoSeguro = (c: string): string | null => {
 /** **texto** vira negrito (o texto já vem escapado) */
 const negrito = (s: string) => s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
 
+/** texto do rodapé: com formatação do editor (HTML limpo) ou texto comum com **negrito** */
+const textoRodape = (s: string) => (ehRico(s) ? limparRico(s.trim()) : negrito(esc(s.trim())));
+const puro = (s: string) => (ehRico(s) ? textoDoRico(s) : s).trim();
+
 /** HTML do rodapé (com o próprio estilo, isolado pela classe .pub-rodape) */
 export function montarRodape(c: ConfigRodape): string {
   const fundo = cor(c.corFundo, RODAPE_PADRAO.corFundo);
@@ -92,22 +97,22 @@ export function montarRodape(c: ConfigRodape): string {
   const esquerda: string[] = [];
   const logo = caminhoSeguro(c.logo || '');
   if (logo) esquerda.push(`<img class="pub-rodape__logo" src="${esc(logo)}" alt="">`);
-  if (c.descricao.trim()) esquerda.push(`<p class="pub-rodape__desc">${negrito(esc(c.descricao.trim()))}</p>`);
+  if (c.descricao.trim()) esquerda.push(`<p class="pub-rodape__desc">${textoRodape(c.descricao)}</p>`);
 
   // coluna da direita: título, links e redes sociais
   const direita: string[] = [];
   const ls = c.links.map((l) => ({ texto: l.texto.trim(), url: urlSegura(l.url) })).filter((l) => l.texto && l.url);
   const rs = c.redes.filter((r) => REDES[r.rede] && urlSegura(r.url));
-  if ((c.tituloLinks || '').trim() && (ls.length || rs.length)) direita.push(`<p class="pub-rodape__titulo">${esc(c.tituloLinks!.trim())}</p>`);
-  if (ls.length) direita.push(`<nav class="pub-rodape__links" aria-label="${esc((c.tituloLinks || '').trim() || 'Links')}">${ls.map((l) => `<a href="${esc(l.url!)}"${novaAba(l.url!)}>${esc(l.texto)}</a>`).join('')}</nav>`);
+  if ((c.tituloLinks || '').trim() && (ls.length || rs.length)) direita.push(`<p class="pub-rodape__titulo">${textoRodape(c.tituloLinks!)}</p>`);
+  if (ls.length) direita.push(`<nav class="pub-rodape__links" aria-label="${esc(puro(c.tituloLinks || '') || 'Links')}">${ls.map((l) => `<a href="${esc(l.url!)}"${novaAba(l.url!)}>${textoRodape(l.texto)}</a>`).join('')}</nav>`);
   if (rs.length) {
     direita.push(
       `<ul class="pub-rodape__redes">${rs
         .map((r) => {
           const u = urlSegura(r.url)!;
-          const rotulo = (r.texto || '').trim();
+          const rotulo = puro(r.texto || '') ? r.texto!.trim() : '';
           const icone = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${REDES[r.rede].svg}</svg>`;
-          return `<li><a href="${esc(u)}"${novaAba(u)}${rotulo ? '' : ` aria-label="${REDES[r.rede].nome}"`}>${icone}${rotulo ? `<span>${esc(rotulo)}</span>` : ''}</a></li>`;
+          return `<li><a href="${esc(u)}"${novaAba(u)}${rotulo ? '' : ` aria-label="${REDES[r.rede].nome}"`}>${icone}${rotulo ? `<span>${textoRodape(rotulo)}</span>` : ''}</a></li>`;
         })
         .join('')}</ul>`,
     );

@@ -6,6 +6,7 @@ import type { Evento } from '@/lib/comum/tipos';
 import { urlArquivo } from '../api';
 import { useEditor } from '../Editor';
 import { enviarMidia, juntar, nomeLivre } from '../enviarMidia';
+import { TextoRico } from '../TextoRico';
 
 const garantir = (e: Evento): EscolhaRodape => (e.rodape ??= { ativo: false, geral: structuredClone(RODAPE_PADRAO), porLinha: {} });
 const OUTRA = '__outra__';
@@ -90,18 +91,18 @@ function Campos({ c, mudar }: { c: ConfigRodape; mudar: (fn: (c: ConfigRodape) =
         ))}
       </div>
       <Logo c={c} mudar={mudar} />
-      <label className="f">Descrição <small>Fica embaixo do logo. Pode ter mais de uma linha. Para negrito, escreva entre dois asteriscos: **Circuito das Estações**</small>
-        <textarea className="inp" rows={4} value={c.descricao} onChange={(e) => { const v = e.target.value; mudar((x) => { x.descricao = v; }); }} />
-      </label>
+      <div className="f"><span>Descrição <small>Fica embaixo do logo. Pode ter mais de uma linha (Enter). Clique no campo para formatar.</small></span>
+        <TextoRico valor={c.descricao} rotulo="Descrição do rodapé" mudar={(v) => mudar((x) => { x.descricao = v; })} />
+      </div>
 
       <div className="stack" style={{ gap: 8 }}>
-        <label className="f">Título dos links <small>Fica em cima dos links, na coluna da direita</small>
-          <input className="inp" placeholder="ex.: Dúvidas" value={c.tituloLinks || ''} onChange={(e) => { const v = e.target.value; mudar((x) => { x.tituloLinks = v; }); }} />
-        </label>
+        <div className="f"><span>Título dos links <small>Fica em cima dos links, na coluna da direita</small></span>
+          <TextoRico valor={c.tituloLinks || ''} placeholder="ex.: Dúvidas" rotulo="Título dos links" mudar={(v) => mudar((x) => { x.tituloLinks = v; })} />
+        </div>
         <b className="small">Links</b>
         {c.links.map((l, i) => (
           <div key={i} className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
-            <input className="inp" placeholder="Texto (ex.: Regulamento)" value={l.texto} onChange={(e) => { const v = e.target.value; mudar((x) => { x.links[i].texto = v; }); }} />
+            <TextoRico valor={l.texto} placeholder="Texto (ex.: Regulamento)" rotulo={`Texto do link ${i + 1}`} mudar={(v) => mudar((x) => { x.links[i].texto = v; })} />
             <input className="inp mono" placeholder="https://…" value={l.url} onChange={(e) => { const v = e.target.value; mudar((x) => { x.links[i].url = v; }); }} />
             <button className="iconbtn" type="button" aria-label="Tirar link" onClick={() => mudar((x) => { x.links.splice(i, 1); })}>✕</button>
           </div>
@@ -117,7 +118,7 @@ function Campos({ c, mudar }: { c: ConfigRodape; mudar: (fn: (c: ConfigRodape) =
             <select className="inp" style={{ width: 'auto' }} value={r.rede} onChange={(e) => { const v = e.target.value as RedeSocial; mudar((x) => { x.redes[i].rede = v; }); }}>
               {(Object.keys(REDES) as RedeSocial[]).map((k) => <option key={k} value={k}>{REDES[k].nome}</option>)}
             </select>
-            <input className="inp" placeholder="Texto ao lado (opcional), ex.: Siga no Instagram" value={r.texto || ''} onChange={(e) => { const v = e.target.value; mudar((x) => { x.redes[i].texto = v; }); }} />
+            <TextoRico valor={r.texto || ''} placeholder="Texto ao lado (opcional), ex.: Siga no Instagram" rotulo={`Texto da rede ${i + 1}`} mudar={(v) => mudar((x) => { x.redes[i].texto = v; })} />
             <input className="inp mono" placeholder={r.rede === 'email' ? 'mailto:contato@…' : r.rede === 'telefone' ? 'tel:+55…' : 'https://…'} value={r.url} onChange={(e) => { const v = e.target.value; mudar((x) => { x.redes[i].url = v; }); }} />
             <button className="iconbtn" type="button" aria-label="Tirar rede" onClick={() => mudar((x) => { x.redes.splice(i, 1); })}>✕</button>
           </div>
