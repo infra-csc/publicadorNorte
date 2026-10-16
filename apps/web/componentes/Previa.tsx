@@ -39,6 +39,22 @@ export function semEsperarCss(html: string): string {
   });
 }
 
+/**
+ * Prévia sem animação: a página recebe "prefers-reduced-motion: reduce" (CSS e matchMedia), como quem pediu menos
+ * movimento no sistema. Aberturas e animações de carregamento que respeitam isso (a maioria dos nossos HTMLs) não tocam
+ * a cada atualização. O quadro isolado não guarda sessionStorage, então "já vi a abertura" não vale ali.
+ */
+const SCRIPT_SEM_ANIMACAO =
+  '(function(){var mm=window.matchMedia;window.matchMedia=function(q){var s=String(q),r=/prefers-reduced-motion\\s*:\\s*reduce/i.test(s)?true:/prefers-reduced-motion\\s*:\\s*no-preference/i.test(s)?false:null;' +
+  'if(r===null)return mm.call(window,q);var f=function(){};return{matches:r,media:s,onchange:null,addListener:f,removeListener:f,addEventListener:f,removeEventListener:f,dispatchEvent:function(){return false}}}})();';
+export function semAnimacao(html: string): string {
+  return html
+    .replace(/prefers-reduced-motion\s*:\s*reduce/gi, 'min-width:0px')
+    .replace(/prefers-reduced-motion\s*:\s*no-preference/gi, 'max-width:0.001px');
+}
+
+const CHAVE_ANIMACAO = 'publicador:previa-sem-animacao';
+
 /** dentro do editor: arquivos e endereço vêm do evento aberto */
 export function Previa(props: Props) {
   const { arquivosPrevia, evento } = useEditor();
@@ -48,6 +64,10 @@ export function Previa(props: Props) {
 /** fora do editor (ex.: aba Patrocínios): recebe os arquivos */
 export function PreviaSolta({ html, titulo, altura = 640, arquivos, baseUrl, editar = false, aoEditar, aoMover, extra }: Props & { arquivos: ArquivoMidia[]; baseUrl?: string }) {
   const [tela, setTela] = useState<keyof typeof TELAS>('cel');
+  // lembrado neste navegador (vale para todas as prévias)
+  const [parado, setParado] = useState(false);
+  useEffect(() => { try { setParado(localStorage.getItem(CHAVE_ANIMACAO) === '1'); } catch { /* sem armazenamento: começa ligado */ } }, []);
+  const trocarAnimacao = () => setParado((p) => { try { localStorage.setItem(CHAVE_ANIMACAO, p ? '0' : '1'); } catch { /* só nesta tela */ } return !p; });
   // um quadro só: um quadro escondido (carregando por trás) não é desenhado pelo navegador e aparecia em branco
   const [srcDoc, setSrcDoc] = useState('');
   const caixa = useRef<HTMLDivElement>(null);
@@ -61,6 +81,7 @@ export function PreviaSolta({ html, titulo, altura = 640, arquivos, baseUrl, edi
   const rolagem = useRef(0);
   const yInicial = useRef(0);
   const pagina = useRef(titulo);
+  const modoAnimacao = useRef(false);
   const editarRef = useRef(editar);
   const aoEditarRef = useRef(aoEditar);
   // último campo digitado na prévia (para voltar o cursor nele se precisar recarregar)
@@ -113,17 +134,21 @@ export function PreviaSolta({ html, titulo, altura = 640, arquivos, baseUrl, edi
       let h = comArquivosDaPrevia(html, arquivos, (a) => location.origin + urlArquivo(a.sha, a.caminho));
       if (baseUrl && !/<base\s/i.test(h)) h = h.replace(/<head([^>]*)>/i, `<head$1><base href="${baseUrl.replace(/"/g, '')}">`);
       h = semEsperarCss(h);
-      const script = `<script>${SCRIPT_PREVIA}</script>`;
+      if (parado) h = semAnimacao(h);
+      const script = `<script>${parado ? SCRIPT_SEM_ANIMACAO : ''}${SCRIPT_PREVIA}</script>`;
       h = /<head[^>]*>/i.test(h) ? h.replace(/<head([^>]*)>/i, `<head$1>${script}`) : `<head>${script}</head>` + h;
       if (h === atual.current) return;
+      // ligar/desligar a animação recarrega (a página já começou com ou sem)
+      const trocouModo = modoAnimacao.current !== parado;
+      modoAnimacao.current = parado;
       const outraPagina = pagina.current !== titulo;
       pagina.current = titulo;
-      if (!atual.current || outraPagina || !pronto.current) return recarregar(h, outraPagina ? 0 : rolagem.current);
+      if (!atual.current || outraPagina || trocouModo || !pronto.current) return recarregar(h, outraPagina ? 0 : rolagem.current);
       atual.current = h;
       iframe.current?.contentWindow?.postMessage({ tipo: 'pub-atualizar', html: h }, '*');
     }, atual.current ? 120 : 0);
     return () => clearTimeout(t);
-  }, [html, arquivos, baseUrl, titulo]);
+  }, [html, arquivos, baseUrl, titulo, parado]);
 
   // conversa com o script de dentro da prévia
   useEffect(() => {
@@ -178,6 +203,13 @@ export function PreviaSolta({ html, titulo, altura = 640, arquivos, baseUrl, edi
         <b className="small">{titulo || 'Prévia'}</b>
         <span className="row" style={{ gap: 8 }}>
           {extra}
+          <button type="button" className="btn sm ghost" aria-pressed={parado} onClick={trocarAnimacao}
+            title={parado ? 'Animações desligadas na prévia (o site publicado não muda). Clique para ligar.' : 'Desligar aberturas e animações na prévia (o site publicado não muda)'}>
+            {parado ? '▶ Ligar animação' : '⏸ Sem animação'}
+          </button>
+          <button type="button" className="iconbtn" aria-label="Recarregar a prévia" title="Recarregar a prévia" disabled={html == null} onClick={() => atual.current && recarregar(atual.current, rolagem.current)}>
+            <svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 10a6 6 0 1 1-1.8-4.3M16 3.5v3.2h-3.2" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </button>
           <div className="seg" role="group" aria-label="Tamanho da prévia">
             <button type="button" aria-pressed={tela === 'cel'} onClick={() => setTela('cel')}>Celular</button>
             <button type="button" aria-pressed={tela === 'desk'} onClick={() => setTela('desk')}>Desktop</button>
