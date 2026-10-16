@@ -19,6 +19,8 @@ export interface ModuloImagem {
   fundo?: string;
   /** largura da imagem em % da largura do conteúdo (10 a 100); no celular ela cresce até 1,6× (sem passar de 100%) */
   largura: number;
+  /** altura da faixa em px (0 ou vazio = a da imagem); a imagem fica no meio. No celular, no máximo 80% da altura da tela */
+  altura?: number;
   /** espaço acima e abaixo */
   espaco?: 'nenhum' | 'p' | 'm' | 'g';
   /** texto alternativo */
@@ -34,11 +36,11 @@ const idOk = (id: string) => /^pub-img-[\w-]{1,40}$/.test(id);
 
 const CSS =
   '<style id="pub-modulo-css">' +
-  'section.pub-modulo{display:block;margin:0;min-height:0;height:auto;padding:var(--pub-esp,0px) 16px;background:var(--pub-fundo,transparent)}' +
-  '.pub-modulo__in{max-width:1200px;margin:0 auto;display:flex;justify-content:center}' +
+  'section.pub-modulo{display:flex;flex-direction:column;justify-content:center;box-sizing:border-box;margin:0;min-height:var(--pub-alt,0px);height:auto;padding:var(--pub-esp,0px) 16px;background:var(--pub-fundo,transparent)}' +
+  '.pub-modulo__in{width:100%;max-width:1200px;margin:0 auto;display:flex;justify-content:center}' +
   '.pub-modulo__img{display:block;width:var(--pub-larg,100%);max-width:100%;height:auto}' +
   '.pub-modulo__img svg{display:block;width:100%;height:auto}' +
-  '@media (max-width:640px){.pub-modulo__img{width:min(100%,calc(var(--pub-larg,100%) * 1.6))}}' +
+  '@media (max-width:640px){.pub-modulo__img{width:min(100%,calc(var(--pub-larg,100%) * 1.6))}section.pub-modulo{min-height:min(var(--pub-alt,0px),80svh)}}' +
   '</style>';
 
 /**
@@ -81,6 +83,8 @@ export function htmlModulo(m: ModuloImagem): string {
   const vars = [`--pub-larg:${larg}%`, `--pub-esp:${ESPACO[m.espaco || 'm'] ?? ESPACO.m}`];
   const f = cor(m.fundo);
   if (f) vars.push(`--pub-fundo:${f}`);
+  const alt = Math.max(0, Math.min(1200, Math.round(Number(m.altura) || 0)));
+  if (alt) vars.push(`--pub-alt:${alt}px`);
   const rotulo = 'Imagem' + (m.nome ? ': ' + m.nome : '');
   let miolo = '';
   if (m.svg) {

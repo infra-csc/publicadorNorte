@@ -115,6 +115,16 @@ export function EditorModulo({ pag, id }: { pag: TipoPagina; id: string }) {
           <input type="range" min={10} max={100} step={5} value={m.largura} onChange={(e) => mudar({ largura: Number(e.target.value) })} aria-label="Largura da imagem" style={{ flex: 1, minWidth: 120 }} />
           <b style={{ width: 40, textAlign: 'right' }}>{m.largura}%</b>
         </label>
+        <label className="row small" style={{ gap: 8 }}>
+          Altura
+          <input type="range" min={0} max={900} step={10} value={m.altura || 0} onChange={(e) => mudar({ altura: Number(e.target.value) })} aria-label="Altura da faixa" style={{ flex: 1, minWidth: 120 }} />
+          <span className="row" style={{ gap: 4, flexWrap: 'nowrap' }}>
+            <input className="inp" type="number" min={0} max={1200} step={10} value={m.altura || ''} placeholder="auto" aria-label="Altura da faixa em pixels"
+              onChange={(e) => mudar({ altura: Math.max(0, Math.min(1200, Number(e.target.value) || 0)) })} style={{ width: 72, padding: '4px 6px' }} />
+            <span className="muted">px</span>
+          </span>
+        </label>
+        <p className="small muted" style={{ margin: '-4px 0 0' }}>{m.altura ? 'A imagem fica no meio da faixa. No celular, a faixa vai até 80% da altura da tela.' : 'Automática: a faixa tem a altura da imagem (mais o espaço).'}</p>
         <div className="row small" style={{ gap: 8, flexWrap: 'wrap' }}>
           Fundo
           <span className="seg" role="group" aria-label="Fundo">

@@ -19,6 +19,13 @@ describe('Q. Módulo de imagem', () => {
     expect(colocarModulos(HTML, [])).toBe(HTML);
   });
 
+  it('Q3b: altura da faixa em px (imagem no meio, no celular até 80% da tela); 0 = a da imagem; limite 1200', () => {
+    expect(colocarModulos(HTML, [png({ altura: 420 })])).toContain('--pub-alt:420px');
+    expect(colocarModulos(HTML, [png({ altura: 0 })])).not.toContain('--pub-alt:');
+    expect(colocarModulos(HTML, [png({ altura: 99999 })])).toContain('--pub-alt:1200px');
+    expect(colocarModulos(HTML, [png()])).toContain('min(var(--pub-alt,0px),80svh)');
+  });
+
   it('Q2: arrastar (ordem), esconder no evento e por cidade valem para o módulo como para as seções', () => {
     const sp = linha({ cidade: 'SP' });
     const rj = linha({ cidade: 'RJ' });
