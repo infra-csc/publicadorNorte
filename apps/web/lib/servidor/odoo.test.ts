@@ -13,18 +13,19 @@ const AGORA = new Date('2026-10-14T12:00:00Z');
 const HORA = new Date('2026-10-14T15:00:00Z');
 
 /** Odoo de mentira: responde search_read pelos dados abaixo */
-function odooFalso(preco = 549, opcoes: { semCodigo?: boolean; foraDeVenda?: boolean; comPA?: boolean } = {}) {
+function odooFalso(preco = 549, opcoes: { semCodigo?: boolean; foraDeVenda?: boolean; comPA?: boolean; paNaoPublicado?: boolean } = {}) {
   const chamadas: string[] = [];
   const f = (async (url: string, init: RequestInit) => {
-    const [modelo] = url.replace(CFG.url + '/json/2/', '').split('/');
+    const [modelo, metodo] = url.replace(CFG.url + '/json/2/', '').split('/');
     chamadas.push(modelo);
     expect((init.headers as Record<string, string>).Authorization).toBe('bearer k');
     const corpo = JSON.parse(String(init.body));
+    if (metodo === 'fields_get') return new Response(JSON.stringify({ name: { string: 'Nome', type: 'char' }, x_pub_combo: { string: 'Publicado em Combos de Evento', type: 'boolean' } }));
     const r: Record<string, unknown> = {
       'product.template': corpo.domain[0][1] === '=ilike'
         ? (opcoes.comPA ? [{ id: 415, name: 'Combo Circuito das Estações 2027 - Curitiba', default_code: 'CDE27COMBO4CT' }, { id: 421, name: 'Combo Circuito das Estações 2027 - Porto Alegre', default_code: 'CDE27COMBO4PA', website_url: '/shop/combos/cde27combo4pa-combo-circuito-das-estacoes-2027-porto-alegre-421' }] : [])
         : corpo.domain[0][2] === 421 && opcoes.comPA
-        ? [{ id: 421, name: 'Combo Circuito das Estações 2027 - Porto Alegre', default_code: 'CDE27COMBO4PA', list_price: 599.9, x_max_parcelas: 12, sale_ok: !opcoes.foraDeVenda, is_published: false, active: true, categ_id: false, website_url: '/shop/combos/cde27combo4pa-combo-circuito-das-estacoes-2027-porto-alegre-421' }]
+        ? [{ id: 421, name: 'Combo Circuito das Estações 2027 - Porto Alegre', default_code: 'CDE27COMBO4PA', list_price: 599.9, x_max_parcelas: 12, sale_ok: !opcoes.foraDeVenda, is_published: false, x_pub_combo: !opcoes.paNaoPublicado, active: true, categ_id: false, website_url: '/shop/combos/cde27combo4pa-combo-circuito-das-estacoes-2027-porto-alegre-421' }]
         : corpo.domain[0][2] === 415
         ? [{ id: 415, name: 'Combo CT', default_code: opcoes.semCodigo ? false : 'CDE27COMBO4CT', list_price: preco, compare_list_price: 1149.96, x_max_parcelas: 12, sale_ok: !opcoes.foraDeVenda, is_published: true, active: true, categ_id: [9, 'Combos'], website_url: '/shop/cde27combo4ct-combo-curitiba-415' }]
         : [],
@@ -83,8 +84,12 @@ describe('Odoo', () => {
     expect(m.atual().cidades[1]).toMatchObject({ preco_vista: '599,90', link_inscricao: 'https://loja.test/shop/combos/cde27combo4pa-combo-circuito-das-estacoes-2027-porto-alegre-421', status: 'aberta' });
     expect(r.resultado.cidades.map((c) => c.nome)).toEqual(['Curitiba', 'Porto Alegre']);
     expect(r.resultado.cidades[1].mensagem).toContain('achado pelo código CDE27COMBO4PA');
-    // "não publicado" no Odoo não tira de venda (a página da loja abre assim mesmo): só aviso
-    expect(r.resultado.cidades[1].mensagem).toContain('não publicado');
+    // vale o "Publicado em Combos de Evento" (achado pelo rótulo), não o "Publicado" do site
+    expect(r.resultado.cidades[1].mensagem).toContain('aberta');
+    const o = memoria(evento());
+    const q = await sincronizarOdoo(o.arm, 'combo', CFG, AGORA, { fetch: odooFalso(549, { comPA: true, paNaoPublicado: true }).f });
+    expect(q.resultado.cidades[1].mensagem).toContain('não está publicado em Combos de Evento');
+    expect(o.atual().cidades[1]).toMatchObject({ preco_vista: '599,90', status: '' });
     // ainda não está à venda: preços e link já entram, status em breve
     const n = memoria(evento());
     await sincronizarOdoo(n.arm, 'combo', CFG, AGORA, { fetch: odooFalso(549, { comPA: true, foraDeVenda: true }).f });

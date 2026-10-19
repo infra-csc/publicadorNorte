@@ -30,11 +30,13 @@ export interface ComboOdoo {
   prime: { descontoPct: number; preco: number; valorParcela: number } | null;
   url: string;
   etapas: { nome: string; data: string | null; distancias: { nome: string; esgotado: boolean }[] }[];
-  /** à venda: ativo, vendável, com preço e com ingresso sobrando; senão, o motivo. "Publicado" não conta: a página /shop/combos/… abre sem ele */
+  /** à venda: ativo, vendável, publicado em Combos de Evento (se o Odoo tiver esse campo), com preço e com ingresso sobrando; senão, o motivo */
   aVenda: boolean;
   foraDeVenda?: string;
   aviso?: string;
 }
+
+const semAcento = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 type Chamar = <T = unknown>(modelo: string, metodo: string, corpo: object) => Promise<T>;
 
@@ -62,11 +64,30 @@ type Template = { id: number; name: string; default_code: string | false; list_p
 type Ingresso = { name: string; event_id: [number, string]; product_id?: [number, string] | false; seats_max: number; seats_available: number };
 type EventoOdoo = { id: number; name: string; date_begin: string | false };
 
+/**
+ * Campo "Publicado em Combos de Evento" do produto (a loja /shop/combos/… usa ele, não o "Publicado" do site).
+ * O nome técnico é procurado pelo rótulo, uma vez por cliente; sem o campo, a publicação não conta.
+ */
+const camposPublicado = new WeakMap<Chamar, Promise<string | null>>();
+function campoPublicado(chamar: Chamar): Promise<string | null> {
+  let p = camposPublicado.get(chamar);
+  if (!p) {
+    p = chamar<Record<string, { string?: string; type?: string }>>('product.template', 'fields_get', { attributes: ['string', 'type'] })
+      .then((f) => {
+        if (!f || typeof f !== 'object' || Array.isArray(f)) return null;
+        return Object.keys(f).find((k) => f[k]?.type === 'boolean' && /publicado em combos?/i.test(semAcento(f[k]?.string || ''))) || null;
+      }, () => null);
+    camposPublicado.set(chamar, p);
+  }
+  return p;
+}
+
 export async function consultarCombo(cfg: ConfigOdoo, chamar: Chamar, id: number): Promise<ComboOdoo> {
   // 1) produto do combo
-  const [combo] = await chamar<Template[]>('product.template', 'search_read', {
+  const publicado = await campoPublicado(chamar);
+  const [combo] = await chamar<(Template & Record<string, unknown>)[]>('product.template', 'search_read', {
     domain: [['id', '=', id], ['active', 'in', [true, false]]],
-    fields: ['name', 'default_code', 'list_price', 'compare_list_price', 'x_max_parcelas', 'categ_id', 'website_url', 'sale_ok', 'is_published', 'active'],
+    fields: ['name', 'default_code', 'list_price', 'compare_list_price', 'x_max_parcelas', 'categ_id', 'website_url', 'sale_ok', 'active', ...(publicado ? [publicado] : [])],
   });
   if (!combo) throw new ErroOdoo(`O combo ${id} não existe no Odoo.`);
 
@@ -112,10 +133,10 @@ export async function consultarCombo(cfg: ConfigOdoo, chamar: Chamar, id: number
   const daqui = ingressos.filter((t) => eventos.some((ev) => ev.id === t.event_id[0]));
   const foraDeVenda = combo.active === false ? 'arquivado no Odoo'
     : combo.sale_ok === false ? 'não está à venda no Odoo'
+    : publicado && combo[publicado] === false ? 'não está publicado em Combos de Evento'
     : !(preco > 0) ? 'sem preço no Odoo'
     : daqui.length && daqui.every((t) => t.seats_max > 0 && t.seats_available <= 0) ? 'ingressos esgotados'
     : undefined;
-  if (combo.is_published === false) aviso = [aviso, 'marcado como não publicado no Odoo (a página da loja abre assim mesmo)'].filter(Boolean).join('; ');
   const parcelas = combo.x_max_parcelas || 1;
   const precoPrime = arred(preco * (1 - pct / 100));
   return {
@@ -149,7 +170,6 @@ function distancia(nome: string): string | null {
   return m ? m[1].replace('.', ',') : null;
 }
 
-const semAcento = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 const ESTACOES = ['outono', 'inverno', 'primavera', 'verao'];
 
