@@ -24,7 +24,7 @@ function odooFalso(preco = 549, opcoes: { semCodigo?: boolean; foraDeVenda?: boo
       'product.template': corpo.domain[0][1] === '=ilike'
         ? (opcoes.comPA ? [{ id: 415, name: 'Combo Circuito das Estações 2027 - Curitiba', default_code: 'CDE27COMBO4CT' }, { id: 421, name: 'Combo Circuito das Estações 2027 - Porto Alegre', default_code: 'CDE27COMBO4PA', website_url: '/shop/combos/cde27combo4pa-combo-circuito-das-estacoes-2027-porto-alegre-421' }] : [])
         : corpo.domain[0][2] === 421 && opcoes.comPA
-        ? [{ id: 421, name: 'Combo Circuito das Estações 2027 - Porto Alegre', default_code: 'CDE27COMBO4PA', list_price: 599.9, x_max_parcelas: 12, sale_ok: true, is_published: true, active: true, categ_id: false, website_url: '/shop/combos/cde27combo4pa-combo-circuito-das-estacoes-2027-porto-alegre-421' }]
+        ? [{ id: 421, name: 'Combo Circuito das Estações 2027 - Porto Alegre', default_code: 'CDE27COMBO4PA', list_price: 599.9, x_max_parcelas: 12, sale_ok: true, is_published: !opcoes.foraDeVenda, active: true, categ_id: false, website_url: '/shop/combos/cde27combo4pa-combo-circuito-das-estacoes-2027-porto-alegre-421' }]
         : corpo.domain[0][2] === 415
         ? [{ id: 415, name: 'Combo CT', default_code: opcoes.semCodigo ? false : 'CDE27COMBO4CT', list_price: preco, compare_list_price: 1149.96, x_max_parcelas: 12, sale_ok: !opcoes.foraDeVenda, is_published: true, active: true, categ_id: [9, 'Combos'], website_url: '/shop/cde27combo4ct-combo-curitiba-415' }]
         : [],
@@ -83,6 +83,11 @@ describe('Odoo', () => {
     expect(m.atual().cidades[1]).toMatchObject({ preco_vista: '599,90', link_inscricao: 'https://loja.test/shop/combos/cde27combo4pa-combo-circuito-das-estacoes-2027-porto-alegre-421', status: 'aberta' });
     expect(r.resultado.cidades.map((c) => c.nome)).toEqual(['Curitiba', 'Porto Alegre']);
     expect(r.resultado.cidades[1].mensagem).toContain('achado pelo código CDE27COMBO4PA');
+    // ainda não publicado na loja: preços e link já entram, status em breve
+    const n = memoria(evento());
+    await sincronizarOdoo(n.arm, 'combo', CFG, AGORA, { fetch: odooFalso(549, { comPA: true, foraDeVenda: true }).f });
+    expect(n.atual().cidades[1]).toMatchObject({ preco_vista: '599,90', valor_parcelado: '49,99', status: '' });
+    expect(n.atual().cidades[1].link_inscricao).toContain('-421');
   });
 
   it('nome da cidade só pega um combo quando bate sozinho', async () => {
@@ -204,7 +209,7 @@ describe('Odoo', () => {
     expect(r[0].resultado).toContain('publicado');
     const nova = memoria(evento());
     await sincronizarOdoo(nova.arm, 'combo', CFG, AGORA, { fetch: odooFalso(549, { foraDeVenda: true }).f });
-    expect(nova.atual().cidades[0]).toMatchObject({ status: '' });
-    expect(nova.atual().cidades[0].preco_vista).toBeUndefined();
+    // nunca vendeu (ex.: ainda não publicado na loja): os preços já entram, o status fica em breve
+    expect(nova.atual().cidades[0]).toMatchObject({ status: '', preco_vista: '549' });
   });
 });

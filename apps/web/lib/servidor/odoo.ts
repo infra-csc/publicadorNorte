@@ -227,10 +227,11 @@ export async function sincronizarOdoo(armazenamento: Armazenamento, slug: string
     try {
       const c = await cache.get(id)!;
       if (c.codigo) codigos.add(c.codigo);
-      // fora de venda: os preços ficam como estavam (a página mostra esgotado ou em breve); só o status muda.
-      // Achado pelo código: o link entra mesmo fora de venda (a próxima busca já vai pelo link)
+      // fora de venda depois de já ter vendido: os preços ficam como estavam (a página mostra esgotado); só o status muda.
+      // Cidade que nunca vendeu (ex.: combo ainda não publicado na loja): preços, distâncias e link já entram, e o status fica em breve
       const st = statusPeloOdoo(l, c);
-      novos.set(l._id, { ...(c.aVenda ? valoresDoCombo(c) : comoAchou ? { link_inscricao: c.url, link_inscricao_prime: c.url } : {}), ...st });
+      const preenche = c.aVenda || (c.preco > 0 && l._odooVendeu !== 'sim');
+      novos.set(l._id, { ...(preenche ? valoresDoCombo(c) : comoAchou ? { link_inscricao: c.url, link_inscricao_prime: c.url } : {}), ...st });
       const status = NOME_STATUS[st.status ?? String(l._odooStatus ?? '')] ?? String(l.status || 'em breve');
       cidades.push({ id: l._id, nome: nomeDe(l), combo: id, ok: true, mensagem: comoAchou + (c.aVenda ? `R$ ${fmtBR(c.preco)}${c.prime ? ` · Prime R$ ${fmtBR(c.prime.preco)}` : ''}` : `fora de venda (${c.foraDeVenda})`) + ` · ${status}${c.aviso ? ` · ${c.aviso}` : ''}` });
     } catch (x) {
