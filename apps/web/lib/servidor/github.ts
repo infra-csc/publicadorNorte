@@ -4,9 +4,20 @@
 const API = 'https://api.github.com';
 
 export class ErroGitHub extends Error {
-  constructor(readonly status: number, mensagem: string) {
+  /** limite de pedidos do GitHub (403/429 com "rate limit"): quando libera de novo, se o GitHub disse */
+  readonly limite?: { liberaEm?: Date };
+  constructor(readonly status: number, mensagem: string, limite?: { liberaEm?: Date }) {
     super(mensagem);
+    this.limite = limite;
   }
+}
+
+/** a resposta é de limite de pedidos (o GitHub usa 403 também para isso, não só para falta de permissão) */
+export function limiteDoGitHub(r: Response, msg: string): { liberaEm?: Date } | undefined {
+  if (r.status !== 429 && !(r.status === 403 && (/rate limit/i.test(msg) || r.headers.get('x-ratelimit-remaining') === '0'))) return undefined;
+  const reset = Number(r.headers.get('x-ratelimit-reset'));
+  const espera = Number(r.headers.get('retry-after'));
+  return { liberaEm: reset > 0 ? new Date(reset * 1000) : espera > 0 ? new Date(Date.now() + espera * 1000) : undefined };
 }
 
 export interface EntradaArvore { path: string; mode: string; type: 'blob' | 'tree' | 'commit'; sha: string; size?: number }
@@ -40,7 +51,7 @@ export class GitHub {
     if (!r.ok) {
       let msg = r.statusText;
       try { msg = ((await r.json()) as { message?: string }).message || msg; } catch { /* sem corpo */ }
-      throw new ErroGitHub(r.status, msg);
+      throw new ErroGitHub(r.status, msg, limiteDoGitHub(r, msg));
     }
     if (init.cru) return new Uint8Array(await r.arrayBuffer()) as T;
     if (r.status === 204) return undefined as T;

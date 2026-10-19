@@ -16,6 +16,11 @@ export async function responder(req: Request, fn: () => Promise<Response>, opcoe
     if (e instanceof NaoEncontrado) return erro(404, e.message);
     if (e instanceof ConfigFaltando) return erro(500, e.message);
     if (e instanceof ErroGitHub) {
+      if (e.limite) {
+        const em = e.limite.liberaEm;
+        const quando = em ? ` Libera às ${em.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })} (horário de Brasília).` : ' Tente de novo em alguns minutos.';
+        return erro(503, 'O GitHub limitou os pedidos do publicador por agora (muitos em pouco tempo).' + quando);
+      }
       if (e.status === 401) return erro(502, 'A chave do GitHub não foi aceita. Confira o GITHUB_TOKEN no .env.local.');
       if (e.status === 403) return erro(502, 'A chave do GitHub não tem permissão para isso. Ela precisa de Contents e Pages com leitura e escrita. (' + e.message + ')');
       if (e.status === 404) return erro(502, 'O GitHub não encontrou o repositório. Confira GITHUB_REPO e o acesso da chave.');
