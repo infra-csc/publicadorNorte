@@ -93,4 +93,19 @@ describe('publicação: marca de teste', () => {
     expect(h.match(/data-pub-teste/g)).toHaveLength(1);
     expect(h).toContain('<head><meta name="robots" content="noindex" data-pub-teste>');
   });
+
+  it('Tag Manager do passo SEO: desligado no teste (a página segue com noindex), religado na produção', async () => {
+    const { marcarTeste, paraProducao } = await import('../comum/indexacao');
+    const { colocarGtm } = await import('@norte/motor');
+    const pub = colocarGtm('<!doctype html><html><head><meta charset="utf-8"><title>x</title></head><body><h1>Oi</h1></body></html>', 'GTM-MSZJ2K');
+    const teste = marcarTeste(pub);
+    expect(teste).toContain('content="noindex" data-pub-teste>');
+    expect(teste).not.toMatch(/<script>[^<]*gtm\.js/);
+    expect(teste).toContain('<script type="text/plain" data-pub-teste>');
+    expect(teste).not.toContain('iframe src="https://www.googletagmanager.com');
+    const prod = paraProducao(teste, 'https://x.com.br/');
+    expect(prod).not.toContain('data-pub-teste');
+    expect(prod).not.toContain('noindex');
+    expect(prod.replace('<link rel="canonical" href="https://x.com.br/">', '')).toBe(pub);
+  });
 });

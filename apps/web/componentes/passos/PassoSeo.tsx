@@ -88,7 +88,7 @@ export function PassoSeo() {
       {ehPrincipal && (
         <section className="card stack">
           <h2 style={{ fontSize: 18 }}>Google Tag Manager</h2>
-          <p className="small muted" style={{ margin: 0 }}>Cole o ID do contêiner (GTM-XXXXXX) ou o código inteiro que o Google dá. Entra em todas as páginas do site publicado (teste e produção), no alto do &lt;head&gt; e logo depois do &lt;body&gt;. A prévia do publicador não conta visita.</p>
+          <p className="small muted" style={{ margin: 0 }}>Cole o ID do contêiner (GTM-XXXXXX) ou o código inteiro que o Google dá. Entra em todas as páginas do site, no alto do &lt;head&gt; e logo depois do &lt;body&gt;. Só conta visitas na produção (domínio próprio): no endereço de teste e na prévia a tag fica desligada, e o teste continua fora do Google.</p>
           <label className="f">
             <span className="small">ID do contêiner</span>
             <input className="inp" placeholder="GTM-XXXXXX" value={seo.gtm || ''} aria-label="ID do Google Tag Manager"
