@@ -19,7 +19,7 @@ export { ehData, ehPeriodo, formatoDeData, formatarData, periodo, lerData, paraI
 export { converterMarcas, MARCA_INI, MARCA_MEIO, MARCA_FIM } from './edicao';
 export { ehRico, limparRico, textoDoRico, ehLinkExterno, ajustarLinks, anotarLinks, varsDeLink, varsTextoSimples, JS_BLOCO } from './rico';
 export {
-  ajustarTagsMidia, PASTA_PAG, refsDeArquivo, acharArquivo, normRef, opcoesMidia, padraoMidia, valorMidia, pastasMidia,
+  ajustarTagsMidia, PASTA_PAG, refsDeArquivo, refExterna, acharArquivo, normRef, opcoesMidia, padraoMidia, valorMidia, pastasMidia,
   versaoTela, caminhoMidia, OCULTA, midiaEscondida, arquivoDaEscolha, tirarMidiaOculta, secaoMidia, slotMidia, arquivoAceito, tipoArquivo, TIPOS_ARQUIVO, CSS_MIDIA, type OpcaoMidia,
 } from './midia';
 export { gerar, type EntradaGerar, type EscolhaPos, type FotoGaleria, type PaginaGerada, type ResultadoGerar } from './gerar';

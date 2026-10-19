@@ -53,6 +53,8 @@ export interface Evento {
   patrocinios?: { porPagina: Record<string, ComposicaoPatrocinio>; estilo?: EstiloPatrocinio; /** cotas do evento (sem isso, as padrão) */ cotas?: Cota[] };
   /** mudanças feitas fora do evento (ex.: na aba Patrocínios) que ainda não foram publicadas */
   pendencia?: { desde: string; motivos: string[] };
+  /** "Forçar atualização" (passo Publicar): entra no endereço de todos os arquivos, para quem já abriu o site baixar tudo de novo */
+  cacheRenovado?: string;
   /** modo automático: depois do último dia (+ horas) a cidade/etapa vira "realizado" e o site é republicado sozinho */
   /** preços, links e distâncias de cada cidade vindos do Odoo (lib/servidor/odoo.ts); a automação confere a cada 30 minutos */
   odoo?: {

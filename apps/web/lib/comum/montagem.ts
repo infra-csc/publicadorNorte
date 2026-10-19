@@ -1,5 +1,5 @@
 // Junta o motor com os dados guardados: gera as páginas e descobre quais arquivos cada página usa.
-import { acharArquivo, COTAS_PADRAO, detectar, estaRealizado, gerar, sincronizarVars, normRef, PASTA_LOGOS, refsDeArquivo, type Cota, type ResultadoGerar } from '@norte/motor';
+import { acharArquivo, COTAS_PADRAO, detectar, estaRealizado, gerar, sincronizarVars, normRef, PASTA_LOGOS, refExterna, refsDeArquivo, type Cota, type ResultadoGerar } from '@norte/motor';
 import type { ArquivoMidia, BancoPatrocinios, Evento } from './tipos';
 
 /** logos do banco de patrocinadores, como arquivos do site (_patrocinadores/…) */
@@ -109,6 +109,31 @@ export function arquivosUsados(htmls: string[], arquivos: ArquivoMidia[]): Map<s
     }
   }
   return out;
+}
+
+const RX_ATR_ARQ = /(\s(?:src|href|poster|data-src)\s*=\s*)(["'])([^"']+)\2|(url\(\s*)(["']?)([^"')]+?)\5(\s*\))|(\ssrcset\s*=\s*)(["'])([^"']+)\9/gi;
+
+/**
+ * Site publicado: cada arquivo usado ganha `?v=` com o começo do sha (o conteúdo) no endereço. Quem já abriu o site
+ * baixa de novo só o que mudou, mesmo com o mesmo nome (o navegador guarda imagens por até 1 hora).
+ * `renovar` (botão "Forçar atualização"): muda o endereço de todos. Só em atributos e url(): caminho dentro de
+ * JavaScript fica como está (o script pode comparar o nome).
+ */
+export function comVersaoNosArquivos(html: string, usados: Map<string, ArquivoMidia>, renovar = ''): string {
+  const ver = (ref: string) => {
+    if (refExterna(ref)) return ref;
+    const a = usados.get(normRef(ref));
+    if (!a) return ref;
+    const i = ref.indexOf('#');
+    const [antes, hash] = i < 0 ? [ref, ''] : [ref.slice(0, i), ref.slice(i)];
+    return antes + (antes.includes('?') ? '&' : '?') + 'v=' + a.sha.slice(0, 10) + (renovar ? '.' + renovar : '') + hash;
+  };
+  return html.replace(RX_ATR_ARQ, (t, a1, q1, r1, u1, q2, r2, u2, s1, q3, r3) => {
+    if (r1 != null) return a1 + q1 + ver(r1) + q1;
+    if (r2 != null) return u1 + q2 + ver(r2) + q2 + u2;
+    if (r3 != null) return s1 + q3 + r3.replace(/[^\s,][^\s,]*/g, (u: string, pos: number, s: string) => (/^\s*$/.test(s.slice(0, pos).split(',').pop()!) ? ver(u) : u)) + q3;
+    return t;
+  });
 }
 
 /** Prévia: troca cada caminho que o HTML usa pelo endereço do arquivo guardado. */

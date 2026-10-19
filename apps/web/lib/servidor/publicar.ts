@@ -2,7 +2,7 @@
 // Usado pelo botão Publicar e pela automação (status "realizado" no modo automático).
 import { ARQ_PAGINAS, marcarTeste } from '../comum/indexacao';
 import type { Evento, Publicacao } from '../comum/tipos';
-import { arquivosDoBanco, arquivosUsados, gerarEvento, realizadosAgora, urlDoSite } from '../comum/montagem';
+import { arquivosDoBanco, arquivosUsados, comVersaoNosArquivos, gerarEvento, realizadosAgora, urlDoSite } from '../comum/montagem';
 import type { Armazenamento } from './armazenamento';
 import type { ArquivoPublicado, DestinoPublicacao } from './destino';
 
@@ -15,8 +15,9 @@ export class NaoPublicavel extends Error {
  * (o "realizado" automático chega ao domínio próprio). Publicar pelo botão só muda o teste.
  * `producao` (agendamento): a produção vai junto sempre que o evento tiver domínio.
  * `agendamento`: esta publicação é a do agendamento; ele sai do evento e o resultado fica em ultimoAgendamento.
+ * `renovarCache`: todos os arquivos mudam de endereço (quem já abriu o site baixa tudo de novo).
  */
-export async function publicarEvento(armazenamento: Armazenamento, destino: DestinoPublicacao, slug: string, agora = new Date(), opcoes: { acompanharProducao?: boolean; producao?: boolean; agendamento?: boolean } = {}) {
+export async function publicarEvento(armazenamento: Armazenamento, destino: DestinoPublicacao, slug: string, agora = new Date(), opcoes: { acompanharProducao?: boolean; producao?: boolean; agendamento?: boolean; renovarCache?: boolean } = {}) {
   const c = await armazenamento.ler(slug);
   if (!c) throw new NaoPublicavel('Evento não encontrado.');
   const { banco } = await armazenamento.lerBanco();
@@ -29,8 +30,10 @@ export async function publicarEvento(armazenamento: Armazenamento, destino: Dest
   const usados = arquivosUsados(r.paginas.map((p) => p.html), [...c.arquivos, ...arquivosDoBanco(banco)]);
   // teste não é indexado (a produção tira a marca ao servir); a lista de páginas abertas vira o sitemap da produção
   const abertas = r.paginas.filter((p) => !p.fechada).map((p) => ({ arquivo: p.arquivo }));
+  const renovado = opcoes.renovarCache ? agora.getTime().toString(36) : c.evento.cacheRenovado || '';
+  const comVersao = (h: string) => comVersaoNosArquivos(h, usados, renovado);
   const arquivos: ArquivoPublicado[] = [
-    ...r.paginas.map((p) => ({ caminho: p.arquivo, texto: p.fechada ? p.html : marcarTeste(p.html) })),
+    ...r.paginas.map((p) => ({ caminho: p.arquivo, texto: comVersao(p.fechada ? p.html : marcarTeste(p.html)) })),
     { caminho: ARQ_PAGINAS, texto: JSON.stringify({ em: agora.toISOString(), paginas: abertas }) },
     ...[...usados].map(([caminho, a]) => ({ caminho, sha: a.sha })),
   ];
@@ -47,6 +50,7 @@ export async function publicarEvento(armazenamento: Armazenamento, destino: Dest
     delete e.pendencia;
     if (e.odoo) delete e.odoo.pendente;
     if (e.automacao) e.automacao.realizados = realizados;
+    if (renovado) e.cacheRenovado = renovado;
     if (opcoes.agendamento) {
       delete e.agendamento;
       const onde = junto ? 'no teste e na produção' : 'no teste' + (opcoes.producao ? ' (a produção não foi: o evento não tem domínio)' : '');

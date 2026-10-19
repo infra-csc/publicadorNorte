@@ -22,6 +22,7 @@ export function PassoPublicar() {
   const [erro, setErro] = useState('');
   const [esperando, setEsperando] = useState<string | null>(null);
   const [confirmar, setConfirmar] = useState<number | null>(null);
+  const [renovar, setRenovar] = useState<'' | 'confirmar' | 'feito'>('');
   const ativa = evento.publicacoes.find((p) => p.versao === evento.versaoAtiva);
 
   const lerSite = () => api<EstadoSite>('/api/site').then(setSite, (e) => setErro(e.message));
@@ -40,14 +41,16 @@ export function PassoPublicar() {
     return () => clearInterval(t);
   }, [esperando]);
 
-  async function publicar() {
+  async function publicar(renovarCache = false) {
     setErro('');
+    setRenovar('');
     setOcupado('Salvando…');
     try {
       await salvarJa();
-      setOcupado('Publicando…');
-      const res = await api<{ publicacao: Publicacao; evento: Evento; versao: string }>(`/api/hotsites/${evento.slug}/publicar`, { method: 'POST' });
+      setOcupado(renovarCache ? 'Forçando atualização…' : 'Publicando…');
+      const res = await api<{ publicacao: Publicacao; evento: Evento; versao: string }>(`/api/hotsites/${evento.slug}/publicar`, { method: 'POST', ...(renovarCache ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ renovarCache: true }) } : {}) });
       substituir(res.evento, res.versao);
+      if (renovarCache) setRenovar('feito');
       setEsperando(res.publicacao.commit);
       lerSite();
     } catch (e) {
@@ -122,9 +125,23 @@ export function PassoPublicar() {
           </div>
           <span className="row">
             <button className="btn ghost" type="button" onClick={baixarZip} disabled={r.bloqueado || !r.paginas.length}>Baixar .zip</button>
-            <button className="btn pri" type="button" onClick={publicar} disabled={!!ocupado || r.bloqueado || !r.paginas.length}>{ocupado || (ativa ? 'Publicar de novo' : 'Publicar')}</button>
+            {ativa && <button className="btn ghost" type="button" onClick={() => setRenovar('confirmar')} disabled={!!ocupado || r.bloqueado || !r.paginas.length}
+              title="Para quem já abriu o site: imagens, vídeos e textos novos aparecem sem precisar limpar o navegador">Forçar atualização</button>}
+            <button className="btn pri" type="button" onClick={() => publicar()} disabled={!!ocupado || r.bloqueado || !r.paginas.length}>{ocupado || (ativa ? 'Publicar de novo' : 'Publicar')}</button>
           </span>
         </div>
+        {renovar === 'confirmar' && (
+          <div className="w-item warn"><span className="ic">!</span><div>
+            <b>Forçar atualização para quem já abriu o site</b>
+            Publica de novo com o que está salvo e troca o endereço de todas as imagens, vídeos e fontes: o navegador de quem já visitou baixa tudo de novo{evento.producao?.versao != null && evento.producao.versao === evento.versaoAtiva ? ', no teste e na produção' : ' (a produção só muda quando você levar a versão nova para lá)'}.
+            Os textos chegam em até 1 minuto na produção e em até 10 minutos no endereço de teste. Não precisa usar a cada publicação: arquivo trocado já chega sozinho.
+            <div className="row" style={{ gap: 6, marginTop: 8 }}>
+              <button className="btn sm pri" type="button" onClick={() => publicar(true)}>Forçar atualização</button>
+              <button className="btn sm ghost" type="button" onClick={() => setRenovar('')}>Cancelar</button>
+            </div>
+          </div></div>
+        )}
+        {renovar === 'feito' && <div className="w-item ok"><span className="ic">✓</span><div><b>Atualização forçada</b>Quem abrir o site de novo baixa as imagens e os textos novos (no teste, depois que o GitHub terminar de atualizar).</div></div>}
         {erro && <div className="w-item bad"><span className="ic">✕</span><div><b>Não deu para publicar</b>{erro}</div></div>}
         {!!evento.pendencia?.motivos.length && (
           <div className="w-item warn"><span className="ic">!</span><div>
