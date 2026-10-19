@@ -21,6 +21,8 @@ export interface Seo extends SeoPagina {
   nomeEvento?: string;
   /** cidades e etapas (pelo _id): o que ficar vazio herda da principal */
   porPagina?: Record<string, SeoPagina>;
+  /** Google Tag Manager do evento (GTM-XXXX): vai em todas as páginas do site publicado */
+  gtm?: string;
 }
 /** valores finais de uma página (os da principal são herdados pelas cidades) */
 export interface ValoresSeo {
@@ -124,6 +126,32 @@ export function resolverSeo(html: string, seo: Seo, ctx: ContextoSeo): ValoresSe
   const imagem = p.share?.imagem || h?.imagem || (h ? undefined : doHtml.ogImagem) || primeiraFoto(html);
   const favicon = p.favicon || h?.favicon || doHtml.favicon;
   return { titulo, descricao, ogTitulo, ogDescricao, imagem, favicon };
+}
+
+/** ID do Google Tag Manager (GTM-XXXX), também tirado do código colado inteiro; vazio se não houver */
+export function idGtm(texto: string | undefined): string {
+  const m = /\bGTM-[A-Z0-9]{4,12}\b/i.exec(texto || '');
+  return m ? m[0].toUpperCase() : '';
+}
+
+/**
+ * Google Tag Manager: o script o mais alto possível no <head> e o <noscript> logo depois do <body>, como o Google pede.
+ * Se o HTML já tem o mesmo contêiner, não duplica.
+ */
+export function colocarGtm(html: string, gtm: string | undefined): string {
+  const id = idGtm(gtm);
+  if (!id || new RegExp('googletagmanager\\.com/(?:gtm\\.js|ns\\.html)\\?id=' + id + '\\b|[\'"]' + id + '[\'"]', 'i').test(html)) return html;
+  const script =
+    `<!-- Google Tag Manager --><script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});` +
+    `var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;` +
+    `f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${id}');</script><!-- End Google Tag Manager -->`;
+  const ns = `<!-- Google Tag Manager (noscript) --><noscript><iframe src="https://www.googletagmanager.com/ns.html?id=${id}" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript><!-- End Google Tag Manager (noscript) -->`;
+  // no <head>: depois do <meta charset> (o navegador precisa dele nos primeiros bytes), antes de todo o resto
+  let h = /<head\b[^>]*>/i.test(html)
+    ? html.replace(/<head\b[^>]*>(\s*<meta\s+charset=[^>]*>)?/i, (m) => m + script)
+    : /<html\b[^>]*>/i.test(html) ? html.replace(/<html\b[^>]*>/i, (m) => m + '<head>' + script + '</head>') : script + html;
+  h = /<body\b[^>]*>/i.test(h) ? h.replace(/<body\b[^>]*>/i, (m) => m + ns) : h;
+  return h;
 }
 
 /**

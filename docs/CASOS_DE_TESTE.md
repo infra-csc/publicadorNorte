@@ -251,6 +251,7 @@ Os tapumes de cards fixos dos casos H1–H4 são fixtures sintéticos em `packag
 | R2 | HTML sem title nem description | título = nome do evento (na cidade: "evento · cidade"); descrição = primeiro parágrafo com 40+ caracteres, cortado em ~155 sem quebrar palavra, com "…" |
 | R3 | título, descrição, favicon e compartilhamento preenchidos | valem os preenchidos, com {evento} trocado e aspas/< escapados; favicon e imagem vão para o site |
 | R4 | com endereço do site | og:image e og:url absolutos (index.html → raiz) |
+| R6 | Google Tag Manager `GTM-MSZJ2K` (ou o código inteiro colado) | script logo depois do `<meta charset>` no `<head>` e o `<noscript>` logo depois do `<body>`; só com `comRastreio` (site publicado, não na prévia); HTML que já tem o contêiner não duplica |
 | R5 | gerar sem seo / com seo; SP sem cadastro, RJ com cadastro próprio | sem seo o head fica como veio; SP herda da principal ("São Paulo - <título>", descrição, og:title com o nome na frente, imagem e favicon da principal; o `<title>` do HTML da praça não vale); RJ usa o seu título, imagem e favicon |
 
 ## S. Página "em breve" não abre no site

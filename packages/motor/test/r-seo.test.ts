@@ -1,6 +1,6 @@
 // R. SEO e compartilhamento
 import { describe, expect, it } from 'vitest';
-import { aplicarSeo, gerar, lerSeo, refsDeArquivo } from '../src/index';
+import { aplicarSeo, colocarGtm, gerar, idGtm, lerSeo, refsDeArquivo } from '../src/index';
 import { linha } from './ajuda';
 
 const PAG = '<!doctype html><html><head><meta charset="utf-8"><title>Velho</title><meta name="description" content="desc velha"><meta property="og:title" content="og velho"><link rel="icon" href="_media/velho.ico"></head><body><header><img src="_media/logo.svg"></header><h1>Oi</h1><p>Curto.</p><p>O Cuidar leva saúde para mais perto das pessoas, com avaliações, atividades físicas orientadas e informação sobre saúde para toda a família, em vários lugares.</p><img src="_media/pagina/hero/foto.jpg"></body></html>';
@@ -55,6 +55,22 @@ describe('R. SEO e compartilhamento', () => {
     expect(h).toContain('property="og:url" content="https://circuitocuidar.com.br/cotia.html"');
     const home = aplicarSeo(PAG, { nomeEvento: 'Cuidar' }, { urlSite: 'https://circuitocuidar.com.br/', arquivo: 'index.html' });
     expect(home).toContain('property="og:url" content="https://circuitocuidar.com.br/"');
+  });
+
+  it('R6: Google Tag Manager: script logo no alto do <head> (depois do charset) e noscript depois do <body>; só no site publicado; sem duplicar', () => {
+    const cod = "<script>...})(window,document,'script','dataLayer','GTM-MSZJ2K');</script>";
+    expect(idGtm(cod)).toBe('GTM-MSZJ2K');
+    expect(idGtm('gtm-ab12cd')).toBe('GTM-AB12CD');
+    expect(idGtm('qualquer coisa')).toBe('');
+    const h = colocarGtm(PAG, 'GTM-MSZJ2K');
+    expect(h).toMatch(/^<!doctype html><html><head><meta charset="utf-8"><!-- Google Tag Manager --><script>/);
+    expect(h).toContain("'dataLayer','GTM-MSZJ2K')");
+    expect(h).toContain('<body><!-- Google Tag Manager (noscript) --><noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MSZJ2K"');
+    expect(colocarGtm(h, 'GTM-MSZJ2K')).toBe(h);
+    expect(colocarGtm(PAG, '')).toBe(PAG);
+    const base = { formato: 'unica' as const, modelos: { unica: PAG }, seo: { gtm: 'GTM-MSZJ2K' } };
+    expect(gerar(base).paginas[0].html).not.toContain('googletagmanager');
+    expect(gerar({ ...base, comRastreio: true }).paginas[0].html).toContain('gtm.js?id=');
   });
 
   it('R5: no gerar, só com seo informado; cada cidade herda da principal com o nome na frente, ou usa o seu cadastro', () => {

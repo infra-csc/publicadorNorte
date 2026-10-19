@@ -1,7 +1,7 @@
 'use client';
 // SEO e compartilhamento: favicon, título e descrição do Google, e o card das redes sociais.
 // O que ficar vazio sai automático (o motor preenche); a tela mostra o automático como sugestão.
-import { acharArquivo, lerSeo, normRef, type SeoPagina } from '@norte/motor';
+import { acharArquivo, idGtm, lerSeo, normRef, type SeoPagina } from '@norte/motor';
 import { useDeferredValue, useMemo, useRef, useState } from 'react';
 import { gerarEvento, urlDoSite } from '@/lib/comum/montagem';
 import type { ArquivoMidia } from '@/lib/comum/tipos';
@@ -84,6 +84,20 @@ export function PassoSeo() {
           automatico={ehPrincipal ? (atual?.favicon ? 'o do HTML' : 'sem ícone') : 'o mesmo da página principal'}
           aoMudar={(v) => mudar((s) => { s.favicon = v; })} />
       </section>
+
+      {ehPrincipal && (
+        <section className="card stack">
+          <h2 style={{ fontSize: 18 }}>Google Tag Manager</h2>
+          <p className="small muted" style={{ margin: 0 }}>Cole o ID do contêiner (GTM-XXXXXX) ou o código inteiro que o Google dá. Entra em todas as páginas do site publicado (teste e produção), no alto do &lt;head&gt; e logo depois do &lt;body&gt;. A prévia do publicador não conta visita.</p>
+          <label className="f">
+            <span className="small">ID do contêiner</span>
+            <input className="inp" placeholder="GTM-XXXXXX" value={seo.gtm || ''} aria-label="ID do Google Tag Manager"
+              onChange={(e) => { const v = e.target.value; alterar((x) => { const s = (x.seo ??= {}); const id = idGtm(v); if (id || !v.trim()) { if (id) s.gtm = id; else delete s.gtm; } else s.gtm = v.trim(); }); }} />
+          </label>
+          {seo.gtm && !idGtm(seo.gtm) && <p className="small" style={{ margin: 0, color: 'var(--bad)' }}>Não achei um ID no formato GTM-XXXXXX. Sem ele, a tag não entra.</p>}
+          {idGtm(seo.gtm) && <p className="small muted" style={{ margin: 0 }}>✓ {idGtm(seo.gtm)} entra na próxima publicação.</p>}
+        </section>
+      )}
 
       <section className="card stack">
         <h2 style={{ fontSize: 18 }}>Google</h2>

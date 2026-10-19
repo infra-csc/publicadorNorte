@@ -127,6 +127,8 @@ export interface SeoEvento {
   share?: { imagem?: string; titulo?: string; descricao?: string };
   /** cada cidade/etapa (pelo _id): o que ficar vazio herda da principal, com o nome na frente do título */
   porPagina?: Record<string, { favicon?: string; titulo?: string; descricao?: string; share?: { imagem?: string; titulo?: string; descricao?: string } }>;
+  /** Google Tag Manager (GTM-XXXX): em todas as páginas do site publicado */
+  gtm?: string;
 }
 
 export interface Producao {

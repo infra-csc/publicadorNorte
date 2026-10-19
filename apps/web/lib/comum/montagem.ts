@@ -76,6 +76,7 @@ export function gerarEvento(evento: Evento, modelos: Partial<Record<string, stri
     seo: { ...evento.seo, nomeEvento: evento.nome },
     urlSite: opcoes?.urlSite || urlDoSite(evento),
     fecharEmBreve: opcoes?.publicacao,
+    comRastreio: opcoes?.publicacao,
     automacao: evento.automacao,
     agora: opcoes?.agora ?? new Date(),
     formato: evento.formato,

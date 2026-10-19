@@ -26,7 +26,7 @@ export { gerar, type EntradaGerar, type EscolhaPos, type FotoGaleria, type Pagin
 export { temCardsFixos } from './cards-fixos';
 export type { ResultadoConversao, CardPreenchido } from './conversor';
 // converterCardsFixos usa um parser de HTML (linkedom): importe de '@norte/motor/conversor'
-export { aplicarSeo, lerSeo, resolverSeo, type Seo, type SeoPagina, type TextosSeo, type ValoresSeo } from './seo';
+export { aplicarSeo, colocarGtm, idGtm, lerSeo, resolverSeo, type Seo, type SeoPagina, type TextosSeo, type ValoresSeo } from './seo';
 export { colocarModulos, htmlModulo, limparSvg, pintar as pintarSvg, ehModulo, PREFIXO_MODULO, type ModuloImagem } from './modulos';
 export { secoesDe, removerSecoes, reordenarSecoes, ordemFinal, ocultasDaPagina, temRodapeHtml, RODAPE_HTML, type Secao, type EscolhaSecoes } from './secoes';
 export {

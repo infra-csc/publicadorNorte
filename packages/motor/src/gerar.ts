@@ -10,7 +10,7 @@ import { abreviar, esc, slug, slugValor } from './texto';
 import { FORMATOS, NOME_PAGINA, type Aviso, type Formato, type Linha, type Modelos, type TipoItem, type TipoPagina, type Vars } from './tipos';
 import { ehMidia, trocarVars } from './variaveis';
 import { colocarModulos } from './modulos';
-import { aplicarSeo, resolverSeo, type ContextoSeo, type Seo, type ValoresSeo } from './seo';
+import { aplicarSeo, colocarGtm, resolverSeo, type ContextoSeo, type Seo, type ValoresSeo } from './seo';
 import { ocultasDaPagina, removerSecoes, reordenarSecoes, type EscolhaSecoes } from './secoes';
 import { colocarRodape, rodapeDaPagina, type EscolhaRodape } from './rodape';
 import { colocarPatrocinios, montarPatrocinios, patrocinadoresFora, type EntradaPatrocinios } from './patrocinios';
@@ -46,6 +46,8 @@ export interface EntradaGerar {
   urlSite?: string;
   /** publicação: a página de cidade/etapa "em breve" não abre (leva para a home, sem indexar). A prévia mostra normal. */
   fecharEmBreve?: boolean;
+  /** site publicado: entra o Google Tag Manager do SEO (a prévia não conta visita) */
+  comRastreio?: boolean;
   /** fotos de cada galeria (`@repetir galeria`), na ordem; cada uma com a cidade (_id) ou para todas */
   galerias?: Record<string, FotoGaleria[]>;
   /**
@@ -402,6 +404,7 @@ export function gerar(e: EntradaGerar): ResultadoGerar {
       // a página principal vem primeiro: as cidades herdam os valores dela
       if (base === 'tapume' || base === 'unica') seoPrincipal = valores;
       html = aplicarSeo(montado, e.seo, sctx, valores);
+      if (e.comRastreio) html = colocarGtm(html, e.seo.gtm);
     }
     const final = fechada ? paginaFechada(titulo) : html;
     for (const f of R.faltas) {
