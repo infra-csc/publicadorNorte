@@ -739,11 +739,21 @@ export function PassoCadastro() {
       <button type="button" aria-pressed={naPrevia} onClick={() => setModo('previa')} title="Editar direto na prévia">✎ Na prévia</button>
     </div>
   );
+  // página escolhida na lista (tapume, cidade…) vale até clicar numa linha da tabela, que volta a mandar na prévia
+  const focar = (id: string) => { setFoco(id); setPaginaEscolhida(''); };
   const pagina =
-    (naPrevia && resultado.paginas.find((p) => p.arquivo === paginaEscolhida)) ||
+    resultado.paginas.find((p) => p.arquivo === paginaEscolhida) ||
     resultado.paginas.find((p) => foco && (p.etapaId === foco || (p.cidadeId === foco && !p.etapaId))) ||
     resultado.paginas.find((p) => p.tipo === 'praca') ||
     resultado.paginas[0];
+
+  const escolherPagina = resultado.paginas.length > 1 && (
+    <label className="row small" style={{ gap: 6, flexWrap: 'nowrap' }}>Página:
+      <select className="inp" style={{ width: 'auto', minWidth: 0, flex: 1, padding: '6px 10px' }} value={pagina?.arquivo || ''} onChange={(e) => setPaginaEscolhida(e.target.value)} aria-label="Página da prévia">
+        {resultado.paginas.map((p) => <option key={p.arquivo} value={p.arquivo}>{p.titulo} · {p.arquivo}</option>)}
+      </select>
+    </label>
+  );
 
   return (
     <>
@@ -751,13 +761,7 @@ export function PassoCadastro() {
       {naPrevia ? (
         <div className="stack">
           <div className="w-item info"><span className="ic">✎</span><div>Clique num texto da página e digite. Só os textos que vêm do cadastro ficam marcados e podem ser editados. Para mudar um bloco de lugar, passe o mouse no texto e arraste a alça ⠿ que aparece ao lado. Imagens e vídeos se trocam no passo Mídia.</div></div>
-          {resultado.paginas.length > 1 && (
-            <label className="row small" style={{ gap: 6 }}>Página:
-              <select className="inp" style={{ width: 'auto', padding: '6px 10px' }} value={pagina?.arquivo || ''} onChange={(e) => setPaginaEscolhida(e.target.value)}>
-                {resultado.paginas.map((p) => <option key={p.arquivo} value={p.arquivo}>{p.titulo} · {p.arquivo}</option>)}
-              </select>
-            </label>
-          )}
+          {escolherPagina}
           <Previa html={pagina?.html ?? null} titulo={pagina ? `${pagina.titulo} · ${pagina.arquivo}` : 'Prévia'} altura={Math.max(520, alturaJanela - 260)} editar aoEditar={editarNaPrevia} aoMover={moverNaPrevia} extra={trocaModo} />
         </div>
       ) : (
@@ -770,10 +774,11 @@ export function PassoCadastro() {
           {!busca && <StatusPelasDatas />}
           {!busca && <SecaoOdoo />}
           <Gerais busca={busca} />
-          {unica ? temLista && <ListaEmBlocos busca={busca} /> : <Tabela tipo="cidade" foco={foco} setFoco={setFoco} busca={busca} />}
-          {evento.formato === 'tapume_etapa_praca' && <Tabela tipo="etapa" foco={foco} setFoco={setFoco} busca={busca} />}
+          {unica ? temLista && <ListaEmBlocos busca={busca} /> : <Tabela tipo="cidade" foco={foco} setFoco={focar} busca={busca} />}
+          {evento.formato === 'tapume_etapa_praca' && <Tabela tipo="etapa" foco={foco} setFoco={focar} busca={busca} />}
         </div>
-        <div className="lado">
+        <div className="lado stack" style={{ gap: 8 }}>
+          {escolherPagina}
           <Previa html={pagina?.html ?? null} titulo={pagina ? `${pagina.titulo} · ${pagina.arquivo}` : 'Prévia'} altura={560} extra={trocaModo} />
         </div>
       </div>
