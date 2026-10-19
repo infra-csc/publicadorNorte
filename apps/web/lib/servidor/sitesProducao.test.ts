@@ -16,7 +16,8 @@ const arquivos: Record<string, string> = {
 const pedidos: string[] = [];
 const buscar = (async (u: string) => {
   pedidos.push(u);
-  if (u.includes('api.github.com')) return new Response(JSON.stringify(indice), { status: 200 });
+  if (u.includes('api.github.com')) throw new Error('a entrega dos sites não pode gastar a API do GitHub: ' + u);
+  if (/raw\.githubusercontent\.com\/[^/]+\/[^/]+\/dados\/producao\/sites\.json\?v=\d+$/.test(u)) return new Response(JSON.stringify(indice), { status: 200 });
   const m = u.match(/raw\.githubusercontent\.com\/[^/]+\/[^/]+\/abc123\/(.+)$/);
   const p = m && decodeURIComponent(m[1]);
   return p && arquivos[p] != null ? new Response(arquivos[p]) : new Response('404', { status: 404 });

@@ -27,13 +27,22 @@ const extensao = (p: string) => (p.split('/').pop() || '').match(/\.([a-z0-9]+)$
 
 let indiceGuardado: { em: number; valor: IndiceProducao } | null = null;
 
-/** índice domínio → evento (guardado por 30 s em cada instância do Worker) */
+/**
+ * índice domínio → evento (guardado por 30 s em cada instância do Worker).
+ * Vem do raw.githubusercontent.com, não da API: a API tem limite de 5.000 chamadas/hora por token e, com
+ * tráfego de campanha, cada instância nova do Worker consultando o índice esgotava o limite e derrubava os
+ * sites (503). O `v` muda a cada 30 s (o raw do GitHub guarda o branch por até 5 min) e o cache da
+ * Cloudflare divide a mesma resposta entre as instâncias.
+ */
 export async function lerIndice(env: AmbienteSites, agora = Date.now(), buscar: typeof fetch = fetch): Promise<IndiceProducao> {
   if (indiceGuardado && agora - indiceGuardado.em < VALIDADE_INDICE) return indiceGuardado.valor;
   const repo = env.GITHUB_REPO || 'RenanPrates/publicadorNorte';
-  const r = await buscar(`https://api.github.com/repos/${repo}/contents/${ARQ_INDICE}?ref=${encodeURIComponent(env.GITHUB_BRANCH_DADOS || 'dados')}`, {
-    headers: { Accept: 'application/vnd.github.raw+json', 'User-Agent': 'publicador-norte', ...(env.GITHUB_TOKEN ? { Authorization: `Bearer ${env.GITHUB_TOKEN}` } : {}) },
-  });
+  const ramo = env.GITHUB_BRANCH_DADOS || 'dados';
+  const v = Math.floor(agora / VALIDADE_INDICE);
+  const r = await buscar(`https://raw.githubusercontent.com/${repo}/${encodeURIComponent(ramo)}/${ARQ_INDICE}?v=${v}`, {
+    headers: { 'User-Agent': 'publicador-norte', ...(env.GITHUB_TOKEN ? { Authorization: `token ${env.GITHUB_TOKEN}` } : {}) },
+    cf: { cacheTtl: VALIDADE_INDICE / 1000, cacheEverything: true },
+  } as RequestInit);
   if (r.status === 404) return guardar({ sites: {} }, agora);
   // falhou: usa o último índice conhecido, se houver
   if (!r.ok) { if (indiceGuardado) return indiceGuardado.valor; throw new Error('índice indisponível: ' + r.status); }
