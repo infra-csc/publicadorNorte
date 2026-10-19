@@ -197,6 +197,19 @@ export function statusPeloOdoo(l: Linha, c: ComboOdoo): Record<string, string> {
 const NOME_STATUS: Record<string, string> = { aberta: 'aberta', esgotado: 'esgotado', '': 'em breve' };
 
 /**
+ * Combo de uma cidade entre os do mesmo código: o nome do produto ("… - Porto Alegre") ou o fim do link (…-porto-alegre-421).
+ * Só quando um único combo bate (São José não pega São José dos Campos).
+ */
+export function comboDaCidade<T extends { name: string; website_url?: string }>(cidade: string, combos: T[]): T | null {
+  const slug = (s: string) => semAcento(s).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const c = slug(cidade);
+  if (!c) return null;
+  const fim = (s: string) => s === c || s.endsWith('-' + c);
+  const bate = combos.filter((x) => fim(slug(x.name)) || fim(slug(x.website_url || '').replace(/-\d+$/, '')));
+  return bate.length === 1 ? bate[0] : null;
+}
+
+/**
  * Consulta o combo de cada cidade (pelo link de inscrição) e grava o que mudou no cadastro.
  * Grava também quando o resultado muda (ou se `sempre`), para a tela mostrar o último resultado; `ligar` liga o Odoo no evento.
  */
@@ -207,22 +220,50 @@ export async function sincronizarOdoo(armazenamento: Armazenamento, slug: string
   const cache = new Map<number, Promise<ComboOdoo>>();
   const novos = new Map<string, Record<string, string>>();
   const cidades: ResultadoOdoo['cidades'] = [];
-  for (const l of lido.evento.cidades) {
-    const nome = String(l.cidade || '').trim() || 'Cidade sem nome';
-    const id = idDoCombo(l.link_inscricao);
-    if (id == null) { cidades.push({ id: l._id, nome, combo: null, ok: true, mensagem: 'sem link do combo: fica como está' }); continue; }
+  const nomeDe = (l: Linha) => String(l.cidade || '').trim() || 'Cidade sem nome';
+  const codigos = new Set<string>();
+  const consultar = async (l: Linha, id: number, comoAchou = '') => {
     if (!cache.has(id)) cache.set(id, consultarCombo(cfg, chamar, id));
     try {
       const c = await cache.get(id)!;
-      // fora de venda: os preços ficam como estavam (a página mostra esgotado ou em breve); só o status muda
+      if (c.codigo) codigos.add(c.codigo);
+      // fora de venda: os preços ficam como estavam (a página mostra esgotado ou em breve); só o status muda.
+      // Achado pelo código: o link entra mesmo fora de venda (a próxima busca já vai pelo link)
       const st = statusPeloOdoo(l, c);
-      novos.set(l._id, { ...(c.aVenda ? valoresDoCombo(c) : {}), ...st });
+      novos.set(l._id, { ...(c.aVenda ? valoresDoCombo(c) : comoAchou ? { link_inscricao: c.url, link_inscricao_prime: c.url } : {}), ...st });
       const status = NOME_STATUS[st.status ?? String(l._odooStatus ?? '')] ?? String(l.status || 'em breve');
-      cidades.push({ id: l._id, nome, combo: id, ok: true, mensagem: (c.aVenda ? `R$ ${fmtBR(c.preco)}${c.prime ? ` · Prime R$ ${fmtBR(c.prime.preco)}` : ''}` : `fora de venda (${c.foraDeVenda})`) + ` · ${status}${c.aviso ? ` · ${c.aviso}` : ''}` });
+      cidades.push({ id: l._id, nome: nomeDe(l), combo: id, ok: true, mensagem: comoAchou + (c.aVenda ? `R$ ${fmtBR(c.preco)}${c.prime ? ` · Prime R$ ${fmtBR(c.prime.preco)}` : ''}` : `fora de venda (${c.foraDeVenda})`) + ` · ${status}${c.aviso ? ` · ${c.aviso}` : ''}` });
     } catch (x) {
-      cidades.push({ id: l._id, nome, combo: id, ok: false, mensagem: x instanceof ErroOdoo ? x.message : 'sem resposta do Odoo (' + String((x as Error)?.message || x).slice(0, 120) + ')' });
+      cidades.push({ id: l._id, nome: nomeDe(l), combo: id, ok: false, mensagem: comoAchou + (x instanceof ErroOdoo ? x.message : 'sem resposta do Odoo (' + String((x as Error)?.message || x).slice(0, 120) + ')') });
     }
+  };
+  const semLink: Linha[] = [];
+  for (const l of lido.evento.cidades) {
+    const id = idDoCombo(l.link_inscricao);
+    if (id == null) semLink.push(l);
+    else await consultar(l, id);
   }
+  // cidade sem link: procura no Odoo o combo do mesmo código das outras (CDE27COMBO4CT → CDE27COMBO4…) com o nome da cidade
+  const prefixos = [...new Set([...codigos].map((k) => /^(.+?COMBO\d+)[A-Z]+$/i.exec(k)?.[1]).filter((p): p is string => !!p))];
+  let candidatos: { id: number; name: string; default_code: string | false; website_url?: string }[] = [];
+  if (semLink.length && prefixos.length) {
+    try {
+      for (const p of prefixos) {
+        candidatos.push(...await chamar<typeof candidatos>('product.template', 'search_read', {
+          domain: [['default_code', '=ilike', p + '%'], ['active', 'in', [true, false]]], fields: ['name', 'default_code', 'website_url'],
+        }));
+      }
+    } catch { candidatos = []; }
+  }
+  const usados = new Set(cidades.map((c) => c.combo));
+  for (const l of semLink) {
+    const achado = comboDaCidade(nomeDe(l), candidatos.filter((c) => !usados.has(c.id)));
+    if (achado) { usados.add(achado.id); await consultar(l, achado.id, `achado pelo código ${achado.default_code}: `); }
+    else cidades.push({ id: l._id, nome: nomeDe(l), combo: null, ok: true, mensagem: prefixos.length ? `sem link do combo e nenhum combo ${prefixos.join('/')}… com esse nome no Odoo: fica como está` : 'sem link do combo: fica como está' });
+  }
+  // na ordem do cadastro
+  const ordem = new Map(lido.evento.cidades.map((l, i) => [l._id, i]));
+  cidades.sort((a, b) => (ordem.get(a.id) ?? 0) - (ordem.get(b.id) ?? 0));
   // mudou: valores que aparecem no site; os marcadores (_odoo…) também são gravados, mas não pedem publicação
   let mudou = 0, marcadores = 0;
   for (const l of lido.evento.cidades) for (const [k, v] of Object.entries(novos.get(l._id) || {})) if (String(l[k] ?? '') !== v || !(k in l)) { if (k.startsWith('_')) marcadores++; else mudou++; }

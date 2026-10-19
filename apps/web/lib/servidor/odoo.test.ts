@@ -13,7 +13,7 @@ const AGORA = new Date('2026-10-14T12:00:00Z');
 const HORA = new Date('2026-10-14T15:00:00Z');
 
 /** Odoo de mentira: responde search_read pelos dados abaixo */
-function odooFalso(preco = 549, opcoes: { semCodigo?: boolean; foraDeVenda?: boolean } = {}) {
+function odooFalso(preco = 549, opcoes: { semCodigo?: boolean; foraDeVenda?: boolean; comPA?: boolean } = {}) {
   const chamadas: string[] = [];
   const f = (async (url: string, init: RequestInit) => {
     const [modelo] = url.replace(CFG.url + '/json/2/', '').split('/');
@@ -21,7 +21,11 @@ function odooFalso(preco = 549, opcoes: { semCodigo?: boolean; foraDeVenda?: boo
     expect((init.headers as Record<string, string>).Authorization).toBe('bearer k');
     const corpo = JSON.parse(String(init.body));
     const r: Record<string, unknown> = {
-      'product.template': corpo.domain[0][2] === 415
+      'product.template': corpo.domain[0][1] === '=ilike'
+        ? (opcoes.comPA ? [{ id: 415, name: 'Combo Circuito das Estações 2027 - Curitiba', default_code: 'CDE27COMBO4CT' }, { id: 421, name: 'Combo Circuito das Estações 2027 - Porto Alegre', default_code: 'CDE27COMBO4PA', website_url: '/shop/combos/cde27combo4pa-combo-circuito-das-estacoes-2027-porto-alegre-421' }] : [])
+        : corpo.domain[0][2] === 421 && opcoes.comPA
+        ? [{ id: 421, name: 'Combo Circuito das Estações 2027 - Porto Alegre', default_code: 'CDE27COMBO4PA', list_price: 599.9, x_max_parcelas: 12, sale_ok: true, is_published: true, active: true, categ_id: false, website_url: '/shop/combos/cde27combo4pa-combo-circuito-das-estacoes-2027-porto-alegre-421' }]
+        : corpo.domain[0][2] === 415
         ? [{ id: 415, name: 'Combo CT', default_code: opcoes.semCodigo ? false : 'CDE27COMBO4CT', list_price: preco, compare_list_price: 1149.96, x_max_parcelas: 12, sale_ok: !opcoes.foraDeVenda, is_published: true, active: true, categ_id: [9, 'Combos'], website_url: '/shop/cde27combo4ct-combo-curitiba-415' }]
         : [],
       'event.event.ticket': [
@@ -67,6 +71,26 @@ describe('Odoo', () => {
     expect(idDoCombo('https://beta.runningland.com.br/shop/combo-circuito-das-estacoes-2027-belo-horizonte-410?x=1')).toBe(410);
     expect(idDoCombo('https://site.com/inscricao')).toBeNull();
     expect(idDoCombo('')).toBeNull();
+    // a loja passou a usar /shop/combos/…
+    expect(idDoCombo('https://beta.runningland.com.br/shop/combos/cde27combo4sp-combo-circuito-das-estacoes-2027-sao-paulo-346')).toBe(346);
+  });
+
+  it('cidade sem link: acha no Odoo o combo do mesmo código das outras com o nome da cidade e grava o link', async () => {
+    const m = memoria(evento());
+    const { f } = odooFalso(549, { comPA: true });
+    const r = await sincronizarOdoo(m.arm, 'combo', CFG, AGORA, { fetch: f });
+    expect(r.resultado.ok).toBe(true);
+    expect(m.atual().cidades[1]).toMatchObject({ preco_vista: '599,90', link_inscricao: 'https://loja.test/shop/combos/cde27combo4pa-combo-circuito-das-estacoes-2027-porto-alegre-421', status: 'aberta' });
+    expect(r.resultado.cidades.map((c) => c.nome)).toEqual(['Curitiba', 'Porto Alegre']);
+    expect(r.resultado.cidades[1].mensagem).toContain('achado pelo código CDE27COMBO4PA');
+  });
+
+  it('nome da cidade só pega um combo quando bate sozinho', async () => {
+    const { comboDaCidade } = await import('./odoo');
+    const lista = [{ name: 'Combo - São José dos Campos' }, { name: 'Combo - São José' }, { name: 'Combo', website_url: '/shop/combos/x-porto-alegre-421' }];
+    expect(comboDaCidade('São José', lista)?.name).toBe('Combo - São José');
+    expect(comboDaCidade('Porto Alegre', lista)?.website_url).toContain('421');
+    expect(comboDaCidade('Curitiba', lista)).toBeNull();
   });
 
   it('consulta como o JS da Running Land: preço, parcelas (para baixo), Prime pela lista de preço, distâncias por etapa em ordem de data', async () => {
