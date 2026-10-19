@@ -30,7 +30,7 @@ export interface ComboOdoo {
   prime: { descontoPct: number; preco: number; valorParcela: number } | null;
   url: string;
   etapas: { nome: string; data: string | null; distancias: { nome: string; esgotado: boolean }[] }[];
-  /** à venda: ativo, vendável, publicado na loja, com preço e com ingresso sobrando; senão, o motivo */
+  /** à venda: ativo, vendável, com preço e com ingresso sobrando; senão, o motivo. "Publicado" não conta: a página /shop/combos/… abre sem ele */
   aVenda: boolean;
   foraDeVenda?: string;
   aviso?: string;
@@ -112,10 +112,10 @@ export async function consultarCombo(cfg: ConfigOdoo, chamar: Chamar, id: number
   const daqui = ingressos.filter((t) => eventos.some((ev) => ev.id === t.event_id[0]));
   const foraDeVenda = combo.active === false ? 'arquivado no Odoo'
     : combo.sale_ok === false ? 'não está à venda no Odoo'
-    : combo.is_published === false ? 'não está publicado na loja'
     : !(preco > 0) ? 'sem preço no Odoo'
     : daqui.length && daqui.every((t) => t.seats_max > 0 && t.seats_available <= 0) ? 'ingressos esgotados'
     : undefined;
+  if (combo.is_published === false) aviso = [aviso, 'marcado como não publicado no Odoo (a página da loja abre assim mesmo)'].filter(Boolean).join('; ');
   const parcelas = combo.x_max_parcelas || 1;
   const precoPrime = arred(preco * (1 - pct / 100));
   return {
@@ -228,7 +228,7 @@ export async function sincronizarOdoo(armazenamento: Armazenamento, slug: string
       const c = await cache.get(id)!;
       if (c.codigo) codigos.add(c.codigo);
       // fora de venda depois de já ter vendido: os preços ficam como estavam (a página mostra esgotado); só o status muda.
-      // Cidade que nunca vendeu (ex.: combo ainda não publicado na loja): preços, distâncias e link já entram, e o status fica em breve
+      // Cidade que nunca vendeu (ex.: venda ainda não liberada): preços, distâncias e link já entram, e o status fica em breve
       const st = statusPeloOdoo(l, c);
       const preenche = c.aVenda || (c.preco > 0 && l._odooVendeu !== 'sim');
       novos.set(l._id, { ...(preenche ? valoresDoCombo(c) : comoAchou ? { link_inscricao: c.url, link_inscricao_prime: c.url } : {}), ...st });
