@@ -7,6 +7,8 @@ import type { Evento, ResumoEvento } from '@/lib/comum/tipos';
 import { api, json } from './api';
 import { SeletorFormato } from './SeletorFormato';
 
+const semAcento = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
 const quando = (iso: string) => {
   try { return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch { return ''; }
 };
@@ -20,6 +22,7 @@ export function ListaEventos() {
   const [formato, setFormato] = useState<Formato>('tapume_praca');
   const [criando, setCriando] = useState(false);
   const [confirmar, setConfirmar] = useState<string | null>(null);
+  const [busca, setBusca] = useState('');
 
   const carregar = () => api<ResumoEvento[]>('/api/hotsites').then(setEventos, (e) => setErro(e.message));
   useEffect(() => { carregar(); }, []);
@@ -45,6 +48,9 @@ export function ListaEventos() {
       setErro((e as Error).message);
     }
   }
+
+  const termo = semAcento(busca.trim());
+  const visiveis = eventos?.filter((e) => !termo || [e.nome, e.slug, e.producao || ''].some((t) => semAcento(t).includes(termo)));
 
   return (
     <>
@@ -72,12 +78,18 @@ export function ListaEventos() {
           </div>
         </section>
       )}
+      {!!eventos?.length && (
+        <div className="ev-busca">
+          <input className="inp" type="search" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar evento pelo nome ou endereço" aria-label="Buscar evento" autoComplete="off" />
+        </div>
+      )}
       <div className="evs">
-        {!novo && (
+        {!novo && !busca.trim() && (
           <button className="ev new" type="button" onClick={() => setNovo(true)}>+ Novo evento</button>
         )}
         {eventos === null && !erro && <p className="muted">Carregando…</p>}
-        {eventos?.map((e) => (
+        {visiveis?.length === 0 && <p className="muted">Nenhum evento com “{busca.trim()}”.</p>}
+        {visiveis?.map((e) => (
           <div key={e.slug} className="ev">
             {confirmar === e.slug ? (
               <div className="stack">
@@ -91,6 +103,9 @@ export function ListaEventos() {
             ) : (
               <>
                 <Link href={`/eventos/${e.slug}/paginas`} style={{ color: 'inherit', textDecoration: 'none' }} className="stack">
+                  <span className="ev-capa" aria-hidden="true">
+                    {e.imagem ? <img src={e.imagem} alt="" loading="lazy" /> : <span>{e.nome.trim().charAt(0).toUpperCase()}</span>}
+                  </span>
                   <h3>{e.nome}</h3>
                   <span className="row" style={{ gap: 6 }}>
                     <span className="pill">{FORMATOS[e.formato].nome}</span>

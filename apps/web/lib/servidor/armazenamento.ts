@@ -1,6 +1,7 @@
 // Onde os eventos ficam guardados. Hoje: um branch do GitHub. Na Cloudflare: outra implementação
 // desta mesma interface (ex.: D1 + R2), sem mexer nas telas nem nas rotas.
 import type { TipoPagina } from '@norte/motor';
+import { acharArquivo } from '@norte/motor';
 import { COTAS_PADRAO, type Cota } from '@norte/motor';
 import { cotasDoEvento, paginasComPatrocinio } from '../comum/montagem';
 import type { ArquivoMidia, BancoPatrocinios, Evento, EventoCompleto, EventoPatrocinavel, IndiceProducao, ResumoEvento, UsoPatrocinadores } from '../comum/tipos';
@@ -59,6 +60,28 @@ const TEXTO_LEIA_ME = '# Dados do Publicador de Hotsites\n\nEste branch é grava
 
 const json = (e: Evento) => JSON.stringify(e, null, 2) + '\n';
 
+const IMAGEM = /\.(jpe?g|png|webp|avif|gif)$/i;
+/**
+ * Capa do evento na lista: a imagem de compartilhar do SEO (geral ou de uma página); sem ela, uma imagem de
+ * nome típico de capa (hero, banner, share…) ou a maior imagem do evento. Sai como /api/arquivos/<sha>: o
+ * navegador guarda por um ano, então cada capa custa um pedido ao GitHub só na primeira vez.
+ */
+export function capaDoEvento(e: Evento, todos: Map<string, { sha: string; size: number }>): string | null {
+  const base = pasta(e.slug) + MIDIA;
+  const midia = new Map<string, { sha: string; size: number }>();
+  for (const [p, a] of todos) if (p.startsWith(base) && IMAGEM.test(p)) midia.set(p.slice(base.length), a);
+  if (!midia.size) return null;
+  const refs = [e.seo?.share?.imagem, ...Object.values(e.seo?.porPagina || {}).map((x) => x.share?.imagem)].filter((r): r is string => !!r);
+  let achado = refs.map((r) => acharArquivo(r, midia.keys())).find((k) => k != null) || null;
+  if (!achado) {
+    const lista = [...midia].filter(([, a]) => a.size > 20_000);
+    const tipico = lista.filter(([p]) => /(^|[/_\-.])(hero|capa|banner|share|og|kv|destaque|topo)/i.test(p));
+    achado = (tipico.length ? tipico : lista).sort((a, b) => b[1].size - a[1].size)[0]?.[0] || null;
+  }
+  if (!achado) return null;
+  return `/api/arquivos/${midia.get(achado)!.sha}?n=${encodeURIComponent(achado.split('/').pop() || '')}`;
+}
+
 export class ArmazenamentoGitHub implements Armazenamento {
   constructor(private gh: GitHub, private branch: string) {}
 
@@ -77,7 +100,7 @@ export class ArmazenamentoGitHub implements Armazenamento {
       [...todos].filter(([p]) => p.startsWith(PASTA) && p.endsWith('/' + ARQ_EVENTO) && p.split('/').length === 3).map(async ([, a]) => {
         const e = JSON.parse(await this.gh.lerTexto(a.sha)) as Evento;
         const ativa = e.publicacoes.find((p) => p.versao === e.versaoAtiva);
-        out.push({ slug: e.slug, nome: e.nome, formato: e.formato, cidades: e.cidades.length, atualizadoEm: e.atualizadoEm, url: ativa?.url || null, pendente: !!e.pendencia?.motivos.length, producao: e.producao?.versao != null ? e.producao.dominios[0] || null : null, agendado: e.agendamento?.em || null, automatico: !!e.automacao?.ativo, odoo: !!e.odoo?.ativo, odooHoras: e.odoo?.intervalo, odooPendente: !!e.odoo?.pendente });
+        out.push({ slug: e.slug, nome: e.nome, imagem: capaDoEvento(e, todos), formato: e.formato, cidades: e.cidades.length, atualizadoEm: e.atualizadoEm, url: ativa?.url || null, pendente: !!e.pendencia?.motivos.length, producao: e.producao?.versao != null ? e.producao.dominios[0] || null : null, agendado: e.agendamento?.em || null, automatico: !!e.automacao?.ativo, odoo: !!e.odoo?.ativo, odooHoras: e.odoo?.intervalo, odooPendente: !!e.odoo?.pendente });
       }),
     );
     return out.sort((a, b) => (a.atualizadoEm < b.atualizadoEm ? 1 : -1));

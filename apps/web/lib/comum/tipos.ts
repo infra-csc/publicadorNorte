@@ -158,6 +158,8 @@ export interface Agendamento {
 export interface ResumoEvento {
   slug: string;
   nome: string;
+  /** capa do card na lista: endereço da imagem de compartilhar (SEO) ou de uma imagem do evento */
+  imagem?: string | null;
   formato: Formato;
   cidades: number;
   atualizadoEm: string;

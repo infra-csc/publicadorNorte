@@ -191,7 +191,11 @@ tr:last-child td { border-bottom: 0; }
 .ev:hover { border-color: var(--ink); }
 .ev h3 { font-size: 18px; padding-right: 36px; }
 .ev .foot { font-size: 12.5px; color: var(--mute); margin-top: auto; }
-.ev .x { position: absolute; top: 12px; right: 12px; }
+.ev .x { position: absolute; top: 12px; right: 12px; background: var(--panel); }
+.ev-capa { display: grid; place-items: center; margin: -18px -18px 4px; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 11px 11px 0 0; background: var(--sunk); color: var(--mute); font-size: 40px; font-weight: 700; }
+.ev-capa img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ev-busca { margin-bottom: 14px; max-width: 420px; }
+.ev-busca .inp { width: 100%; }
 .ev.new { border-style: dashed; align-items: stretch; justify-content: center; color: var(--mute); min-height: 150px; font-weight: 600; }
 .navfoot { display: flex; justify-content: space-between; gap: 12px; padding-top: 8px; border-top: 1px solid var(--line); flex-wrap: wrap; }
 .hist div { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px; flex-wrap: wrap; align-items: center; }
